@@ -1,0 +1,7 @@
+[submodule "qemu-0_7"]
+	path = qemu-0_7
+	url = https://gitlab.com/qemu-project/qemu.git
+	branch = stable-6.1
+[submodule "qemu-1_0"]
+	path = qemu-1_0
+	url = https://gitlab.com/qemu-project/qemu.git
