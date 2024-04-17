@@ -1,6 +1,18 @@
 NUM_JOBS=8
 
-EXT=0_7
+if [ $# -ne 1 ]; then
+	echo "Need Extension:"
+	echo -e "\t./install_qemu.sh 0_7"
+	echo -e "\t./install_qemu.sh 1_0"
+	exit -1
+fi
+
+if [[ "$1" != "0_7" ]] && [[ "$1" != "1_0" ]]; then
+	echo "Extension must be 0_7 or 1_0, you said: $1"
+	exit -1
+fi 
+
+EXT=$1
 LOGFILE=`pwd`/logfile_plugins.log
 echo -n "" > $LOGFILE
 

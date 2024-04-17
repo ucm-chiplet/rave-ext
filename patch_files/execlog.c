@@ -21,7 +21,7 @@ static char PRINT_SCALAR = 0;
 static char PRINT_ADDR = 0;
 static char PRINT_PRV = 0;
 static char PRINT_SUMMARY = 0;
-static char TRACE_ENABLED = 1;
+static char TRACE_ENABLED = 1; //Set to 0 if you want to avoid junk before your binary execution
 static FILE * FD_PRV;
 static FILE * FD_PCF;
 static FILE * FD_ROW;
@@ -234,6 +234,7 @@ static int last_vsetvl = 0;
 static int scalar_instr_since_vector=0;
 static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				instr_data * instr = (instr_data*)udata;
+
 				int row;
 				uint64_t vl, vtype, sew, lmul;
 				
@@ -254,41 +255,56 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 #endif
 				}
 
-				if (PRINT_PRV && TRACE_ENABLED){
-					char row_change = row != last_row?1:0;
-					if (row_change){
-						fprintf(FD_PRV,"2:%d:1:1:%d:%d:" clean_event "\n",last_row,last_row,qemu_trace_timestamp);
+				if (TRACE_ENABLED){
+					if (PRINT_LOGFILE){
+						if (!PRINT_SCALAR && instr->type!=SCALAR && scalar_instr_since_vector>0){
+							char * string = g_strdup_printf("%d scalar instructions\n", scalar_instr_since_vector); 
+	            qemu_plugin_outs(string);
+							free(string);
+						} 
+
+						if (instr->type!=SCALAR || PRINT_SCALAR){ 
+	            qemu_plugin_outs(instr->string);
+  	          qemu_plugin_outs("\n");
+						}
 					}
 
-					//Scalar instructions should always be printed when: row changed(1), type changed (2), is first scalar in the trace (3)
-					if (instr->type==SCALAR && !PRINT_SCALAR){
-						if (row_change || last_vsetvl || print_first_scalar)						
-							fprintf(FD_PRV,"2:%d:1:1:%d:%d:"event_instruction":%d\n", row,row, qemu_trace_timestamp, instr->paraver_code);
-					}else{ //PRINT_SCALAR || instr!=SCALAR
-						fprintf(FD_PRV,"2:%d:1:1:%d"
-													":%d"    //timestamp
-													":"event_pc":%ld" //PC
-													":"event_scalb":%d" //scalar before
-													":"event_dst":%d" //dst
-													":"event_src1":%d" //src1
-													":"event_src2":%d" //src2
-													":"event_instruction":%d" //instr
-													":"event_vl":%lu"
-													":"event_sew":%lu"
-													":"event_lmul":%lu"
-													"\n",
-													row,row,
-													qemu_trace_timestamp,
-													instr->PC,
-													scalar_instr_since_vector,
-													instr->dst,
-													instr->src1,
-													instr->src2,
-													instr->paraver_code,
-													vl,
-													sew,
-													lmul);
+					if (PRINT_PRV){
+						char row_change = row != last_row?1:0;
+						if (row_change){
+							fprintf(FD_PRV,"2:%d:1:1:%d:%d:" clean_event "\n",last_row,last_row,qemu_trace_timestamp);
+						}
 
+						//Scalar instructions should always be printed when: row changed(1), type changed (2), is first scalar in the trace (3)
+						if (instr->type==SCALAR && !PRINT_SCALAR){
+							if (row_change || last_vsetvl || print_first_scalar)						
+								fprintf(FD_PRV,"2:%d:1:1:%d:%d:"event_instruction":%d\n", row,row, qemu_trace_timestamp, instr->paraver_code);
+						}else{ //PRINT_SCALAR || instr!=SCALAR
+							fprintf(FD_PRV,"2:%d:1:1:%d"
+														":%d"    //timestamp
+														":"event_pc":%ld" //PC
+														":"event_scalb":%d" //scalar before
+														":"event_dst":%d" //dst
+														":"event_src1":%d" //src1
+														":"event_src2":%d" //src2
+														":"event_instruction":%d" //instr
+														":"event_vl":%lu"
+														":"event_sew":%lu"
+														":"event_lmul":%lu"
+														"\n",
+														row,row,
+														qemu_trace_timestamp,
+														instr->PC,
+														scalar_instr_since_vector,
+														instr->dst,
+														instr->src1,
+														instr->src2,
+														instr->paraver_code,
+														vl,
+														sew,
+														lmul);
+
+						}
 					}
 				}
 
@@ -309,6 +325,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 								else if (instr->minortype == INDEX) ++tot_vidx_instr;
 								else if (instr->majortype == MASK) ++tot_vmask_instr;
 				}else if (instr->type == VSETVL){
+								scalar_instr_since_vector=0;
 							 	++tot_vsetvl_instr;
 				}else{
 								++scalar_instr_since_vector;
@@ -486,6 +503,7 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 								}else{
 												is_vector = contains_string(insn_disas," v");
 								}
+
 								if (is_vector){ //This includes vsetvl
 												//output = g_strdup_printf("vx%"PRIx64", 0x%"PRIx32", \"%s\"", insn_vaddr, insn_opcode, insn_disas);
 												instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
@@ -598,6 +616,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			scalar_empty_struct->src3=0;
 			scalar_empty_struct->dst=0;
 			scalar_empty_struct->type=SCALAR;
+			scalar_empty_struct->string='\0';
 	}
 	add_event(-1,"Global");
 	global_region = qemu_eventandcounters(-1, 1); //Start global event

@@ -5,6 +5,7 @@ enum minor_type{NOTYPE, FP, INT, UNIT, STRIDE, INDEX};
 struct instr_data{
   uint64_t PC;
 	uint32_t paraver_code;
+	char * string;
 	short src1;
 	short src2;
 	short src3;
@@ -142,36 +143,58 @@ void instr_set_type(uint32_t insn_opcode, enum major_type *majortype, enum minor
 
 
 instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
-	int offsets[8]; //code, dst, src1, src2
-	int idx=0;
-	char looking=1;
-	//Look for fields in char* instr
-	for(int i=0; instr[i]!='\0'; ++i){
+
+
+	char * instr_fields[8]; //8 is more than enough
+
+	//Look for fields in char* instr 
+	int field_start=0;
+	int field_idx=-1;
+	int reading_field=0;
+	for(int i=0;; ++i){
 		char c = instr[i];
-		if (c==',' || c==' ' || c=='"' || c=='(' || c==')'){
-			instr[i]='\0';
-			looking=1;
-		}else if (looking){
-			looking=0;
-			offsets[idx++] = i;
+		if (c==',' || c==' ' || c=='"' || c=='(' || c==')' || c=='\0'){
+			if (reading_field){
+				reading_field=0;
+				if (field_idx >= 0){
+					int field_length = (i-field_start+1);
+					instr_fields[field_idx]	= malloc(sizeof(char)*field_length);
+					for(int j=0; j<field_length-1; ++j) instr_fields[field_idx][j] = instr[field_start+j];
+					instr_fields[field_idx][field_length-1]='\0';
+	
+				}
+				field_idx++;
+	
+				if (field_idx > 7){
+				 	printf("Too many fields\n");
+					break;
+				}
+			}
+		}else{
+			if (reading_field==0) field_start=i;
+			reading_field=1;
 		}
+		if (c=='\0') break;
 	}
+
+
 	//Fill fields in struct
 	instr_data * data = (instr_data*)malloc(sizeof(instr_data));
+	data -> string = g_strdup_printf("%s", instr); 
 	
 	data -> PC = pc;
-	data -> dst = (idx > 2) ? reg2prv(&instr[offsets[2]]) : 0;
-	data -> src1 = (idx > 3) ? reg2prv(&instr[offsets[3]]) : 0; 
-	data -> src2 = (idx > 4) ? reg2prv(&instr[offsets[4]]) : 0;
+	data -> dst =  (field_idx > 1) ? reg2prv(instr_fields[1]) : 0;
+	data -> src1 = (field_idx > 2) ? reg2prv(instr_fields[2]) : 0; 
+	data -> src2 = (field_idx > 3) ? reg2prv(instr_fields[3]) : 0;
 
-	if (contains_string(&instr[offsets[1]], "vset")){
+	if (contains_string(instr_fields[0], "vset")){
 		data -> type = VSETVL;
-		if (PRINT_PRV) data -> paraver_code = instr2prv(&instr[offsets[1]]);
-	}else if (instr[offsets[1]]=='v'){
+		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]);
+	}else if (instr_fields[0][0]=='v'){
 		data -> type = VECTOR;
 		instr_set_type(insn_opcode, &data->majortype, &data->minortype);
 		//if (data->majortype==OTHER) printf("%s\t%s\t%s\n",majornames[data->majortype], minornames[data->minortype],&instr[offsets[1]]);
-		if (PRINT_PRV) data -> paraver_code = instr2prv(&instr[offsets[1]]);
+		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]);
 	}else{
 		data -> type = SCALAR;
 		if (PRINT_PRV){
@@ -180,6 +203,11 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 			int	funct6 = get_bit_field(insn_opcode,31,26);
 		 	data -> paraver_code = 1000 + (opcode | (funct3<<7) | (funct6<<10));
 		}
+	}
+
+	for(int i=0; i<field_idx; ++i){
+		//printf("%s\n",instr_fields[i]);
+		free(instr_fields[i]);
 	}
 	return data;
 }
