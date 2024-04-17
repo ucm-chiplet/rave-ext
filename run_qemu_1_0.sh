@@ -14,13 +14,13 @@ fi
 
 args=;
 if [ "$QEMU_PRINT_SCALAR" == "1" ]; then #OPT-in
-	args=$args",arg=PRINT_SCALAR"
+	args=$args",PRINT_SCALAR=on"
 fi
 #if [ "$QEMU_PRINT_ADDR" == "1" ]; then
 #	args=$args",arg=PRINT_ADDR"
 #fi
 if [ "$QEMU_PRINT_LOGFILE" == "1" ] || [ "$QEMU_LOGFILE_NAME" != "" ]; then
-	args=$args",arg=PRINT_LOGFILE"
+	args=$args",PRINT_LOGFILE=on"
 	if [ "$QEMU_LOGFILE_NAME" == "" ];then
 		QEMU_LOGFILE_NAME=qemulog.log
 	fi
@@ -35,11 +35,11 @@ if [ "$QEMU_PRINT_PRV" == "1" ] || [ "$QEMU_PRV_NAME" != "" ]; then #OPT-in
 	if [ "$QEMU_PRV_NAME" == "" ]; then
 		QEMU_PRV_NAME=qemutrace
 	fi
-	args=$args",arg=PRINT_PRV,arg=PRV_NAME,arg=$QEMU_PRV_NAME"
+	args=$args",PRINT_PRV=on,arg=PRV_NAME,arg=$QEMU_PRV_NAME"
 fi
 
 if [ "$QEMU_PRINT_SUMMARY" == "1" ]; then #OPT-in 
-	args=$args",arg=PRINT_SUMMARY"
+	args=$args",PRINT_SUMMARY=on"
 fi
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
