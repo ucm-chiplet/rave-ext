@@ -5,7 +5,3 @@
 [submodule "qemu-1_0"]
 	path = qemu-1_0
 	url = https://gitlab.com/qemu-project/qemu.git
-[submodule "riscv-gnu-toolchain"]
-	path = riscv-gnu-toolchain
-	url = https://github.com/riscv-collab/riscv-gnu-toolchain.git
-	branch = master
