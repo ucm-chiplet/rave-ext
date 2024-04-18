@@ -26,7 +26,7 @@ static FILE * FD_PRV;
 static FILE * FD_PCF;
 static FILE * FD_ROW;
 
-#define EPI_07
+//#define EPI_07
 
 #ifdef EPI_07
 	#undef EPI_10
@@ -35,9 +35,8 @@ static FILE * FD_ROW;
 #endif
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-#include "events_and_values.h"
-#include "qemu2prv.h"
 #include "qemu_counters.h"
+#include "qemu2prv.h"
 #include "instr_data.h"
 
 
@@ -140,6 +139,17 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 	int src2 = (insn_opcode>>20)&0x1F;
 	int qemu_trace_event = qemu_get_xreg(cpu,src1);
 	int qemu_trace_value = qemu_get_xreg(cpu,src2);
+
+
+	if (0 && PRINT_LOGFILE){
+		event_info * event = find_event(qemu_trace_event); 
+		char * string = g_strdup_printf("QEMU_EVENT %d (%s) VALUE %d (%s)\n", qemu_trace_event, event==NULL?"Event name not found" :  event->name, 
+																																					qemu_trace_value, get_event_value_name(event,qemu_trace_value)); 
+		//printf("QEMU_EVENT %d (%s) VALUE %d (%s)\n", qemu_trace_event, event->name, qemu_trace_value, get_event_value_name(event,qemu_trace_value)); 
+		qemu_plugin_outs(string);
+		free(string);
+	} 
+
 	qemu_eventandcounters(qemu_trace_event, qemu_trace_value);
 	if (PRINT_PRV){
 		int row=1;
@@ -147,6 +157,8 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 		row=2;
 		fprintf(FD_PRV,"2:%d:1:1:%d:%d:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
 	}
+
+	//printf("\n---------------\n\n");
 }
 
 static int qemu_name_offset=-1; //-1: wait for name
@@ -237,7 +249,6 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 				int row;
 				uint64_t vl, vtype, sew, lmul;
-				
 
 				if ( instr->type == VSETVL || instr->type == SCALAR){ //SETVL or individual SCALAR
 					row = 1;
@@ -262,10 +273,12 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 	            qemu_plugin_outs(string);
 							free(string);
 						} 
-
 						if (instr->type!=SCALAR || PRINT_SCALAR){ 
 	            qemu_plugin_outs(instr->string);
-  	          qemu_plugin_outs("\n");
+	            qemu_plugin_outs("\n");
+							//char * string = g_strdup_printf(", %d scalar instructions before it\n", scalar_instr_since_vector); 
+	            //qemu_plugin_outs(string);
+							//free(string);
 						}
 					}
 
@@ -274,7 +287,6 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 						if (row_change){
 							fprintf(FD_PRV,"2:%d:1:1:%d:%d:" clean_event "\n",last_row,last_row,qemu_trace_timestamp);
 						}
-
 						//Scalar instructions should always be printed when: row changed(1), type changed (2), is first scalar in the trace (3)
 						if (instr->type==SCALAR && !PRINT_SCALAR){
 							if (row_change || last_vsetvl || print_first_scalar)						
@@ -547,7 +559,10 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 static void plugin_exit(qemu_plugin_id_t id, void *p)
 {
 		qemu_eventandcounters(-1, 0); //End Global event
-		if(PRINT_SUMMARY) print_regions();
+		if(PRINT_SUMMARY){
+			print_regions();
+			print_averages();
+		}
 
     guint i;
     GString *s;
@@ -619,7 +634,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			scalar_empty_struct->string='\0';
 	}
 	add_event(-1,"Global");
-	global_region = qemu_eventandcounters(-1, 1); //Start global event
+	qemu_eventandcounters(-1, 1); //Start global event
 
     last_exec = g_array_new(FALSE, FALSE, sizeof(GString *));
 

@@ -27,14 +27,18 @@ cd $sources_dir
 echo "Building plugins..."
 
 #Only for 0.7:
-if [[ "$EXT" == "0_7" ]]; then
-	cp ../patch_files/qemu-plugins.symbols plugins/.
-fi
+#if [[ "$EXT" == "0_7" ]]; then
+#	cp ../patch_files/qemu-plugins.symbols plugins/.
+#fi
 
 #For both
 cp ../patch_files/execlog.c contrib/plugins/.
+if [[ "$EXT" == "1_0" ]]; then
+ sed -i 's/#define\ EPI_07/\/\/#define EPI_07/g' contrib/plugins/execlog.c
+else
+ sed -i 's/\/\/#define\ EPI_07/#define EPI_07/g' contrib/plugins/execlog.c
+fi
 cp ../patch_files/my_decode.h contrib/plugins/.
-cp ../patch_files/events_and_values.h contrib/plugins/.
 cp ../patch_files/instr_data.h contrib/plugins/.
 cp ../patch_files/qemu2prv.h contrib/plugins/.
 cp ../patch_files/qemu_counters.h contrib/plugins/.
