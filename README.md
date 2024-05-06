@@ -22,7 +22,7 @@ After that, install the QEMU tracing plugins using again the `0_7` or `1_0` flag
 ./install_plugins.sh [0_7 / 1_0]
 ```
 
-Finally, install the RISC-V toolchain to provide a sysroot to your QEMU Virtual Machine. This is independent of the RVV specification and should be installed just once, as it is quite time-consuming.
+Finally, install the RISC-V toolchain to provide a sysroot to your QEMU Virtual Machine. This is independent of the RVV specification and should be installed just once, as it is quite time-consuming. **WARNING**: If you already have a RISC-V sysroot installed in your machine, you can edit the `./run_qemu_0_7.sh` and `./run_qemu_1_0.sh` files to change the sysroot
 
 ```bash
 ./install_toolchain.sh 
