@@ -1,31 +1,25 @@
-static double tot_scalar_instr=0;
-static double tot_vector_instr=0;
-static double tot_vsetvl_instr=0;
-static double tot_vfp_instr=0;
-static double tot_vint_instr=0;
-static double tot_vmask_instr=0;
-static double tot_vunit_instr=0; 
-static double tot_vstride_instr=0; 
-static double tot_vidx_instr=0; 
-static double tot_velem=0;
+#define SEWS 4
 
 struct qemu_counters{
 				double scalar_instr;
-				double vector_instr;
 				double vsetvl_instr;
-				double vunit_instr;
-				double vstride_instr;
-				double vidx_instr;
-				double vfp_instr;
-				double vint_instr;
-				double vmask_instr;
-				double velem;
+				double vector_instr[SEWS];
+				double vunit_instr[SEWS];
+				double vstride_instr[SEWS];
+				double vidx_instr[SEWS];
+				double vfp_instr[SEWS];
+				double vint_instr[SEWS];
+				double vmask_instr[SEWS];
+				double velem[SEWS];
+//				double vl[SEWS];
 };
 typedef struct qemu_counters qemu_counters;
+
+static qemu_counters total_counters;
+
 //TODO: Names shouldn't be fixed size...
 struct value_info{
 	struct value_info * next;
-	qemu_counters average_counters;
 	int n;
 	char name[64];
 	int64_t ID;
@@ -61,63 +55,45 @@ value_info * find_value(event_info * event, int val){
 	return NULL;
 }
 
-#define ROLLING_AVG(old,add,new_n) old = ((old)*(new_n - 1) + (add))/(new_n)
-void add_counters_to_value(qemu_counters * from, value_info * value){
-	if (from==NULL || value==NULL){
-		return;
-	}
-	value -> n = value -> n  + 1;
-	ROLLING_AVG (value -> average_counters.scalar_instr, from -> scalar_instr, value -> n); 
-	ROLLING_AVG (value -> average_counters.vector_instr, from -> vector_instr, value -> n);
-	ROLLING_AVG (value -> average_counters.vsetvl_instr, from -> vsetvl_instr, value -> n);
-	ROLLING_AVG (value -> average_counters.vunit_instr, from -> vunit_instr, value -> n);
-	ROLLING_AVG (value -> average_counters.vstride_instr, from -> vstride_instr, value -> n); 
-	ROLLING_AVG (value -> average_counters.vidx_instr, from -> vidx_instr, value -> n);
-	ROLLING_AVG (value -> average_counters.vfp_instr, from -> vfp_instr, value -> n);
-	ROLLING_AVG (value -> average_counters.vint_instr, from -> vint_instr, value -> n);
-	ROLLING_AVG (value -> average_counters.vmask_instr, from -> vmask_instr, value -> n);
-	ROLLING_AVG (value -> average_counters.velem, from -> velem, value -> n); 
-}
-
-
-void add_value_to_event(int id, int val, char * name){
-	event_info * event = find_event(id);
-	if (event == NULL) return;
-	value_info * value = find_value(event, val);
-	if (value != NULL){
-		strcpy(value->name, name);
-		return;
-	}
-	//value not found: create it
+value_info *  add_new_value(event_info * event, int val, char * name){
 	value_info * new_values = (value_info*)malloc(sizeof(value_info));
 	new_values -> next = NULL;
 	new_values -> ID = val;
 	strcpy(new_values->name, name);
 
 	new_values -> n = 0;
-	new_values -> average_counters.scalar_instr = 0; 
-	new_values -> average_counters.vector_instr = 0;
-	new_values -> average_counters.vsetvl_instr = 0;
-	new_values -> average_counters.vunit_instr = 0;
-	new_values -> average_counters.vstride_instr = 0;
-	new_values -> average_counters.vidx_instr = 0;
-	new_values -> average_counters.vfp_instr = 0;
-	new_values -> average_counters.vint_instr = 0;
-	new_values -> average_counters.vmask_instr = 0;
-	new_values -> average_counters.velem = 0;
 
+	//Add it to the value queue
+	//TODO: Doing a Stack instead of Queue would accelerate this to O(1)
 	value_info * last = event->values;
 	if (last == NULL){
 		event->values = new_values;
-		return;
+		return new_values;
 	}
 	while (last != NULL){
 		if (last->next == NULL){
 			last->next = new_values;
-			return;
+			return new_values;
 		}
 		last = last->next;
 	}
+	return new_values;
+}
+
+void add_value_to_event(int id, int val, char * name){
+	event_info * event = find_event(id);
+	if (event == NULL) return;
+
+	//If value already exists, just update its name
+	value_info * value = find_value(event, val);
+	if (value != NULL){
+		strcpy(value->name, name);
+		return;
+	}
+
+	//value not found: create it
+	add_new_value(event,val,name);
+
 }
 
 event_info * add_event(int id, char *name){
@@ -182,21 +158,13 @@ void qemu_eventandcounters(int event, int value){
 									curr->closed = 1;
 									curr->value2 = value;
 
-									curr->counters.scalar_instr = tot_scalar_instr - curr->counters.scalar_instr;
-									curr->counters.vector_instr = tot_vector_instr - curr->counters.vector_instr;
-									curr->counters.vsetvl_instr = tot_vsetvl_instr - curr->counters.vsetvl_instr;
-									curr->counters.vunit_instr = tot_vunit_instr - curr->counters.vunit_instr;
-									curr->counters.vstride_instr = tot_vstride_instr - curr->counters.vstride_instr;
-									curr->counters.vidx_instr = tot_vidx_instr - curr->counters.vidx_instr;
-									curr->counters.vfp_instr = tot_vfp_instr - curr->counters.vfp_instr;
-									curr->counters.vint_instr = tot_vint_instr - curr->counters.vint_instr;
-									curr->counters.vmask_instr = tot_vmask_instr - curr->counters.vmask_instr;
-									curr->counters.velem = tot_velem - curr->counters.velem;
+									//TODO: Write csv here instead of saving?
 
-									add_counters_to_value(&curr->counters, find_value(eventinfo, curr->value1));
-
-									//TODO: Write summary here instead of saving?
-									//return curr;
+									double * event_counter_ptr = (double *)&curr->counters; //Traeating consecutive arrays as single array 
+									double * total_counter_ptr = (double *)&total_counters;
+									for(int c=0; c<sizeof(qemu_counters)/sizeof(double); ++c){
+										event_counter_ptr[c] = total_counter_ptr[c] - event_counter_ptr[c];
+									}
 									break; 
 					}
 					curr = curr->next;
@@ -226,82 +194,96 @@ void qemu_eventandcounters(int event, int value){
 }
 
 void restart_region(region_stats * region){
-	region -> counters.scalar_instr = tot_scalar_instr;
-	region -> counters.vector_instr = tot_vector_instr;
-	region -> counters.vsetvl_instr = tot_vsetvl_instr;
-	region -> counters.vunit_instr = tot_vunit_instr;
-	region -> counters.vstride_instr = tot_vstride_instr;
-	region -> counters.vidx_instr = tot_vidx_instr;
-	region -> counters.vfp_instr = tot_vfp_instr;
-	region -> counters.vint_instr = tot_vint_instr;
-	region -> counters.vmask_instr = tot_vmask_instr;
-	region -> counters.velem = tot_velem;
+	region -> counters = total_counters;
 	region -> closed = 0;
 }
 
-void print_regions(){
-	region_stats * curr = global_region;
-	while (curr!=NULL){
-					if (curr->prev!=NULL) free(curr->prev);
-					if (curr->closed){
-						double  totinstr	= (curr->counters.scalar_instr + curr->counters.vector_instr + curr->counters.vsetvl_instr);
-						double  totvmem		= (curr->counters.vunit_instr + curr->counters.vstride_instr + curr->counters.vidx_instr);
-						double  totvarith	= (curr->counters.vfp_instr + curr->counters.vint_instr);
-						double  totvother	= (curr->counters.vector_instr - totvmem - totvarith - curr->counters.vmask_instr);
 
-						value_info * v1 = find_value(curr->event, curr->value1);
-						value_info * v2 = find_value(curr->event, curr->value2);
 
-						printf("Event %ld (%s), Value %ld (%s)\n"
-									"\t" "tot_instr: %.0f\n"
-									"\t\t" "scalar_instr: %.0f (%.2f %%)\n"
-									"\t\t" "vsetvl_instr: %.0f (%.2f %%)\n"
-									"\t\t" "vector_instr: %.0f (%.2f %%)\n"
-									"\t\t\t" "avg_VL: %.2f\n"
-									"\t\t\t" "Arith: %.0f (%.2f %%)\n"
-									"\t\t\t\t" "FP: %.0f (%.2f %%)\n"
-									"\t\t\t\t" "INT: %.0f (%.2f %%)\n"
-									"\t\t\t" "Mem: %.0f (%.2f %%)\n"
-									"\t\t\t\t" "unit: %.0f (%.2f %%)\n"
-									"\t\t\t\t" "strided: %.0f (%.2f %%)\n"
-									"\t\t\t\t" "indexed: %.0f (%.2f %%)\n"
-									"\t\t\t" "Mask: %.0f (%.2f %%)\n"
-									"\t\t\t" "Other: %.0f (%.2f %%)\n"
-													,curr->event->ID, curr->event->name, curr->value1, v1==NULL?"-":v1->name
+#define PERCENTAGE(x,y) ((y)==0?0:(100.0*(x))/(y))
 
-													,totinstr
 
-													,curr->counters.scalar_instr, totinstr==0?0:100.0*curr->counters.scalar_instr/totinstr
-													,curr->counters.vsetvl_instr, totinstr==0?0:100.0*curr->counters.vsetvl_instr/totinstr
-													,curr->counters.vector_instr, totinstr==0?0:100.0*curr->counters.vector_instr/totinstr
+void print_region_human(int nregion, region_stats* curr){
+	//Print Region header
+	value_info * v1 = find_value(curr->event, curr->value1);
+	printf("Region #%d: Event %ld (%s), Value %ld (%s)\n", nregion,curr->event->ID, curr->event->name, curr->value1, v1==NULL?"-":v1->name);
 
-													,curr->counters.vector_instr==0?0 : curr->counters.velem / curr->counters.vector_instr
-													,totvarith,  curr->counters.vector_instr==0?0:100.0*totvarith/curr->counters.vector_instr 
-													,curr->counters.vfp_instr,  totvarith==0?0:100.0*curr->counters.vfp_instr / totvarith
-													,curr->counters.vint_instr,  totvarith==0?0:100.0*curr->counters.vint_instr / totvarith
-													,totvmem, curr->counters.vector_instr==0?0:100.0*totvmem/curr->counters.vector_instr 
-													,curr->counters.vunit_instr,  totvmem==0?0:100.0*curr->counters.vunit_instr / totvmem
-													,curr->counters.vstride_instr,  totvmem==0?0:100.0*curr->counters.vstride_instr / totvmem
-													,curr->counters.vidx_instr,  totvmem==0?0:100.0*curr->counters.vidx_instr / totvmem
-													,curr->counters.vmask_instr,  curr->counters.vector_instr==0?0:100.0*curr->counters.vmask_instr/curr->counters.vector_instr
-													,totvother, curr->counters.vector_instr==0?0:100.0*totvother/curr->counters.vector_instr 
-													);
-					}
-					curr = curr->next;
+	//Compute total instructions (sum of SEW!)
+	qemu_counters * counters = &curr->counters;
+	double totinstr = counters->scalar_instr + counters->vsetvl_instr;
+	for(int s=0; s<SEWS; ++s) totinstr += counters->vector_instr[s];
+
+	//Print general counters
+	printf("\t" "tot_instr: %.0f\n", totinstr);
+	printf("\t\t"   "scalar_instr: %.0f (%.2f %%)\n", counters->scalar_instr, PERCENTAGE(counters->scalar_instr, totinstr)); 
+	printf("\t\t"   "vsetvl_instr: %.0f (%.2f %%)\n", counters->vsetvl_instr, PERCENTAGE(counters->vsetvl_instr, totinstr));
+
+	//Print SEW-specific counters (vec)
+	for(int s=0; s<SEWS; ++s){
+		printf("\t\t" "SEW %d vector_instr: %.0f (%.2f %%)\n", 1<<(s+3),counters->vector_instr[s], PERCENTAGE(counters->vector_instr[s], totinstr));
+		if (counters->vector_instr[s]>0){
+			double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s];
+			double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
+			double  totvother	= counters->vector_instr[s] - totvmem - totvarith - counters->vmask_instr[s];
+			printf("\t\t\t"  "avg_VL: %.2f elements\n",counters->velem[s] / counters->vector_instr[s]);
+			printf("\t\t\t"  "Arith: %.0f (%.2f %%)\n",totvarith, PERCENTAGE(totvarith, counters->vector_instr[s]));
+			printf("\t\t\t\t"   "FP: %.0f (%.2f %%)\n",counters->vfp_instr[s], PERCENTAGE(counters->vfp_instr[s], totvarith));
+			printf("\t\t\t\t"   "INT: %.0f (%.2f %%)\n", counters->vint_instr[s], PERCENTAGE(counters->vint_instr[s], totvarith));
+			printf("\t\t\t"  "Mem: %.0f (%.2f %%)\n", totvmem, PERCENTAGE(totvmem, counters->vector_instr[s]));
+			printf("\t\t\t\t"   "unit: %.0f (%.2f %%)\n", counters->vunit_instr[s], PERCENTAGE(counters->vunit_instr[s], totvmem));
+			printf("\t\t\t\t"   "strided: %.0f (%.2f %%)\n", counters->vstride_instr[s], PERCENTAGE(counters->vstride_instr[s], totvmem));
+			printf("\t\t\t\t"   "indexed: %.0f (%.2f %%)\n", counters->vidx_instr[s], PERCENTAGE(counters->vidx_instr[s], totvmem));
+			printf("\t\t\t"  "Mask: %.0f (%.2f %%)\n", counters->vmask_instr[s], PERCENTAGE(counters->vmask_instr[s], counters->vector_instr[s]));
+			printf("\t\t\t"  "Other: %.0f (%.2f %%)\n", totvother, PERCENTAGE(totvother, counters->vector_instr[s]));
+		}
 	}
 }
 
-void print_averages(){
-	event_info * curr = first_event_info;
-	while (curr!=NULL){
-		value_info * value = curr->values;
-		while (value != NULL){
-			if (value->n != 0){
-				printf("Avg Instr %d %d: %.2f\n", curr->ID, value->ID, value->average_counters.scalar_instr);
-			}
-			value = value->next;
-		}
-		curr = curr->next;
+static char first_csv_row=1;
+
+void print_region_csv(int nregion, region_stats* curr){
+	if (first_csv_row){
+		printf("region,event_id,event_name,value_id,value_name,tot_instr,scalar_instr,vsetvl_instr,vec_instr");
+		for(int s=0; s<SEWS; ++s){
+			printf(",vector_sew%d_instr,vector_sew%d_elems,vector_sew%d_arith,vector_sew%d_fp,vector_sew%d_int,vector_sew%d_mem,vector_sew%d_memunit,vector_sew%d_memstride,vector_sew%d_memidx,vector_sew%d_mask,vector_sew%d_other",1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3));
+		}printf("\n");
+		first_csv_row = 0;
 	}
-	return NULL;
+	//Print Region header
+	value_info * v1 = find_value(curr->event, curr->value1);
+	printf("%d,%d,%s,%d,%s", nregion,curr->event->ID, curr->event->name, curr->value1, v1==NULL?"-":v1->name);
+
+	//Compute total instructions (sum of SEW!)
+	qemu_counters * counters = &curr->counters;
+	double totinstr = counters->scalar_instr + counters->vsetvl_instr;
+	double totvec = 0;
+	for(int s=0; s<SEWS; ++s) totvec += counters->vector_instr[s];
+	totinstr += totvec;
+
+	//Print general counters
+	printf(",%.0f,%.0f,%.0f,%.0f", totinstr, counters->scalar_instr, counters->vsetvl_instr, totvec);
+
+	//Print SEW-specific counters (vec)
+	for(int s=0; s<SEWS; ++s){
+		double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s];
+		double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
+		double  totvother	= counters->vector_instr[s] - totvmem - totvarith - counters->vmask_instr[s];
+		printf(",%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", counters->vector_instr[s], counters->velem[s], totvarith, counters->vfp_instr[s], counters->vint_instr[s], totvmem, counters->vunit_instr[s], counters->vstride_instr[s], counters->vidx_instr[s], counters->vmask_instr[s], totvother);
+	}
+	printf("\n");
+}
+
+void print_report(){
+	region_stats * curr = global_region;
+	printf("-------------------"); printf(" SUMMARY "); printf("-------------------"); printf("\n");
+	int nregion=0;
+	while (curr!=NULL){
+					if (curr->prev!=NULL) free(curr->prev);
+					if (curr->closed){
+						print_region_human(nregion++, curr);
+						//print_region_csv(nregion++, curr);
+					}
+					curr = curr->next;
+	}
+	printf("------------------------------------------------\n");
 }

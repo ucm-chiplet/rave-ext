@@ -15,13 +15,37 @@
 #include <qemu-plugin.h>
 #include <fcntl.h>
 
+
+//#define TIMEDEBUG
+
+
+#ifdef TIMEDEBUG
+uint64_t getmicros(){
+	#if 0
+	struct timeval tp;
+	gettimeofday(&tp,NULL);
+	return tp.tv_sec *1e6 + tp.tv_usec;
+	#else
+	uint64_t a,d;
+	asm volatile("rdtsc" : "=a" (a), "=d" (d));
+	return (a | (d << 32));
+	#endif
+}
+uint64_t time_trans=0;
+uint64_t time_vcpu_exe=0;
+uint64_t time_vcpu_control=0;
+int num_trans=0;
+int num_vcpu_exe=0;
+int num_vcpu_control=0;
+#endif
+
 ////////////////////////////////    Control variables    /////////////////////////////////
 static char PRINT_LOGFILE = 0;
 static char PRINT_SCALAR = 0;
 static char PRINT_ADDR = 0;
 static char PRINT_PRV = 0;
-static char PRINT_SUMMARY = 0;
-static char TRACE_ENABLED = 1; //Set to 0 if you want to avoid junk before your binary execution
+static char PRINT_REPORT = 0;
+static char TRACE_ENABLED = 1; //Enabled by default 
 static FILE * FD_PRV;
 static FILE * FD_PCF;
 static FILE * FD_ROW;
@@ -131,7 +155,9 @@ uint64_t qemu_get_xreg(uint8_t * cpu, int reg){
 void *qemu_get_cpu(int index);
 
 static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
-//	printf("%d\n",offsetof(ArchCPU, env));
+#ifdef TIMEDEBUG
+	uint64_t time1 = getmicros();
+#endif
 	if (!TRACE_ENABLED) return;
 
 	uint8_t *cpu = qemu_get_cpu(cpu_index);
@@ -145,7 +171,6 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 		event_info * event = find_event(qemu_trace_event); 
 		char * string = g_strdup_printf("QEMU_EVENT %d (%s) VALUE %d (%s)\n", qemu_trace_event, event==NULL?"Event name not found" :  event->name, 
 																																					qemu_trace_value, get_event_value_name(event,qemu_trace_value)); 
-		//printf("QEMU_EVENT %d (%s) VALUE %d (%s)\n", qemu_trace_event, event->name, qemu_trace_value, get_event_value_name(event,qemu_trace_value)); 
 		qemu_plugin_outs(string);
 		free(string);
 	} 
@@ -154,11 +179,17 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 	if (PRINT_PRV){
 		int row=1;
 		fprintf(FD_PRV,"2:%d:1:1:%d:%d:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
+		if (!PRINT_SCALAR) fprintf(FD_PRV,"2:%d:1:1:%d:%d:"event_instruction":%d\n", row,row, qemu_trace_timestamp, 1000);
 		row=2;
 		fprintf(FD_PRV,"2:%d:1:1:%d:%d:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
+//		if (!PRINT_SCALAR) fprintf(FD_PRV,"2:%d:1:1:%d:%d:" clean_event "\n",row,row,qemu_trace_timestamp);
 	}
 
-	//printf("\n---------------\n\n");
+#ifdef TIMEDEBUG
+	uint64_t time2 = getmicros();
+	time_vcpu_control += time2-time1;
+	num_vcpu_control++;
+#endif
 }
 
 static int qemu_name_offset=-1; //-1: wait for name
@@ -241,14 +272,18 @@ static void vcpu_stop_trace(unsigned int cpu_index, void *udata){
 }
 
 
-static int last_row = 0;
+static int last_row = 1;
 static int last_vsetvl = 0;
 static int scalar_instr_since_vector=0;
 static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
+#ifdef TIMEDEBUG
+	uint64_t time1 = getmicros();
+#endif
 				instr_data * instr = (instr_data*)udata;
 
 				int row;
 				uint64_t vl, vtype, sew, lmul;
+				double lmul_value;
 
 				if ( instr->type == VSETVL || instr->type == SCALAR){ //SETVL or individual SCALAR
 					row = 1;
@@ -260,9 +295,11 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 #ifdef EPI_07
 					sew = (vtype >> 2)&0x7;
 					lmul = vtype&0x3;
+					lmul_value = (double)(1<<lmul); 
 #else
 					sew = (vtype >> 3)&0x7;
 					lmul = vtype&0x7;
+					lmul_value = (lmul < 4) ? (double)(1<<lmul) : (lmul==7)? 0.5 : (lmul==6)? 0.25 : 0.125;
 #endif
 				}
 
@@ -328,22 +365,27 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 				if (instr->type == VECTOR) {
 								scalar_instr_since_vector=0;
-								++tot_vector_instr;
-								tot_velem += vl;
-								if (instr->minortype == FP) ++tot_vfp_instr;
-								else if (instr->minortype == INT) ++tot_vint_instr;
-								else if (instr->minortype == UNIT) ++tot_vunit_instr;
-								else if (instr->minortype == STRIDE) ++tot_vstride_instr;
-								else if (instr->minortype == INDEX) ++tot_vidx_instr;
-								else if (instr->majortype == MASK) ++tot_vmask_instr;
-				}else if (instr->type == VSETVL){
+								++total_counters.vector_instr[sew];
+								total_counters.velem[sew] += (vl*lmul_value);
+								if (instr->minortype == FP) ++total_counters.vfp_instr[sew];
+								else if (instr->minortype == INT) ++total_counters.vint_instr[sew];
+								else if (instr->minortype == UNIT) ++total_counters.vunit_instr[sew];
+								else if (instr->minortype == STRIDE) ++total_counters.vstride_instr[sew];
+								else if (instr->minortype == INDEX) ++total_counters.vidx_instr[sew];
+								else if (instr->majortype == MASK) ++total_counters.vmask_instr[sew];
+				}else if (instr->type == VSETVL){ //TODO: should this be scalar?
 								scalar_instr_since_vector=0;
-							 	++tot_vsetvl_instr;
+							 	++total_counters.vsetvl_instr;
 				}else{
 								++scalar_instr_since_vector;
-								++tot_scalar_instr;
+								++total_counters.scalar_instr;
 				}
 				++qemu_trace_timestamp;
+#ifdef TIMEDEBUG
+				uint64_t time2 = getmicros();
+				time_vcpu_exe += time2-time1;
+				num_vcpu_exe++;
+#endif
 }
 
 
@@ -471,85 +513,95 @@ char is_qemu_event(uint32_t insn_opcode){
 
 static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 {
-				struct qemu_plugin_insn *insn;
-				uint64_t insn_vaddr;
-				uint32_t insn_opcode;
-				char *insn_disas;
-
-				size_t n = qemu_plugin_tb_n_insns(tb);
-				for (size_t i = 0; i < n; i++) {
-								/*
-								 * `insn` is shared between translations in QEMU, copy needed data here.
-								 * `output` is never freed as it might be used multiple times during
-								 * the emulation lifetime.
-								 * We only consider the first 32 bits of the instruction, this may be
-								 * a limitation for CISC architectures.
-								 */
-								insn = qemu_plugin_tb_get_insn(tb, i);
-								insn_vaddr = qemu_plugin_insn_vaddr(insn);
-								insn_opcode = *((uint32_t *)qemu_plugin_insn_data(insn));
-								insn_disas = qemu_plugin_insn_disas(insn);
-
-								char is_illegal = contains_string(insn_disas,"ill");
-
-								char * output;
-								//Dissassembly
-								char my_disas[64];
-								char is_event=0;
-								char is_vector=0;
-								if (is_illegal){ //illegal instruction (vector, if we are on 0.7) 
-#if 0
-												char buffer[21];
-												int length = OpcodeToString(buffer, insn_opcode); //int to string ("0xXX 0xXX 0xXX 0xXX")
-												write(pipe_helper[1], buffer, length); //Send it to the helper
-												int r = read(pipe_helper2[0], my_disas, 64);  //Get answer from the helper
-												my_disas[r-1]='\0'; //Terminate it
-#else
-												MyDissasembler(my_disas, insn_opcode);
-												free(insn_disas);
-												insn_disas = my_disas;
+#ifdef TIMEDEBUG
+	uint64_t time1 = getmicros();
 #endif
-												//			if (TRACE_ENABLED) printf("%08x: __%s\n",insn_vaddr,insn_disas); //killme
-												//output = g_strdup_printf("vx%"PRIx64", 0x%"PRIx32",\"%s\"", insn_vaddr, insn_opcode, insn_disas);
-												is_vector=1;
-								}else{
-												is_vector = contains_string(insn_disas," v");
-								}
 
-								if (is_vector){ //This includes vsetvl
-												//output = g_strdup_printf("vx%"PRIx64", 0x%"PRIx32", \"%s\"", insn_vaddr, insn_opcode, insn_disas);
-												instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
-												qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
-								}else if (is_qemu_event(insn_opcode)){
-												qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_event, QEMU_PLUGIN_CB_NO_REGS, insn_opcode);
-								}else if (is_qemu_name_event_toggle(insn_opcode)){
-												qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_name_event_toggle, QEMU_PLUGIN_CB_NO_REGS, NULL);
-								}else if (is_qemu_name_event_value(insn_opcode)){
-												qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_name_event_value, QEMU_PLUGIN_CB_NO_REGS, insn_opcode);
-								}else if (is_qemu_restart_trace(insn_opcode)){
-												qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_restart_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
-								}else if (is_qemu_start_trace(insn_opcode)){
-												qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_start_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
-								}else if (is_qemu_stop_trace(insn_opcode)){
-												qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_stop_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
-								}else{ //Scalar instruction
-												//output = g_strdup_printf("0x%"PRIx64", 0x%"PRIx32", \"%s\"", insn_vaddr, insn_opcode, insn_disas); //normal
-												if (PRINT_SCALAR){
-																instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
-																qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
-												}else{ //TODO: I need a callback for noprint
-																qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, scalar_empty_struct);
-												}
-								}
-								/*
-								// Register callback on memory read or write
-								if (!PRINT_ADDR){
-												qemu_plugin_register_vcpu_mem_cb(insn, vcpu_mem,
-																				QEMU_PLUGIN_CB_NO_REGS,
-																				QEMU_PLUGIN_MEM_RW, NULL);
-								}
-								*/
-				}
+	struct qemu_plugin_insn *insn;
+	uint64_t insn_vaddr;
+	uint32_t insn_opcode;
+	char *insn_disas;
+
+	size_t n = qemu_plugin_tb_n_insns(tb);
+	for (size_t i = 0; i < n; i++) {
+		/*
+		 * `insn` is shared between translations in QEMU, copy needed data here.
+		 * `output` is never freed as it might be used multiple times during
+		 * the emulation lifetime.
+		 * We only consider the first 32 bits of the instruction, this may be
+		 * a limitation for CISC architectures.
+		 */
+		insn = qemu_plugin_tb_get_insn(tb, i);
+		insn_vaddr = qemu_plugin_insn_vaddr(insn);
+		insn_opcode = *((uint32_t *)qemu_plugin_insn_data(insn));
+		insn_disas = qemu_plugin_insn_disas(insn);
+
+		char is_illegal = contains_string(insn_disas,"ill");
+
+		char * output;
+		//Dissassembly
+		char my_disas[64];
+		char is_event=0;
+		char is_vector=0;
+		if (is_illegal){ //illegal instruction (vector, if we are on 0.7) 
+#if 0
+			char buffer[21];
+			int length = OpcodeToString(buffer, insn_opcode); //int to string ("0xXX 0xXX 0xXX 0xXX")
+			write(pipe_helper[1], buffer, length); //Send it to the helper
+			int r = read(pipe_helper2[0], my_disas, 64);  //Get answer from the helper
+			my_disas[r-1]='\0'; //Terminate it
+#else
+			MyDissasembler(my_disas, insn_opcode);
+			free(insn_disas);
+			insn_disas = my_disas;
+#endif
+			//			if (TRACE_ENABLED) printf("%08x: __%s\n",insn_vaddr,insn_disas); //killme
+			//output = g_strdup_printf("vx%"PRIx64", 0x%"PRIx32",\"%s\"", insn_vaddr, insn_opcode, insn_disas);
+			is_vector=1;
+		}else{
+			is_vector = contains_string(insn_disas," v");
+		}
+
+		if (is_vector){ //This includes vsetvl
+			//output = g_strdup_printf("vx%"PRIx64", 0x%"PRIx32", \"%s\"", insn_vaddr, insn_opcode, insn_disas);
+			instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
+		}else if (is_qemu_event(insn_opcode)){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_event, QEMU_PLUGIN_CB_NO_REGS, insn_opcode);
+		}else if (is_qemu_name_event_toggle(insn_opcode)){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_name_event_toggle, QEMU_PLUGIN_CB_NO_REGS, NULL);
+		}else if (is_qemu_name_event_value(insn_opcode)){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_name_event_value, QEMU_PLUGIN_CB_NO_REGS, insn_opcode);
+		}else if (is_qemu_restart_trace(insn_opcode)){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_restart_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
+		}else if (is_qemu_start_trace(insn_opcode)){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_start_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
+		}else if (is_qemu_stop_trace(insn_opcode)){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_stop_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
+		}else{ //Scalar instruction
+			//output = g_strdup_printf("0x%"PRIx64", 0x%"PRIx32", \"%s\"", insn_vaddr, insn_opcode, insn_disas); //normal
+			if (PRINT_SCALAR){
+				instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
+				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
+			}else{ //TODO: I need a callback for noprint
+				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, scalar_empty_struct);
+			}
+		}
+		/*
+		// Register callback on memory read or write
+		if (!PRINT_ADDR){
+		qemu_plugin_register_vcpu_mem_cb(insn, vcpu_mem,
+		QEMU_PLUGIN_CB_NO_REGS,
+		QEMU_PLUGIN_MEM_RW, NULL);
+		}
+		 */
+	}
+#ifdef TIMEDEBUG
+	uint64_t time2 = getmicros();
+	time_trans += time2-time1;
+	num_trans++;
+#endif
+
 }
 
 
@@ -559,10 +611,14 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 static void plugin_exit(qemu_plugin_id_t id, void *p)
 {
 		qemu_eventandcounters(-1, 0); //End Global event
-		if(PRINT_SUMMARY){
-			print_regions();
-			print_averages();
+		if(PRINT_REPORT){
+			print_report();
 		}
+#ifdef TIMEDEBUG
+		printf("Cycles in Translation: %.4f %d times, %lu (%.2f %%)\n", (double)time_trans/num_trans, num_trans, time_trans, (double)time_trans/(time_trans+time_vcpu_exe+time_vcpu_control));
+		printf("Cycles in VCPU_exe: %.4f %d times, %lu (%.2f %%)\n", (double)time_vcpu_exe/num_vcpu_exe, num_vcpu_exe, time_vcpu_exe, (double)time_vcpu_exe/(time_trans+time_vcpu_exe+time_vcpu_control));
+		printf("Cycles in VCPU_event: %.4f %d times, %lu (%.2f %%)\n", (double)time_vcpu_control/num_vcpu_control, num_vcpu_control, time_vcpu_control, (double)time_vcpu_control/(time_trans+time_vcpu_exe+time_vcpu_control));
+#endif
 
     guint i;
     GString *s;
@@ -603,7 +659,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			else if (contains_string(argv[i], "PRINT_ADDR")) PRINT_ADDR = 1;
 			else if (contains_string(argv[i], "PRINT_PRV")) PRINT_PRV = 1;
 			else if (contains_string(argv[i], "PRINT_LOGFILE")) PRINT_LOGFILE = 1;
-			else if (contains_string(argv[i], "PRINT_SUMMARY")) PRINT_SUMMARY = 1;
+			else if (contains_string(argv[i], "PRINT_REPORT")) PRINT_REPORT = 1;
 			else if (contains_string(argv[i], "PRV_NAME")){
 							++i;
 							setup_paraver_trace(argv[i]);

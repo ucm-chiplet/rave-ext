@@ -9,7 +9,8 @@ if [ $# -lt 1 ]; then
 	echo -e "\tQEMU_VLEN: Sets the maximum available vector-length in bits (default: 16384)"
 	echo -e "\tQEMU_PRINT_PRV: If set to \"1\", a paraver trace is generated with all the executed instructions. (default: 0)" 
 	echo -e "\tQEMU_PRV_NAME: Sets the name of the generated paraver trace (default: qemutrace). Additionally, automatically sets QEMU_PRINT_PRV to 1"
-	echo -e "\tQEMU_PRINT_SUMMARY: If set to \"1\", the tracer will print a summary of the vectorization metrics for all user-defined regions." 
+	echo -e "\tQEMU_PRINT_REGIONS: If set to \"1\", the tracer will print a hardware counter summary for each executed code region." 
+	echo -e "\tQEMU_PRINT_AVERAGE: If set to \"1\", the tracer will print an average of the hardware counters for each defined code region." 
 fi
 
 args=;
@@ -38,13 +39,21 @@ if [ "$QEMU_PRINT_PRV" == "1" ] || [ "$QEMU_PRV_NAME" != "" ]; then #OPT-in
 	args=$args",PRINT_PRV=on,arg=PRV_NAME,arg=$QEMU_PRV_NAME"
 fi
 
-if [ "$QEMU_PRINT_SUMMARY" == "1" ]; then #OPT-in 
-	args=$args",PRINT_SUMMARY=on"
+if [ "$QEMU_PRINT_REPORT" == "1" ]; then #OPT-in
+	args=$args",PRINT_REPORT=on"
+fi
+
+if [ "$QEMU_PRINT_CSV" == "1" ] || [ "$QEMU_CSV_NAME" != "" ]; then #OPT-in
+	if [ "$QEMU_CSV_NAME" == "" ]; then
+		QEMU_CSV_NAME=qemu_summary.csv
+	fi
+	args=$args",PRINT_CSV=on,arg=CSV_NAME,arg=$QEMU_CSV_NAME"
 fi
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 FOLDER=qemu-1_0
-QEMU_SYSROOT=${SCRIPT_DIR}/build/riscv-glibc-toolchain/sysroot
+#QEMU_SYSROOT=${SCRIPT_DIR}/build/riscv-glibc-toolchain/sysroot
+QEMU_SYSROOT=/apps/riscv/fpga-sdv/jammy-1/
 QEMU_PLUGIN=${SCRIPT_DIR}/${FOLDER}/build/contrib/plugins
 QEMU_PATH=${SCRIPT_DIR}/build/${FOLDER}/bin
 QEMU_CPU=rv64,v=true,vext_spec=v1.0,vlen=$QEMU_VLEN
