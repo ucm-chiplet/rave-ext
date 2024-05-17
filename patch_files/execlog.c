@@ -45,10 +45,12 @@ static char PRINT_SCALAR = 0;
 static char PRINT_ADDR = 0;
 static char PRINT_PRV = 0;
 static char PRINT_REPORT = 0;
+static char PRINT_CSV = 0;
 static char TRACE_ENABLED = 1; //Enabled by default 
 static FILE * FD_PRV;
 static FILE * FD_PCF;
 static FILE * FD_ROW;
+static FILE * FD_CSV;
 
 //#define EPI_07
 
@@ -167,7 +169,7 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 	int qemu_trace_value = qemu_get_xreg(cpu,src2);
 
 
-	if (0 && PRINT_LOGFILE){
+	if (0 && PRINT_LOGFILE){ //Disabled for now
 		event_info * event = find_event(qemu_trace_event); 
 		char * string = g_strdup_printf("QEMU_EVENT %d (%s) VALUE %d (%s)\n", qemu_trace_event, event==NULL?"Event name not found" :  event->name, 
 																																					qemu_trace_value, get_event_value_name(event,qemu_trace_value)); 
@@ -182,7 +184,6 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 		if (!PRINT_SCALAR) fprintf(FD_PRV,"2:%d:1:1:%d:%d:"event_instruction":%d\n", row,row, qemu_trace_timestamp, 1000);
 		row=2;
 		fprintf(FD_PRV,"2:%d:1:1:%d:%d:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
-//		if (!PRINT_SCALAR) fprintf(FD_PRV,"2:%d:1:1:%d:%d:" clean_event "\n",row,row,qemu_trace_timestamp);
 	}
 
 #ifdef TIMEDEBUG
@@ -287,6 +288,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 				if ( instr->type == VSETVL || instr->type == SCALAR){ //SETVL or individual SCALAR
 					row = 1;
+					vl=0;
 				}else{ //VECTOR
 					row = 2;
 					uint8_t *cpu = qemu_get_cpu(cpu_index);
@@ -311,7 +313,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 							free(string);
 						} 
 						if (instr->type!=SCALAR || PRINT_SCALAR){ 
-	            qemu_plugin_outs(instr->string);
+	            qemu_plugin_outs(instr->asm_string);
 	            qemu_plugin_outs("\n");
 							//char * string = g_strdup_printf(", %d scalar instructions before it\n", scalar_instr_since_vector); 
 	            //qemu_plugin_outs(string);
@@ -366,13 +368,13 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				if (instr->type == VECTOR) {
 								scalar_instr_since_vector=0;
 								++total_counters.vector_instr[sew];
-								total_counters.velem[sew] += (vl*lmul_value);
-								if (instr->minortype == FP) ++total_counters.vfp_instr[sew];
-								else if (instr->minortype == INT) ++total_counters.vint_instr[sew];
-								else if (instr->minortype == UNIT) ++total_counters.vunit_instr[sew];
-								else if (instr->minortype == STRIDE) ++total_counters.vstride_instr[sew];
-								else if (instr->minortype == INDEX) ++total_counters.vidx_instr[sew];
-								else if (instr->majortype == MASK) ++total_counters.vmask_instr[sew];
+								total_counters.velem[sew] += vl; //(vl*lmul_value); TODO: fix this
+								if (instr->v_minortype == FP) ++total_counters.vfp_instr[sew];
+								else if (instr->v_minortype == INT) ++total_counters.vint_instr[sew];
+								else if (instr->v_minortype == UNIT) ++total_counters.vunit_instr[sew];
+								else if (instr->v_minortype == STRIDE) ++total_counters.vstride_instr[sew];
+								else if (instr->v_minortype == INDEX) ++total_counters.vidx_instr[sew];
+								else if (instr->v_majortype == MASK) ++total_counters.vmask_instr[sew];
 				}else if (instr->type == VSETVL){ //TODO: should this be scalar?
 								scalar_instr_since_vector=0;
 							 	++total_counters.vsetvl_instr;
@@ -614,6 +616,9 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 		if(PRINT_REPORT){
 			print_report();
 		}
+		if (PRINT_CSV){
+			print_csv(FD_CSV);
+		}
 #ifdef TIMEDEBUG
 		printf("Cycles in Translation: %.4f %d times, %lu (%.2f %%)\n", (double)time_trans/num_trans, num_trans, time_trans, (double)time_trans/(time_trans+time_vcpu_exe+time_vcpu_control));
 		printf("Cycles in VCPU_exe: %.4f %d times, %lu (%.2f %%)\n", (double)time_vcpu_exe/num_vcpu_exe, num_vcpu_exe, time_vcpu_exe, (double)time_vcpu_exe/(time_trans+time_vcpu_exe+time_vcpu_control));
@@ -660,10 +665,15 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			else if (contains_string(argv[i], "PRINT_PRV")) PRINT_PRV = 1;
 			else if (contains_string(argv[i], "PRINT_LOGFILE")) PRINT_LOGFILE = 1;
 			else if (contains_string(argv[i], "PRINT_REPORT")) PRINT_REPORT = 1;
+			else if (contains_string(argv[i], "PRINT_CSV")) PRINT_CSV = 1;
 			else if (contains_string(argv[i], "PRV_NAME")){
 							++i;
 							setup_paraver_trace(argv[i]);
 							fprintf(FD_PRV,"#Paraver (00/00/0000 at 00:00):1_ns:1(2):1:1:(2:1)\n");
+			}
+			else if (contains_string(argv[i], "CSV_NAME")){
+				++i;
+				FD_CSV = fopen(argv[i], "w+");
 			}
 	}
 #if 0
@@ -687,7 +697,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			scalar_empty_struct->src3=0;
 			scalar_empty_struct->dst=0;
 			scalar_empty_struct->type=SCALAR;
-			scalar_empty_struct->string='\0';
+			scalar_empty_struct->asm_string='\0';
 	}
 	add_event(-1,"Global");
 	qemu_eventandcounters(-1, 1); //Start global event

@@ -20,7 +20,6 @@ static qemu_counters total_counters;
 //TODO: Names shouldn't be fixed size...
 struct value_info{
 	struct value_info * next;
-	int n;
 	char name[64];
 	int64_t ID;
 };
@@ -60,8 +59,6 @@ value_info *  add_new_value(event_info * event, int val, char * name){
 	new_values -> next = NULL;
 	new_values -> ID = val;
 	strcpy(new_values->name, name);
-
-	new_values -> n = 0;
 
 	//Add it to the value queue
 	//TODO: Doing a Stack instead of Queue would accelerate this to O(1)
@@ -159,6 +156,7 @@ void qemu_eventandcounters(int event, int value){
 									curr->value2 = value;
 
 									//TODO: Write csv here instead of saving?
+									//print_region_csv(curr);
 
 									double * event_counter_ptr = (double *)&curr->counters; //Traeating consecutive arrays as single array 
 									double * total_counter_ptr = (double *)&total_counters;
@@ -241,17 +239,17 @@ void print_region_human(int nregion, region_stats* curr){
 
 static char first_csv_row=1;
 
-void print_region_csv(int nregion, region_stats* curr){
+void print_region_csv(FILE * fd, int nregion, region_stats* curr){
 	if (first_csv_row){
-		printf("region,event_id,event_name,value_id,value_name,tot_instr,scalar_instr,vsetvl_instr,vec_instr");
+		fprintf(fd,"region,event_id,event_name,value_id,value_name,tot_instr,scalar_instr,vsetvl_instr,vec_instr");
 		for(int s=0; s<SEWS; ++s){
-			printf(",vector_sew%d_instr,vector_sew%d_elems,vector_sew%d_arith,vector_sew%d_fp,vector_sew%d_int,vector_sew%d_mem,vector_sew%d_memunit,vector_sew%d_memstride,vector_sew%d_memidx,vector_sew%d_mask,vector_sew%d_other",1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3));
-		}printf("\n");
+			fprintf(fd,",vector_sew%d_instr,vector_sew%d_elems,vector_sew%d_arith,vector_sew%d_fp,vector_sew%d_int,vector_sew%d_mem,vector_sew%d_memunit,vector_sew%d_memstride,vector_sew%d_memidx,vector_sew%d_mask,vector_sew%d_other",1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3));
+		}fprintf(fd,"\n");
 		first_csv_row = 0;
 	}
 	//Print Region header
 	value_info * v1 = find_value(curr->event, curr->value1);
-	printf("%d,%d,%s,%d,%s", nregion,curr->event->ID, curr->event->name, curr->value1, v1==NULL?"-":v1->name);
+	fprintf(fd,"%d,%d,%s,%d,%s", nregion,curr->event->ID, curr->event->name, curr->value1, v1==NULL?"-":v1->name);
 
 	//Compute total instructions (sum of SEW!)
 	qemu_counters * counters = &curr->counters;
@@ -261,16 +259,16 @@ void print_region_csv(int nregion, region_stats* curr){
 	totinstr += totvec;
 
 	//Print general counters
-	printf(",%.0f,%.0f,%.0f,%.0f", totinstr, counters->scalar_instr, counters->vsetvl_instr, totvec);
+	fprintf(fd,",%.0f,%.0f,%.0f,%.0f", totinstr, counters->scalar_instr, counters->vsetvl_instr, totvec);
 
 	//Print SEW-specific counters (vec)
 	for(int s=0; s<SEWS; ++s){
 		double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s];
 		double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
 		double  totvother	= counters->vector_instr[s] - totvmem - totvarith - counters->vmask_instr[s];
-		printf(",%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", counters->vector_instr[s], counters->velem[s], totvarith, counters->vfp_instr[s], counters->vint_instr[s], totvmem, counters->vunit_instr[s], counters->vstride_instr[s], counters->vidx_instr[s], counters->vmask_instr[s], totvother);
+		fprintf(fd,",%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", counters->vector_instr[s], counters->velem[s], totvarith, counters->vfp_instr[s], counters->vint_instr[s], totvmem, counters->vunit_instr[s], counters->vstride_instr[s], counters->vidx_instr[s], counters->vmask_instr[s], totvother);
 	}
-	printf("\n");
+	fprintf(fd,"\n");
 }
 
 void print_report(){
@@ -286,4 +284,18 @@ void print_report(){
 					curr = curr->next;
 	}
 	printf("------------------------------------------------\n");
+	fflush(stdout);
+}
+void print_csv(FILE * fd){
+	region_stats * curr = global_region;
+	int nregion=0;
+	while (curr!=NULL){
+					if (curr->prev!=NULL) free(curr->prev);
+					if (curr->closed){
+						print_region_csv(fd,nregion++, curr);
+					}
+					curr = curr->next;
+	}
+	fflush(fd);
+	fclose(fd);
 }

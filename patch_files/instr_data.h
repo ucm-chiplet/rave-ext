@@ -1,18 +1,18 @@
 enum instr_type{SCALAR, VECTOR, VSETVL};
-enum major_type{OTHER, ARITH, MEMORY, MASK};
-enum minor_type{NOTYPE, FP, INT, UNIT, STRIDE, INDEX};
+enum v_major_type{OTHER, ARITH, MEMORY, MASK};
+enum v_minor_type{NOTYPE, FP, INT, UNIT, STRIDE, INDEX};
 
 struct instr_data{
   uint64_t PC;
 	uint32_t paraver_code;
-	char * string;
+	char * asm_string;
 	short src1;
 	short src2;
 	short src3;
 	short dst;
 	enum instr_type type;
-	enum major_type majortype;
-	enum major_type minortype;
+	enum v_major_type v_majortype;
+	enum v_minor_type v_minortype;
 };
 typedef struct instr_data instr_data;
 
@@ -27,14 +27,14 @@ static instr_data * scalar_empty_struct;
 extern char contains_string(char * str, const char * find);
 
 
-static char* majornames[] = {"OTHER", "ARITH", "MEMORY", "MASK"};
-static char* minornames[] = {"NOTYPE", "FP", "INT", "UNIT", "STRIDE", "INDEX"};
+static char* v_majornames[] = {"OTHER", "ARITH", "MEMORY", "MASK"};
+static char* v_minornames[] = {"NOTYPE", "FP", "INT", "UNIT", "STRIDE", "INDEX"};
 
 #define MAJOR_LOAD 0b0000111
 #define MAJOR_STORE 0b0100111
 #define MAJOR_ARITH 0b1010111
 #define get_bit_field(insn_opcode, high, low) ((insn_opcode >> low) & ((1<<(high-low+1))-1))
-void instr_set_type(uint32_t insn_opcode, enum major_type *majortype, enum minor_type *minortype){
+void instr_set_type(uint32_t insn_opcode, enum v_major_type *majortype, enum v_minor_type *minortype){
 				int opcode = get_bit_field(insn_opcode,6,0); 
 				*majortype = OTHER;
 				*minortype = NOTYPE;
@@ -180,7 +180,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 
 	//Fill fields in struct
 	instr_data * data = (instr_data*)malloc(sizeof(instr_data));
-	data -> string = g_strdup_printf("%s", instr); 
+	data -> asm_string = g_strdup_printf("%s", instr); 
 	
 	data -> PC = pc;
 	data -> dst =  (field_idx > 1) ? reg2prv(instr_fields[1]) : 0;
@@ -192,7 +192,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]);
 	}else if (instr_fields[0][0]=='v'){
 		data -> type = VECTOR;
-		instr_set_type(insn_opcode, &data->majortype, &data->minortype);
+		instr_set_type(insn_opcode, &data->v_majortype, &data->v_minortype);
 		//if (data->majortype==OTHER) printf("%s\t%s\t%s\n",majornames[data->majortype], minornames[data->minortype],&instr[offsets[1]]);
 		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]);
 	}else{

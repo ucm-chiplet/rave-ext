@@ -50,4 +50,4 @@
 #define qemu_start_trace() asm volatile("li x0, -3\n");
 #define qemu_stop_trace() asm volatile("li x0, -4\n");
 
-#define qemu_event(x,y) asm volatile("or x0, %0, %1\n"::"r"(x),"r"(y));
+#define qemu_event_and_value(x,y) asm volatile("or x0, %0, %1\n"::"r"(x),"r"(y));

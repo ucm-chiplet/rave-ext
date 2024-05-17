@@ -51,8 +51,8 @@ if [ "$QEMU_PRINT_CSV" == "1" ] || [ "$QEMU_CSV_NAME" != "" ]; then #OPT-in
 fi
 
 #SYSROOT:
-QEMU_SYSROOT=${SCRIPT_DIR}/build/riscv-glibc-toolchain/sysroot #DEFAULT SYSROOT
-#QEMU_SYSROOT=/apps/riscv/fpga-sdv/jammy-1/ #USER-SPECIFIED SYSROOT
+#QEMU_SYSROOT=${SCRIPT_DIR}/build/riscv-glibc-toolchain/sysroot #DEFAULT SYSROOT
+QEMU_SYSROOT=/apps/riscv/fpga-sdv/jammy-1/ #USER-SPECIFIED SYSROOT
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 FOLDER=qemu-1_0

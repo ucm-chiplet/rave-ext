@@ -17,43 +17,43 @@ int main(){
 	double B[N];
 	double C[N];
 
-	qemu_event(1000,1)
+	qemu_event_and_value(1000,1)
 	for(int i=0; i<N; ++i){
 		A[i] = i;
 	}
-	qemu_event(1000,0)
+	qemu_event_and_value(1000,0)
 
 
-	qemu_event(1000,2)
+	qemu_event_and_value(1000,2)
 	#pragma clang loop vectorize(enable)
 	for(int i=0; i<N; ++i){
 		B[i] = 2.5;
 	}
-	qemu_event(1000,0)
+	qemu_event_and_value(1000,0)
 
 	qemu_stop_trace();
 
-	qemu_event(1000,3)
+	qemu_event_and_value(1000,3)
 	#pragma clang loop vectorize(enable)
 	for(int i=0; i<N; ++i){
 		C[i] = -i;
 	}
-	qemu_event(1000,0)
+	qemu_event_and_value(1000,0)
 
 	qemu_start_trace();
 
-	qemu_event(1000,4)
+	qemu_event_and_value(1000,4)
 	#pragma clang loop vectorize(enable)
 	for(int i=0; i<N; ++i){
 		A[i] -= B[i]*0.2 + 0.5*C[i];
 	}
-	qemu_event(1000,0)
+	qemu_event_and_value(1000,0)
 
-	qemu_event(1000,5)
+	qemu_event_and_value(1000,5)
 	#pragma clang loop vectorize(enable)
 	for(int i=0; i<N; ++i){
 		if (A[i] > 0.5) C[i] += A[i]*0.2;
 	}
-	qemu_event(1000,0)
+	qemu_event_and_value(1000,0)
 	volatile double noopt = A[0];
 }
