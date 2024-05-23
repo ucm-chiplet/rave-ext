@@ -124,7 +124,7 @@ static void vcpu_mem(unsigned int cpu_index, qemu_plugin_meminfo_t info,
 /**
  * Log instruction execution
  */
-static int qemu_trace_timestamp=0;
+static uint64_t qemu_trace_timestamp=0;
 
 //target/riscv/cpu.h (0.7 :114 (def) :277 (env) ||||| 1.0 :143 (def) :493 (env)
 //include/hw/core/cpu.h (0.7 :307 (def) ||||| 1.0 : 323 (def)
@@ -180,10 +180,10 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 	qemu_eventandcounters(qemu_trace_event, qemu_trace_value);
 	if (PRINT_PRV){
 		int row=1;
-		fprintf(FD_PRV,"2:%d:1:1:%d:%d:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
+		fprintf(FD_PRV,"2:%d:1:1:%d:%llu:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
 		if (!PRINT_SCALAR) fprintf(FD_PRV,"2:%d:1:1:%d:%d:"event_instruction":%d\n", row,row, qemu_trace_timestamp, 1000);
 		row=2;
-		fprintf(FD_PRV,"2:%d:1:1:%d:%d:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
+		fprintf(FD_PRV,"2:%d:1:1:%d:%llu:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
 	}
 
 #ifdef TIMEDEBUG
@@ -267,8 +267,8 @@ static void vcpu_start_trace(unsigned int cpu_index, void *udata){
 static void vcpu_stop_trace(unsigned int cpu_index, void *udata){
 	TRACE_ENABLED=0;
 	if (PRINT_PRV){
-		fprintf(FD_PRV,"2:%d:1:1:%d:%d:" clean_event "\n",1,1,qemu_trace_timestamp);
-		fprintf(FD_PRV,"2:%d:1:1:%d:%d:" clean_event "\n",2,2,qemu_trace_timestamp);
+		fprintf(FD_PRV,"2:%d:1:1:%d:%llu:" clean_event "\n",1,1,qemu_trace_timestamp);
+		fprintf(FD_PRV,"2:%d:1:1:%d:%llu:" clean_event "\n",2,2,qemu_trace_timestamp);
 	}
 }
 
@@ -324,15 +324,15 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 					if (PRINT_PRV){
 						char row_change = row != last_row?1:0;
 						if (row_change){
-							fprintf(FD_PRV,"2:%d:1:1:%d:%d:" clean_event "\n",last_row,last_row,qemu_trace_timestamp);
+							fprintf(FD_PRV,"2:%d:1:1:%d:%llu:" clean_event "\n",last_row,last_row,qemu_trace_timestamp);
 						}
 						//Scalar instructions should always be printed when: row changed(1), type changed (2), is first scalar in the trace (3)
 						if (instr->type==SCALAR && !PRINT_SCALAR){
 							if (row_change || last_vsetvl || print_first_scalar)						
-								fprintf(FD_PRV,"2:%d:1:1:%d:%d:"event_instruction":%d\n", row,row, qemu_trace_timestamp, instr->paraver_code);
+								fprintf(FD_PRV,"2:%d:1:1:%d:%llu:"event_instruction":%d\n", row,row, qemu_trace_timestamp, instr->paraver_code);
 						}else{ //PRINT_SCALAR || instr!=SCALAR
 							fprintf(FD_PRV,"2:%d:1:1:%d"
-														":%d"    //timestamp
+														":%llu"    //timestamp
 														":"event_pc":%ld" //PC
 														":"event_scalb":%d" //scalar before
 														":"event_dst":%d" //dst

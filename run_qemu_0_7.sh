@@ -61,4 +61,4 @@ QEMU_PATH=${SCRIPT_DIR}/build/${FOLDER}/bin
 QEMU_CPU=rv64,x-v=true,vext_spec=v0.7.1,vlen=$QEMU_VLEN
 
 
-${QEMU_PATH}/qemu-riscv64 $QEMU_OPTION $QEMU_LOGFILE_NAME -d plugin -plugin ${QEMU_PLUGIN}/libexeclog.so$args -L ${QEMU_SYSROOT} -E LD_LIBRARY_PATH=${QEMU_SYSROOT}/lib -cpu $QEMU_CPU $@
+${QEMU_PATH}/qemu-riscv64 $QEMU_OPTION $QEMU_LOGFILE_NAME -d plugin -plugin ${QEMU_PLUGIN}/librave.so$args -L ${QEMU_SYSROOT} -E LD_LIBRARY_PATH=${QEMU_SYSROOT}/lib -cpu $QEMU_CPU $@

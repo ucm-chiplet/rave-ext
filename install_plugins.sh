@@ -32,17 +32,21 @@ echo "Building plugins..."
 #fi
 
 #For both
-cp ../patch_files/execlog.c contrib/plugins/.
+cp ../patch_files/rave.c contrib/plugins/.
 if [[ "$EXT" == "1_0" ]]; then
- sed -i 's/#define\ EPI_07/\/\/#define EPI_07/g' contrib/plugins/execlog.c
+ sed -i 's/#define\ EPI_07/\/\/#define EPI_07/g' contrib/plugins/rave.c
 else
- sed -i 's/\/\/#define\ EPI_07/#define EPI_07/g' contrib/plugins/execlog.c
+ sed -i 's/\/\/#define\ EPI_07/#define EPI_07/g' contrib/plugins/rave.c
 fi
 cp ../patch_files/my_decode.h contrib/plugins/.
 cp ../patch_files/instr_data.h contrib/plugins/.
 cp ../patch_files/qemu2prv.h contrib/plugins/.
 cp ../patch_files/qemu_counters.h contrib/plugins/.
 cp ../patch_files/example_trace.h contrib/plugins/.
+
+if ! grep -q rave contrib/plugins/Makefile; then
+	sed	 -i '/^NAMES :=/a NAMES += rave' contrib/plugins/Makefile
+fi
 
 make -j${NUM_JOBS} plugins &>> ${LOGFILE}
 if [ $? -ne 0 ]; then
