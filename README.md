@@ -34,19 +34,20 @@ Finally, install the RISC-V toolchain to provide a sysroot to your QEMU Virtual 
 Two scripts are provided to run your RISC-V binaries, `./build/EPI/bin/rave` and `./build/EPI-0.7/bin/rave` (use them accordingly to the RVV specification used in your code).
 
 These scripts are also controled by the following environment variables:
- - **QEMU_PRINT_SCALAR**: If set to \"1\", adds tracing information for each scalar instruction (trace gets a lot bigger). Otherwise, scalar instructions are treated as bursts. (default: 0)
- - **QEMU_PRINT_LOGFILE**: If set to \"1\", a logfile is generated with all the executed instructions. (default: 0)
- - **QEMU_LOGFILE_NAME**: Sets the name of the generated logfile (default: qemulog.log). Additionally, automatically sets QEMU_PRINT_LOGFILE to 1
- - **QEMU_VLEN**: Sets the maximum available vector-length in bits (default: 16384)
- - **QEMU_PRINT_PRV**: If set to \"1\", a paraver trace is generated with all the executed instructions. (default: 0). 
- - **QEMU_PRV_NAME**: Sets the name of the generated paraver trace (default: qemutrace). Additionally, automatically sets QEMU_PRINT_PRV to 1
- - **QEMU_PRINT_REPORT**: If set to "1", the tracer will print a hardware counter summary for each executed code region. (default: 0)
- - **QEMU_PRINT_CSV**: If set to "1", the tracer will print a CSV with the hardware counter summary for each executed code region. (default: 0)
+ - **RAVE_PRINT_SCALAR**: If set to \"1\", adds tracing information for each scalar instruction (trace gets a lot bigger). Otherwise, scalar instructions are treated as bursts. (default: 0)
+ - **RAVE_PRINT_LOGFILE**: If set to \"1\", a logfile is generated with all the executed instructions. (default: 0).
+ - **RAVE_LOGFILE_NAME**: Sets the name of the generated logfile (default: qemulog.log). Additionally, automatically sets RAVE_PRINT_LOGFILE to 1.
+ - **RAVE_VLEN**: Sets the maximum available vector-length in bits (default: 16384).
+ - **RAVE_PRINT_PRV**: If set to \"1\", a paraver trace is generated with all the executed instructions. (default: 0). 
+ - **RAVE_PRV_NAME**: Sets the name of the generated paraver trace (default: qemutrace). Additionally, automatically sets RAVE_PRINT_PRV to 1.
+ - **RAVE_PRINT_REPORT**: If set to "1", the tracer will print a hardware counter summary for each executed code region. (default: 0).
+ - **RAVE_PRINT_CSV**: If set to "1", the tracer will print a CSV with the hardware counter summary for each executed code region. (default: 0).
+ - **RAVE_CSV_NAME**: Sets the name of the generated csv trace (default: qemu_summary.csv). Additionally, automatically sets RAVE_PRINT_CSV to 1. 
 
 For example, you can run your RVV0_7 code while generating a report and a prv trace like this:
 
 ```bash
-QEMU_PRV_NAME=test_trace QEMU_PRINT_REPORT=1 ./build/EPI-0.7/bin/rave ./yourcode.x arguments
+RAVE_PRV_NAME=test_trace RAVE_PRINT_REPORT=1 ./build/EPI-0.7/bin/rave ./yourcode.x arguments
 ```
 
 You can find Paraver configuration files in the `CFGs` folder. We recommend using value 1000 to instrument your code, so all CFGs work as expected.
