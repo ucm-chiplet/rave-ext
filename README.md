@@ -31,7 +31,7 @@ Finally, install the RISC-V toolchain to provide a sysroot to your QEMU Virtual 
 
 # Running RISC-V binaries
 
-Two scripts are provided to run your RISC-V binaries, `run_qemu_0_7.sh` and `run_qemu_1_0.sh` (use them accordingly to the RVV specification used in your code).
+Two scripts are provided to run your RISC-V binaries, `./build/EPI/bin/rave` and `./build/EPI-0.7/bin/rave` (use them accordingly to the RVV specification used in your code).
 
 These scripts are also controled by the following environment variables:
  - **QEMU_PRINT_SCALAR**: If set to \"1\", adds tracing information for each scalar instruction (trace gets a lot bigger). Otherwise, scalar instructions are treated as bursts. (default: 0)
@@ -46,7 +46,7 @@ These scripts are also controled by the following environment variables:
 For example, you can run your RVV0_7 code while generating a report and a prv trace like this:
 
 ```bash
-QEMU_PRV_NAME=testtrace QEMU_PRINT_REPORT=1 ./run_qemu_0_7.sh ./yourcode.x arguments
+QEMU_PRV_NAME=test_trace QEMU_PRINT_REPORT=1 ./build/EPI-0.7/bin/rave ./yourcode.x arguments
 ```
 
 You can find Paraver configuration files in the `CFGs` folder. We recommend using value 1000 to instrument your code, so all CFGs work as expected.

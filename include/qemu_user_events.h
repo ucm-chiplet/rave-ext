@@ -36,13 +36,15 @@
 
 #define qemu_name_event(x,name)\
 {\
-	asm volatile("lui x0, %0\n"::"i"(x));\
+	/*asm volatile("lui x0, %0\n"::"i"(x));*/\
+	asm volatile("and x0, %0, %1\n"::"r"(x), "r"(-1));\
 	qemu_name(name);\
 }
 #define qemu_name_value(x,y,name)\
 {\
-	asm volatile("lui x0, %0\n"::"i"(x));\
-	asm volatile("lui x0, %0\n"::"i"(y));\
+	/*asm volatile("lui x0, %0\n"::"i"(x));\
+	asm volatile("lui x0, %0\n"::"i"(y));*/\
+	asm volatile("and x0, %0, %1\n"::"r"(x), "r"(y));\
 	qemu_name(name);\
 }
 

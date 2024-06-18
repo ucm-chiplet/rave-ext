@@ -24,10 +24,11 @@ echo "Updating qemu sources..."
 
 if [[ "$EXT" == "0_7" ]]; then
 	sources_dir=qemu-0_7
+	install_dir=`pwd`/build/EPI-0.7/$sources_dir
 elif [[ "$EXT" == "1_0" ]]; then 
 	sources_dir=qemu-1_0
+	install_dir=`pwd`/build/EPI/$sources_dir
 fi
-install_dir=`pwd`/build/$sources_dir
 
 git submodule update --init $sources_dir
 cd $sources_dir

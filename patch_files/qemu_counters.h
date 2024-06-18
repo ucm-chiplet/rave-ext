@@ -6,11 +6,15 @@ struct qemu_counters{
 				double vector_instr[SEWS];
 				double vunit_instr[SEWS];
 				double vstride_instr[SEWS];
+				double agg_strides[SEWS];
 				double vidx_instr[SEWS];
 				double vfp_instr[SEWS];
 				double vint_instr[SEWS];
 				double vmask_instr[SEWS];
 				double velem[SEWS];
+				double moved_bytes_s;
+				double moved_bytes_v;
+				double flops;
 //				double vl[SEWS];
 };
 typedef struct qemu_counters qemu_counters;
@@ -211,6 +215,12 @@ void print_region_human(int nregion, region_stats* curr){
 	double totinstr = counters->scalar_instr + counters->vsetvl_instr;
 	for(int s=0; s<SEWS; ++s) totinstr += counters->vector_instr[s];
 
+	//Others...
+	double totbytes = counters->moved_bytes_s + counters->moved_bytes_v;
+	printf("\t" "Moved bytes (Total): %.0f\n", totbytes);
+	printf("\t\t" "Moved bytes (scalar): %.0f (%.2f %%)\n", counters->moved_bytes_s, PERCENTAGE(counters->moved_bytes_s,totbytes));
+	printf("\t\t" "Moved bytes (vector): %.0f (%.2f %%)\n", counters->moved_bytes_v, PERCENTAGE(counters->moved_bytes_v,totbytes));
+
 	//Print general counters
 	printf("\t" "tot_instr: %.0f\n", totinstr);
 	printf("\t\t"   "scalar_instr: %.0f (%.2f %%)\n", counters->scalar_instr, PERCENTAGE(counters->scalar_instr, totinstr)); 
@@ -230,6 +240,7 @@ void print_region_human(int nregion, region_stats* curr){
 			printf("\t\t\t"  "Mem: %.0f (%.2f %%)\n", totvmem, PERCENTAGE(totvmem, counters->vector_instr[s]));
 			printf("\t\t\t\t"   "unit: %.0f (%.2f %%)\n", counters->vunit_instr[s], PERCENTAGE(counters->vunit_instr[s], totvmem));
 			printf("\t\t\t\t"   "strided: %.0f (%.2f %%)\n", counters->vstride_instr[s], PERCENTAGE(counters->vstride_instr[s], totvmem));
+			if (counters->vstride_instr[s] > 0) printf("\t\t\t\t\t"		"Avg. Stride (B): %.2f\n", counters->agg_strides[s] / counters->vstride_instr[s]);
 			printf("\t\t\t\t"   "indexed: %.0f (%.2f %%)\n", counters->vidx_instr[s], PERCENTAGE(counters->vidx_instr[s], totvmem));
 			printf("\t\t\t"  "Mask: %.0f (%.2f %%)\n", counters->vmask_instr[s], PERCENTAGE(counters->vmask_instr[s], counters->vector_instr[s]));
 			printf("\t\t\t"  "Other: %.0f (%.2f %%)\n", totvother, PERCENTAGE(totvother, counters->vector_instr[s]));
@@ -243,7 +254,7 @@ void print_region_csv(FILE * fd, int nregion, region_stats* curr){
 	if (first_csv_row){
 		fprintf(fd,"region,event_id,event_name,value_id,value_name,tot_instr,scalar_instr,vsetvl_instr,vec_instr");
 		for(int s=0; s<SEWS; ++s){
-			fprintf(fd,",vector_sew%d_instr,vector_sew%d_elems,vector_sew%d_arith,vector_sew%d_fp,vector_sew%d_int,vector_sew%d_mem,vector_sew%d_memunit,vector_sew%d_memstride,vector_sew%d_memidx,vector_sew%d_mask,vector_sew%d_other",1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3));
+			fprintf(fd,",vector_sew%d_instr,vector_sew%d_elems,vector_sew%d_arith,vector_sew%d_fp,vector_sew%d_int,vector_sew%d_mem,vector_sew%d_memunit,vector_sew%d_memstride,vector_sew%d_memidx,vector_sew%d_mask,vector_sew%d_other,vector_sew%d_avg_stride",1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3), 1<<(s+3));
 		}fprintf(fd,"\n");
 		first_csv_row = 0;
 	}
@@ -266,7 +277,8 @@ void print_region_csv(FILE * fd, int nregion, region_stats* curr){
 		double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s];
 		double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
 		double  totvother	= counters->vector_instr[s] - totvmem - totvarith - counters->vmask_instr[s];
-		fprintf(fd,",%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", counters->vector_instr[s], counters->velem[s], totvarith, counters->vfp_instr[s], counters->vint_instr[s], totvmem, counters->vunit_instr[s], counters->vstride_instr[s], counters->vidx_instr[s], counters->vmask_instr[s], totvother);
+		double strides = (counters->vstride_instr[s] > 0)? counters->agg_strides[s] / counters->vstride_instr[s] : 0;
+		fprintf(fd,",%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", counters->vector_instr[s], counters->velem[s], totvarith, counters->vfp_instr[s], counters->vint_instr[s], totvmem, counters->vunit_instr[s], counters->vstride_instr[s], counters->vidx_instr[s], counters->vmask_instr[s], totvother,strides);
 	}
 	fprintf(fd,"\n");
 }
@@ -276,7 +288,7 @@ void print_report(){
 	printf("-------------------"); printf(" SUMMARY "); printf("-------------------"); printf("\n");
 	int nregion=0;
 	while (curr!=NULL){
-					if (curr->prev!=NULL) free(curr->prev);
+					//if (curr->prev!=NULL) free(curr->prev);
 					if (curr->closed){
 						print_region_human(nregion++, curr);
 						//print_region_csv(nregion++, curr);
@@ -290,7 +302,7 @@ void print_csv(FILE * fd){
 	region_stats * curr = global_region;
 	int nregion=0;
 	while (curr!=NULL){
-					if (curr->prev!=NULL) free(curr->prev);
+					//if (curr->prev!=NULL) free(curr->prev);
 					if (curr->closed){
 						print_region_csv(fd,nregion++, curr);
 					}
@@ -298,4 +310,11 @@ void print_csv(FILE * fd){
 	}
 	fflush(fd);
 	fclose(fd);
+}
+void free_regions(){
+	region_stats * curr = global_region;
+	while (curr!=NULL){
+		if (curr->prev!=NULL) free(curr->prev);
+		curr = curr->next;
+	}
 }

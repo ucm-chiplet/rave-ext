@@ -37,7 +37,7 @@ if [ "$QEMU_PRINT_PRV" == "1" ] || [ "$QEMU_PRV_NAME" != "" ]; then #OPT-in
 	if [ "$QEMU_PRV_NAME" == "" ]; then
 		QEMU_PRV_NAME=qemutrace
 	fi
-	args=$args",arg=PRINT_PRV,arg=PRV_NAME,arg=$QEMU_PRV_NAME"
+	args=$args",arg=PRINT_PRV,arg=PRV_NAME=$QEMU_PRV_NAME"
 fi
 
 if [ "$QEMU_PRINT_REPORT" == "1" ]; then #OPT-in
@@ -47,18 +47,18 @@ if [ "$QEMU_PRINT_CSV" == "1" ] || [ "$QEMU_CSV_NAME" != "" ]; then #OPT-in
 	if [ "$QEMU_CSV_NAME" == "" ]; then
 		QEMU_CSV_NAME=qemu_summary.csv
 	fi
-	args=$args",arg=PRINT_CSV,arg=CSV_NAME,arg=$QEMU_CSV_NAME"
+	args=$args",arg=PRINT_CSV,arg=CSV_NAME=$QEMU_CSV_NAME"
 fi
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 #SYSROOT:
-#QEMU_SYSROOT=${SCRIPT_DIR}/build/riscv-glibc-toolchain/sysroot #DEFAULT SYSROOT
+#QEMU_SYSROOT=${SCRIPT_DIR}/../../riscv-glibc-toolchain/sysroot #DEFAULT SYSROOT
 QEMU_SYSROOT=/apps/riscv/fpga-sdv/jammy-1/ #USER-SPECIFIED SYSROOT
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 FOLDER=qemu-0_7
-QEMU_PLUGIN=${SCRIPT_DIR}/${FOLDER}/build/contrib/plugins
-QEMU_PATH=${SCRIPT_DIR}/build/${FOLDER}/bin
+QEMU_PLUGIN=${SCRIPT_DIR}/../lib
+QEMU_PATH=${SCRIPT_DIR}/../${FOLDER}/bin
 QEMU_CPU=rv64,x-v=true,vext_spec=v0.7.1,vlen=$QEMU_VLEN
 
 
-${QEMU_PATH}/qemu-riscv64 $QEMU_OPTION $QEMU_LOGFILE_NAME -d plugin -plugin ${QEMU_PLUGIN}/librave.so$args -L ${QEMU_SYSROOT} -E LD_LIBRARY_PATH=${QEMU_SYSROOT}/lib -cpu $QEMU_CPU $@
+${QEMU_PATH}/qemu-riscv64 $QEMU_OPTION $QEMU_LOGFILE_NAME -d plugin -plugin ${QEMU_PLUGIN}/librave.so$args -L ${QEMU_SYSROOT} -E LD_LIBRARY_PATH=${QEMU_SYSROOT}/lib:$LD_LIBRARY_PATH -E PATH=$PATH -E LD_RUN_PATH=$LD_RUN_PATH -E OPAL_PREFIX=$OPAL_PREFIX -cpu $QEMU_CPU $@

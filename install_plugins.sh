@@ -18,8 +18,10 @@ echo -n "" > $LOGFILE
 
 if [[ "$EXT" == "0_7" ]]; then
 	sources_dir=qemu-0_7
+	install_dir=`pwd`/build/EPI-0.7/lib/
 elif [[ "$EXT" == "1_0" ]]; then 
 	sources_dir=qemu-1_0
+	install_dir=`pwd`/build/EPI/lib/
 fi
 
 cd $sources_dir
@@ -32,20 +34,26 @@ echo "Building plugins..."
 #fi
 
 #For both
-cp ../patch_files/rave.c contrib/plugins/.
+plugin_name=rave
+#plugin_name=rave_dbg
+
+cp ../patch_files/$plugin_name.c contrib/plugins/.
 if [[ "$EXT" == "1_0" ]]; then
- sed -i 's/#define\ EPI_07/\/\/#define EPI_07/g' contrib/plugins/rave.c
+ sed -i 's/#define\ EPI_07/\/\/#define EPI_07/g' contrib/plugins/${plugin_name}.c
+	cp ../patch_files/instr2prv_1_0.h contrib/plugins/.
+	cp ../patch_files/example_trace_1_0.h contrib/plugins/.
 else
- sed -i 's/\/\/#define\ EPI_07/#define EPI_07/g' contrib/plugins/rave.c
+ sed -i 's/\/\/#define\ EPI_07/#define EPI_07/g' contrib/plugins/${plugin_name}.c
+	cp ../patch_files/instr2prv_0_7.h contrib/plugins/.
+	cp ../patch_files/example_trace_0_7.h contrib/plugins/.
 fi
 cp ../patch_files/my_decode.h contrib/plugins/.
 cp ../patch_files/instr_data.h contrib/plugins/.
-cp ../patch_files/qemu2prv.h contrib/plugins/.
 cp ../patch_files/qemu_counters.h contrib/plugins/.
-cp ../patch_files/example_trace.h contrib/plugins/.
+cp ../patch_files/qemu2prv.h contrib/plugins/.
 
-if ! grep -q rave contrib/plugins/Makefile; then
-	sed	 -i '/^NAMES :=/a NAMES += rave' contrib/plugins/Makefile
+if ! grep -q $plugin_name contrib/plugins/Makefile; then
+	sed	 -i "/^NAMES :=/a NAMES += ${plugin_name}" contrib/plugins/Makefile
 fi
 
 make -j${NUM_JOBS} plugins &>> ${LOGFILE}
@@ -53,3 +61,6 @@ if [ $? -ne 0 ]; then
 	echo "Building plugins FAILED! Check $LOGFILE"
 	exit -1
 fi
+
+mkdir -p $install_dir
+cp build/contrib/plugins/librave.so $install_dir/.

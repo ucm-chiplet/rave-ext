@@ -2,7 +2,17 @@ enum instr_type{SCALAR, VECTOR, VSETVL};
 enum v_major_type{OTHER, ARITH, MEMORY, MASK};
 enum v_minor_type{NOTYPE, FP, INT, UNIT, STRIDE, INDEX};
 
+
+struct instr_basic_data{
+	enum instr_type type;
+	uint32_t instr32;
+};
+typedef struct instr_basic_data instr_basic_data;
+
 struct instr_data{
+	enum instr_type type;
+	uint32_t instr32; //Only for strided...and mem eew.. and scalar mem?
+
   uint64_t PC;
 	uint32_t paraver_code;
 	char * asm_string;
@@ -10,7 +20,6 @@ struct instr_data{
 	short src2;
 	short src3;
 	short dst;
-	enum instr_type type;
 	enum v_major_type v_majortype;
 	enum v_minor_type v_minortype;
 };
@@ -97,6 +106,8 @@ void instr_set_type(uint32_t insn_opcode, enum v_major_type *majortype, enum v_m
 																}else if (funct6 != 0b001100 && //vrgather
 																					funct6 != 0b001110 && //slideup, gatherei16 in 1.0
 																					funct6 != 0b001111 && //slidedown
+																					funct6 != 0b101110 && //vnclipu
+																					funct6 != 0b101111 && //vnclip
 																					funct6 != 0b010111){ //vmerge/vmv
 																				*majortype = ARITH;
 																				*minortype = INT;
@@ -123,6 +134,7 @@ void instr_set_type(uint32_t insn_opcode, enum v_major_type *majortype, enum v_m
 																					funct6 != 0b001111 && //slide1down
 																					funct6 != 0b010100 && //popc
 																					funct6 != 0b010101 && //vmfirst
+																					funct6 != 0b001100 && //vext
 																					funct6 != 0b010111){ //vmcompress
 #else
 																}else if (funct6 != 0b010000 && //vmv.s.x, vmv.x.s, vpopc, vfirst
@@ -181,6 +193,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 	//Fill fields in struct
 	instr_data * data = (instr_data*)malloc(sizeof(instr_data));
 	data -> asm_string = g_strdup_printf("%s", instr); 
+	data -> instr32 = insn_opcode;
 	
 	data -> PC = pc;
 	data -> dst =  (field_idx > 1) ? reg2prv(instr_fields[1]) : 0;
@@ -194,6 +207,13 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 		data -> type = VECTOR;
 		instr_set_type(insn_opcode, &data->v_majortype, &data->v_minortype);
 		//if (data->majortype==OTHER) printf("%s\t%s\t%s\n",majornames[data->majortype], minornames[data->minortype],&instr[offsets[1]]);
+#if 0
+			int opcode = get_bit_field(insn_opcode,6,0); //7 bits
+			int funct3 = get_bit_field(insn_opcode,14,12); //3 bits
+			int	funct6 = get_bit_field(insn_opcode,31,26); //6 bits
+		 	int instr_prv_code = (opcode | (funct3<<7) | (funct6<<10)); //16 bits (0....65535)
+			printf("%04x\t%lu\t%s\n",instr_prv_code,instr_prv_code, instr_fields[0]);
+#endif
 		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]);
 	}else{
 		data -> type = SCALAR;
@@ -201,7 +221,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 			int opcode = get_bit_field(insn_opcode,6,0);
 			int funct3 = get_bit_field(insn_opcode,14,12);
 			int	funct6 = get_bit_field(insn_opcode,31,26);
-		 	data -> paraver_code = 1000 + (opcode | (funct3<<7) | (funct6<<10));
+		 	data -> paraver_code = 1010 + (opcode | (funct3<<7) | (funct6<<10));
 		}
 	}
 

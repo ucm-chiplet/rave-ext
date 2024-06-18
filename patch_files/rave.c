@@ -85,41 +85,6 @@ char contains_string(char * str, const char * find){
 QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
 
 /* Store last executed instruction on each vCPU as a GString */
-GArray *last_exec;
-
-/**
- * Add memory read or write information to current instruction log
- */
-static void vcpu_mem(unsigned int cpu_index, qemu_plugin_meminfo_t info,
-                     uint64_t vaddr, void *udata)
-{
-				
-		if (!PRINT_ADDR) return;
-    GString *s;
-
-    /* Find vCPU in array */
-    g_assert(cpu_index < last_exec->len);
-    s = g_array_index(last_exec, GString *, cpu_index);
-
-    /* Indicate type of memory access */
-    if (qemu_plugin_mem_is_store(info)) {
-        g_string_append(s, ", store");
-    } else {
-        g_string_append(s, ", load");
-    }
-
-    /* If full system emulation log physical address and device name */
-    struct qemu_plugin_hwaddr *hwaddr = qemu_plugin_get_hwaddr(info, vaddr);
-    if (hwaddr) {
-        uint64_t addr = qemu_plugin_hwaddr_phys_addr(hwaddr);
-        const char *name = qemu_plugin_hwaddr_device_name(hwaddr);
-        g_string_append_printf(s, ", 0x%08"PRIx64", %s", addr, name);
-    } else {
-        g_string_append_printf(s, ", 0x%08"PRIx64, vaddr);
-    }
-}
-
-
 
 /**
  * Log instruction execution
@@ -201,47 +166,46 @@ static char qemu_event_name_first_digit=1;
 
 static void vcpu_qemu_name_event_toggle(unsigned int cpu_index, uint32_t insn_opcode){
 
-		if (qemu_name_offset>0){//End
-//			printf("is lix0, End of name\n");
-//			printf("End of name\n");
+		if (qemu_name_offset>0){//End of name
 			qemu_event_name[qemu_name_offset]='\0';
-//			printf("%d %d %s\n",qemu_event_number,qemu_value_number,qemu_event_name);
 			if(qemu_value_number!=-1) add_value_to_event(qemu_event_number,qemu_value_number,qemu_event_name);
 			else add_event(qemu_event_number,qemu_event_name);
 			qemu_name_offset =-1;
 			qemu_event_number=-1;
 			qemu_value_number=-1;
-		}else{
-//			printf("is lix0, Start of name\n");
-//			printf("Start of name\n");
+		}else{ //Start of name
 			qemu_event_name_first_digit=1;
 			qemu_name_offset = 0;
 		}
 }
 
 static void vcpu_qemu_name_event_value(unsigned int cpu_index, uint32_t insn_opcode){
+	uint8_t *cpu = qemu_get_cpu(cpu_index);
+	int src1 = (insn_opcode>>15)&0x1F;
+	int src2 = (insn_opcode>>20)&0x1F;
+	qemu_event_number = qemu_get_xreg(cpu,src1);
+	qemu_value_number = qemu_get_xreg(cpu,src2);
+}
+
+static void vcpu_qemu_name_char(unsigned int cpu_index, uint32_t insn_opcode){
 
 	int value = (insn_opcode>>12)&0xFFFFF;
-	if (qemu_name_offset<0){
+	/*
+	if (qemu_name_offset<0){ //Reading event and value
 		if (qemu_event_number == -1){
 			qemu_event_number = value;
-//			printf("luix0: read event: %d\n",value);
 		}else if (qemu_value_number == -1){
 			qemu_value_number = value;
-//			printf("luix0: read value: %d\n",value);
 		}
-	}else{
-		if (qemu_event_name_first_digit==1){
-//			printf("luix0: read char 1val: %02x\n", value);
+	}else{ //Reading name
+	*/	if (qemu_event_name_first_digit==1){
 			qemu_event_name[qemu_name_offset] = (char)value;	
 			qemu_event_name_first_digit=0;
 		}else{
-//			printf("luix0: read char 2val: %02x\n", value);
 			qemu_event_name[qemu_name_offset++] += (char)(value<<4);
-//			printf("\tread char: %c\n",qemu_event_name[qemu_name_offset-1]);
 			qemu_event_name_first_digit=1;
 		}
-	}
+//	}
 }
 
 static int print_first_scalar = 1;
@@ -276,6 +240,7 @@ static void vcpu_stop_trace(unsigned int cpu_index, void *udata){
 static int last_row = 1;
 static int last_vsetvl = 0;
 static int scalar_instr_since_vector=0;
+static int waiting_zero_stride = 0;
 static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 #ifdef TIMEDEBUG
 	uint64_t time1 = getmicros();
@@ -285,6 +250,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				int row;
 				uint64_t vl, vtype, sew, lmul;
 				double lmul_value;
+				int stride = 0;
 
 				if ( instr->type == VSETVL || instr->type == SCALAR){ //SETVL or individual SCALAR
 					row = 1;
@@ -303,8 +269,13 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 					lmul = vtype&0x7;
 					lmul_value = (lmul < 4) ? (double)(1<<lmul) : (lmul==7)? 0.5 : (lmul==6)? 0.25 : 0.125;
 #endif
+					if (instr->v_majortype==MEMORY && instr->v_minortype==STRIDE){
+						int src2 = (instr->instr32>>20)&0x1F;
+						stride = qemu_get_xreg(cpu,src2);
+					}
 				}
 
+				//  Logfile  //
 				if (TRACE_ENABLED){
 					if (PRINT_LOGFILE){
 						if (!PRINT_SCALAR && instr->type!=SCALAR && scalar_instr_since_vector>0){
@@ -321,6 +292,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 						}
 					}
 
+					//  PRV  //
 					if (PRINT_PRV){
 						char row_change = row != last_row?1:0;
 						if (row_change){
@@ -341,8 +313,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 														":"event_instruction":%d" //instr
 														":"event_vl":%lu"
 														":"event_sew":%lu"
-														":"event_lmul":%lu"
-														"\n",
+														":"event_lmul":%lu",
 														row,row,
 														qemu_trace_timestamp,
 														instr->PC,
@@ -354,33 +325,61 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 														vl,
 														sew,
 														lmul);
-
+							if (instr->type==VECTOR && instr->v_majortype==MEMORY && instr->v_minortype==STRIDE){
+								fprintf(FD_PRV,":"event_stride":%d",stride);
+								waiting_zero_stride = 1;
+							}else if (waiting_zero_stride){
+								fprintf(FD_PRV,":"event_stride":0");
+								waiting_zero_stride = 0;
+							}	
+							fprintf(FD_PRV,"\n");
 						}
 					}
 				}
-
 				last_row = row;
-
 				print_first_scalar = 0;
-
 				last_vsetvl = instr->type == VSETVL;
 
+
+				// Counters //
+				if (instr->type == VECTOR && instr->v_majortype == MEMORY){
+					int width = (instr->instr32 >> 12)&0x3; //3 instead of 7 to %4
+					sew = width;
+//					sew = width == 5 ? 1 : width == 6 ? 2 : width == 7 ? 3 : 0; //sew is eew for memory instr
+				}
+
 				if (instr->type == VECTOR) {
-								scalar_instr_since_vector=0;
-								++total_counters.vector_instr[sew];
-								total_counters.velem[sew] += vl; //(vl*lmul_value); TODO: fix this
-								if (instr->v_minortype == FP) ++total_counters.vfp_instr[sew];
-								else if (instr->v_minortype == INT) ++total_counters.vint_instr[sew];
-								else if (instr->v_minortype == UNIT) ++total_counters.vunit_instr[sew];
-								else if (instr->v_minortype == STRIDE) ++total_counters.vstride_instr[sew];
-								else if (instr->v_minortype == INDEX) ++total_counters.vidx_instr[sew];
-								else if (instr->v_majortype == MASK) ++total_counters.vmask_instr[sew];
+					scalar_instr_since_vector=0;
+					++total_counters.vector_instr[sew];
+					total_counters.velem[sew] += vl; //(vl*lmul_value); TODO: fix this
+					if (instr->v_minortype == FP) ++total_counters.vfp_instr[sew];
+					else if (instr->v_minortype == INT) ++total_counters.vint_instr[sew];
+					else if (instr->v_majortype == MASK) ++total_counters.vmask_instr[sew];
+					else if (instr->v_majortype == MEMORY){
+						total_counters.moved_bytes_v += vl*(1<<(sew));
+						if (instr->v_minortype == UNIT) ++total_counters.vunit_instr[sew];
+						else if (instr->v_minortype == STRIDE){
+							++total_counters.vstride_instr[sew];
+							total_counters.agg_strides[sew] += stride;
+						}
+						else if (instr->v_minortype == INDEX) ++total_counters.vidx_instr[sew];
+					}
 				}else if (instr->type == VSETVL){ //TODO: should this be scalar?
-								scalar_instr_since_vector=0;
-							 	++total_counters.vsetvl_instr;
+					scalar_instr_since_vector=0;
+					++total_counters.vsetvl_instr;
 				}else{
-								++scalar_instr_since_vector;
-								++total_counters.scalar_instr;
+					++scalar_instr_since_vector;
+					++total_counters.scalar_instr;
+
+					int opcode = (instr->instr32 & 0x3F);
+					if (opcode == 0b0000011 || opcode == 0b0100011 || opcode == 0b0000111 || opcode == 0b0100111){ 
+						int width = (instr->instr32 >> 12)&0x3; //3 instead of 7 to %4
+						total_counters.moved_bytes_s += (1<<(width));
+//B 0, 4
+//H 1, 5
+//W 2, 6
+//D 3
+					} 
 				}
 				++qemu_trace_timestamp;
 #ifdef TIMEDEBUG
@@ -389,10 +388,6 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				num_vcpu_exe++;
 #endif
 }
-
-
-
-
 
 /**
  * On translation block new translation
@@ -501,6 +496,14 @@ char is_qemu_stop_trace(uint32_t insn_opcode){
 				return (insn_opcode == 0xffc00013)?1:0; //li x0, -4
 }
 char is_qemu_name_event_value(uint32_t insn_opcode){
+//and 0020f033
+//	0000 0000 0010) (0000 1)(111) (0000 0)(011 0011)
+//and 0020e033
+//  0000 0000 0010 (0000 1)(110) (0000 0)(011 0011)
+	char is_andx0 = (((insn_opcode&0xFFF)==0x033) && (((insn_opcode>>12)&0x7) == 0x7))?1:0;
+	return is_andx0;
+}
+char is_qemu_name_char(uint32_t insn_opcode){
 	char is_luix0 = ((insn_opcode&0xFFF)==0x037)?1:0;
 	return is_luix0;
 }
@@ -509,7 +512,8 @@ char is_qemu_name_event_toggle(uint32_t insn_opcode){
 	return is_lix0;
 }
 char is_qemu_event(uint32_t insn_opcode){
-	char is_orx0 = ((insn_opcode&0xFFF)==0x033)?1:0;
+	//char is_orx0 = ((insn_opcode&0xFFF)==0x033)?1:0;
+	char is_orx0 = (((insn_opcode&0xFFF)==0x033) && (((insn_opcode>>12)&0x7) == 0x6))?1:0;
 	return is_orx0;
 }
 
@@ -574,6 +578,8 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_name_event_toggle, QEMU_PLUGIN_CB_NO_REGS, NULL);
 		}else if (is_qemu_name_event_value(insn_opcode)){
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_name_event_value, QEMU_PLUGIN_CB_NO_REGS, insn_opcode);
+		}else if (is_qemu_name_char(insn_opcode)){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_name_char, QEMU_PLUGIN_CB_NO_REGS, insn_opcode);
 		}else if (is_qemu_restart_trace(insn_opcode)){
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_restart_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
 		}else if (is_qemu_start_trace(insn_opcode)){
@@ -586,17 +592,11 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 				instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
 				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
 			}else{ //TODO: I need a callback for noprint
-				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, scalar_empty_struct);
+				instr_basic_data * insn_struct = (instr_basic_data *)malloc(sizeof(instr_basic_data));
+				insn_struct->type = SCALAR; insn_struct->instr32  = insn_opcode;
+				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct /*scalar_empty_struct*/);
 			}
 		}
-		/*
-		// Register callback on memory read or write
-		if (!PRINT_ADDR){
-		qemu_plugin_register_vcpu_mem_cb(insn, vcpu_mem,
-		QEMU_PLUGIN_CB_NO_REGS,
-		QEMU_PLUGIN_MEM_RW, NULL);
-		}
-		 */
 	}
 #ifdef TIMEDEBUG
 	uint64_t time2 = getmicros();
@@ -619,23 +619,13 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 		if (PRINT_CSV){
 			print_csv(FD_CSV);
 		}
+		
+		free_regions();
 #ifdef TIMEDEBUG
 		printf("Cycles in Translation: %.4f %d times, %lu (%.2f %%)\n", (double)time_trans/num_trans, num_trans, time_trans, (double)time_trans/(time_trans+time_vcpu_exe+time_vcpu_control));
 		printf("Cycles in VCPU_exe: %.4f %d times, %lu (%.2f %%)\n", (double)time_vcpu_exe/num_vcpu_exe, num_vcpu_exe, time_vcpu_exe, (double)time_vcpu_exe/(time_trans+time_vcpu_exe+time_vcpu_control));
 		printf("Cycles in VCPU_event: %.4f %d times, %lu (%.2f %%)\n", (double)time_vcpu_control/num_vcpu_control, num_vcpu_control, time_vcpu_control, (double)time_vcpu_control/(time_trans+time_vcpu_exe+time_vcpu_control));
 #endif
-
-    guint i;
-    GString *s;
-		if (PRINT_LOGFILE){
-    for (i = 0; i < last_exec->len; i++) {
-        s = g_array_index(last_exec, GString *, i);
-        if (s->str) {
-            qemu_plugin_outs(s->str);
-            qemu_plugin_outs("\n");
-        }
-    }
-		}
 
 		if (PRINT_PRV){
 			events_and_values_to_pcf(FD_PCF);
@@ -655,10 +645,6 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
                                            const qemu_info_t *info, int argc,
                                            char **argv)
 {
-    /*
-     * Initialize dynamic array to cache vCPU instruction. In user mode
-     * we don't know the size before emulation.
-     */
 	for(int i=0; i<argc; ++i){
 			if (contains_string(argv[i], "PRINT_SCALAR")) PRINT_SCALAR = 1;
 			else if (contains_string(argv[i], "PRINT_ADDR")) PRINT_ADDR = 1;
@@ -667,13 +653,16 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			else if (contains_string(argv[i], "PRINT_REPORT")) PRINT_REPORT = 1;
 			else if (contains_string(argv[i], "PRINT_CSV")) PRINT_CSV = 1;
 			else if (contains_string(argv[i], "PRV_NAME")){
-							++i;
-							setup_paraver_trace(argv[i]);
+							//++i;
+							int j; for(j=0; j<strlen(argv[i]); ++j)	if (argv[i][j] == '=') break;
+							setup_paraver_trace(&argv[i][j+1]);
+							//setup_paraver_trace(argv[i]);
 							fprintf(FD_PRV,"#Paraver (00/00/0000 at 00:00):1_ns:1(2):1:1:(2:1)\n");
 			}
 			else if (contains_string(argv[i], "CSV_NAME")){
-				++i;
-				FD_CSV = fopen(argv[i], "w+");
+				//++i;
+				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				FD_CSV = fopen(&argv[i][j+1], "w+");
 			}
 	}
 #if 0
@@ -701,8 +690,6 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 	}
 	add_event(-1,"Global");
 	qemu_eventandcounters(-1, 1); //Start global event
-
-    last_exec = g_array_new(FALSE, FALSE, sizeof(GString *));
 
     /* Register translation block and exit callbacks */
     qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb_trans);
