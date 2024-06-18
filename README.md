@@ -1,6 +1,6 @@
-# QEMU-SDV
+# RAVE
 
-
+The RISC-V Analyzer of Vector Executions (RAVE) is a QEMU plugin that simulates the EPAC VEC tile, allowing users to run on binaries compiled for the rvv1.0 and rvv0.7 RISC-V extensions.
 
 # Installation
 
@@ -28,12 +28,54 @@ Finally, install the RISC-V toolchain to provide a sysroot to your QEMU Virtual 
 ./install_toolchain.sh 
 ```
 
+# Compiling RVV binaries
+
+You may need a vectorizing compiler to generate RVV binaries.
+
+The LLVM-based cross-compiler used on the EPI project is avaiable online, for [rvv1.0](https://ssh.hca.bsc.es/epi/ftp/LATEST_llvm-EPI-development-toolchain-cross_IS_2024-06-17-1541) and [rvv0.7](https://ssh.hca.bsc.es/epi/ftp/LATEST_llvm-EPI-0.7-release-toolchain-cross_IS_2022-10-10-1012).
+
 
 # Running RISC-V binaries
 
 Two scripts are provided to run your RISC-V binaries, `./build/EPI/bin/rave` and `./build/EPI-0.7/bin/rave` (use them accordingly to the RVV specification used in your code).
 
-These scripts are also controled by the following environment variables:
+For example, you can run a rvv0.7 binary like this:
+```bash
+./build/EPI-0.7/bin/rave ./yourcode.x arguments
+```
+
+# Analyzing and Tracing RAVE simulations
+
+Besides simulating the binary, RAVE can be used to instrument, trace, and analyze your code.
+
+## Instrumenting code
+
+You can include the header `include/rave_user_events.h` in your C code to add instrumentation, specifically these functions:
+
+ - **rave_name_event(int x, char \* name)**: Assigns `name` to event `x`.
+ - **rave_name_value(int x, int y, char \* name)**: Assigns `name` to value `y` of event `x`.
+ - **rave_restart_trace()**: Erase all traced metrics and counters up to this point, and start tracing again.
+ - **rave_start_trace()**: After this call, record metrics and generate trace files.
+ - **rave_stop_trace()**: After this call, do not record metrics or generate trace files.
+ - **rave_event_and_value(x,y)**: Add a tuple of event=`x` and value=`y` to the trace, used to separate code regions
+
+This file can be included in your compilation after loading the rave module by using the `RAVE_INCLUDE` environment variable:
+
+```bash
+clang -O3 -mepi -I$(RAVE_INCLUDE) source.c -o source.x
+```
+
+We also provide an example code instrumented with rave on `./test/example.c`
+
+You can compile it like this:
+
+```bash
+cd test
+make example
+```
+
+You can control the RAVE simulation using the following environment variables:
+
  - **RAVE_PRINT_SCALAR**: If set to \"1\", adds tracing information for each scalar instruction (trace gets a lot bigger). Otherwise, scalar instructions are treated as bursts. (default: 0)
  - **RAVE_PRINT_LOGFILE**: If set to \"1\", a logfile is generated with all the executed instructions. (default: 0).
  - **RAVE_LOGFILE_NAME**: Sets the name of the generated logfile (default: qemulog.log). Additionally, automatically sets RAVE_PRINT_LOGFILE to 1.
@@ -44,12 +86,54 @@ These scripts are also controled by the following environment variables:
  - **RAVE_PRINT_CSV**: If set to "1", the tracer will print a CSV with the hardware counter summary for each executed code region. (default: 0).
  - **RAVE_CSV_NAME**: Sets the name of the generated csv trace (default: qemu_summary.csv). Additionally, automatically sets RAVE_PRINT_CSV to 1. 
 
-For example, you can run your RVV0_7 code while generating a report and a prv trace like this:
+For example, you can run your RVV0_7 code while generating a report and a csv trace like this:
 
 ```bash
-RAVE_PRV_NAME=test_trace RAVE_PRINT_REPORT=1 ./build/EPI-0.7/bin/rave ./yourcode.x arguments
+RAVE_CSV_NAME=example_csv RAVE_PRINT_REPORT=1 ./build/EPI-0.7/bin/rave ./test/example.x
+```
+
+Regions of code within calls to `rave_event_and_value(x,y)` report various instruction metrics:
+
+```
+...
+Region #3: Event 1000 (code_region), Value 4 (arith_vec)
+	Moved bytes (Total): 82358
+		Moved bytes (scalar): 22 (0.03 %)
+		Moved bytes (vector): 82336 (99.97 %)
+	tot_instr: 191
+		scalar_instr: 92 (48.17 %)
+		vsetvl_instr: 11 (5.76 %)
+		SEW 8 vector_instr: 0 (0.00 %)
+		SEW 16 vector_instr: 0 (0.00 %)
+		SEW 32 vector_instr: 0 (0.00 %)
+		SEW 64 vector_instr: 88 (46.07 %)
+			avg_VL: 233.91 elements
+			Arith: 44 (50.00 %)
+				FP: 44 (100.00 %)
+				INT: 0 (0.00 %)
+			Mem: 44 (50.00 %)
+				unit: 44 (100.00 %)
+				strided: 0 (0.00 %)
+				indexed: 0 (0.00 %)
+			Mask: 0 (0.00 %)
+			Other: 0 (0.00 %)
+...
+```
+
+## Generating Paraver traces
+
+RAVE also allows to generate PRV traces that can be visualized in Paraver like this:
+
+```bash
+RAVE_PRV_NAME=example_prv ./build/EPI-0.7/bin/rave ./test/example.x
+```
+
+This will generate a triplet of files called `example_prv.prv`, `example_prv.pcf`, and `example_prv.row`.
+You can copy these files back to your computer and open the trace in paraver:
+```bash
+wxparaver example_prv.prv
 ```
 
 You can find Paraver configuration files in the `CFGs` folder. We recommend using value 1000 to instrument your code, so all CFGs work as expected.
 
-In folder `test` you can find a code example instrumented with QEMU.
+

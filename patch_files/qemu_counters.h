@@ -255,7 +255,8 @@ void print_region_csv(FILE * fd, int nregion, region_stats* curr){
 		fprintf(fd,"region,event_id,event_name,value_id,value_name,tot_instr,scalar_instr,vsetvl_instr,vec_instr");
 		for(int s=0; s<SEWS; ++s){
 			fprintf(fd,",vector_sew%d_instr,vector_sew%d_elems,vector_sew%d_arith,vector_sew%d_fp,vector_sew%d_int,vector_sew%d_mem,vector_sew%d_memunit,vector_sew%d_memstride,vector_sew%d_memidx,vector_sew%d_mask,vector_sew%d_other,vector_sew%d_avg_stride",1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3), 1<<(s+3));
-		}fprintf(fd,"\n");
+		}
+		fprintf(fd,"moved_bytes_s,moved_bytes_v\n");
 		first_csv_row = 0;
 	}
 	//Print Region header
@@ -280,7 +281,7 @@ void print_region_csv(FILE * fd, int nregion, region_stats* curr){
 		double strides = (counters->vstride_instr[s] > 0)? counters->agg_strides[s] / counters->vstride_instr[s] : 0;
 		fprintf(fd,",%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", counters->vector_instr[s], counters->velem[s], totvarith, counters->vfp_instr[s], counters->vint_instr[s], totvmem, counters->vunit_instr[s], counters->vstride_instr[s], counters->vidx_instr[s], counters->vmask_instr[s], totvother,strides);
 	}
-	fprintf(fd,"\n");
+	fprintf(fd,",%.0f,%.0f\n", counters->moved_bytes_s, counters->moved_bytes_v);
 }
 
 void print_report(){

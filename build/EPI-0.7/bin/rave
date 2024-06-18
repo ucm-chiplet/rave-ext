@@ -52,8 +52,8 @@ fi
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 #SYSROOT:
-QEMU_SYSROOT=${SCRIPT_DIR}/../../riscv-glibc-toolchain/sysroot #DEFAULT SYSROOT
-#QEMU_SYSROOT=/apps/riscv/fpga-sdv/jammy-1/ #USER-SPECIFIED SYSROOT
+#QEMU_SYSROOT=${SCRIPT_DIR}/../../riscv-glibc-toolchain/sysroot #DEFAULT SYSROOT
+QEMU_SYSROOT=/apps/riscv/fpga-sdv/jammy-1/ #USER-SPECIFIED SYSROOT
 
 FOLDER=qemu-0_7
 RAVE_PLUGIN=${SCRIPT_DIR}/../lib

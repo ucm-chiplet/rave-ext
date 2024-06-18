@@ -1,5 +1,5 @@
 
-#define qemu_write_hex(x)\
+#define rave_write_hex(x)\
 			switch (x){\
 							case 0: asm volatile("lui x0, 0\n"); break;\
 							case 1: asm volatile("lui x0, 1\n"); break;\
@@ -21,35 +21,35 @@
 
 #include <stdio.h>
 
-#define  qemu_name(name)\
+#define  rave_name(name)\
 {\
 		asm volatile("li x0, -1\n");\
 		for(int i=0; name[i]!='\0'; ++i){\
 			int y=(int)name[i];\
 			for(int tmp=y; tmp>0; tmp>>=4){\
-				qemu_write_hex(tmp&0x0f);\
+				rave_write_hex(tmp&0x0f);\
 			}\
 		}\
 		asm volatile("li x0, -1\n");\
 }
 
 
-#define qemu_name_event(x,name)\
+#define rave_name_event(x,name)\
 {\
 	/*asm volatile("lui x0, %0\n"::"i"(x));*/\
 	asm volatile("and x0, %0, %1\n"::"r"(x), "r"(-1));\
-	qemu_name(name);\
+	rave_name(name);\
 }
-#define qemu_name_value(x,y,name)\
+#define rave_name_value(x,y,name)\
 {\
 	/*asm volatile("lui x0, %0\n"::"i"(x));\
 	asm volatile("lui x0, %0\n"::"i"(y));*/\
 	asm volatile("and x0, %0, %1\n"::"r"(x), "r"(y));\
-	qemu_name(name);\
+	rave_name(name);\
 }
 
-#define qemu_restart_trace() asm volatile("li x0, -2\n");
-#define qemu_start_trace() asm volatile("li x0, -3\n");
-#define qemu_stop_trace() asm volatile("li x0, -4\n");
+#define rave_restart_trace() asm volatile("li x0, -2\n");
+#define rave_start_trace() asm volatile("li x0, -3\n");
+#define rave_stop_trace() asm volatile("li x0, -4\n");
 
-#define qemu_event_and_value(x,y) asm volatile("or x0, %0, %1\n"::"r"(x),"r"(y));
+#define rave_event_and_value(x,y) asm volatile("or x0, %0, %1\n"::"r"(x),"r"(y));
