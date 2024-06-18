@@ -1,3 +1,5 @@
+[[_TOC_]]
+
 # RAVE
 
 The RISC-V Analyzer of Vector Executions (RAVE) is a QEMU plugin that simulates the EPAC VEC tile, allowing users to run on binaries compiled for the rvv1.0 and rvv0.7 RISC-V extensions.
@@ -44,6 +46,12 @@ For example, you can run a rvv0.7 binary like this:
 ./build/EPI-0.7/bin/rave ./yourcode.x arguments
 ```
 
+If your binary depends on dynamic libraries found in the environment variable `LD_LIBRARY_PATH`, you can either compile it statically or prepend your simulation with the library path:
+
+```bash
+LIBRARY_PATH=/path/to/lib:$LD_LIBRARY_PATH ./build/EPI-0.7/bin/rave ./yourcode.x arguments 
+```
+
 # Analyzing and Tracing RAVE simulations
 
 Besides simulating the binary, RAVE can be used to instrument, trace, and analyze your code.
@@ -73,6 +81,8 @@ You can compile it like this:
 cd test
 make example
 ```
+
+## Controlling RAVE
 
 You can control the RAVE simulation using the following environment variables:
 
