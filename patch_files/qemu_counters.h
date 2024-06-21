@@ -212,8 +212,10 @@ void print_region_human(int nregion, region_stats* curr){
 
 	//Compute total instructions (sum of SEW!)
 	qemu_counters * counters = &curr->counters;
-	double totinstr = counters->scalar_instr + counters->vsetvl_instr;
-	for(int s=0; s<SEWS; ++s) totinstr += counters->vector_instr[s];
+	double scalinstr = counters->scalar_instr + counters->vsetvl_instr;
+	double vecinstr = 0;
+	for(int s=0; s<SEWS; ++s) vecinstr += counters->vector_instr[s];
+	double totinstr = scalinstr + vecinstr; 
 
 	//Others...
 	double totbytes = counters->moved_bytes_s + counters->moved_bytes_v;
@@ -225,25 +227,26 @@ void print_region_human(int nregion, region_stats* curr){
 	printf("\t" "tot_instr: %.0f\n", totinstr);
 	printf("\t\t"   "scalar_instr: %.0f (%.2f %%)\n", counters->scalar_instr, PERCENTAGE(counters->scalar_instr, totinstr)); 
 	printf("\t\t"   "vsetvl_instr: %.0f (%.2f %%)\n", counters->vsetvl_instr, PERCENTAGE(counters->vsetvl_instr, totinstr));
+	printf("\t\t"   "vector_instr: %.0f (%.2f %%)\n", counters->scalar_instr, PERCENTAGE(vecinstr, totinstr)); 
 
 	//Print SEW-specific counters (vec)
 	for(int s=0; s<SEWS; ++s){
-		printf("\t\t" "SEW %d vector_instr: %.0f (%.2f %%)\n", 1<<(s+3),counters->vector_instr[s], PERCENTAGE(counters->vector_instr[s], totinstr));
+		printf("\t\t\t" "SEW %d vector_instr: %.0f (%.2f %%)\n", 1<<(s+3),counters->vector_instr[s], PERCENTAGE(counters->vector_instr[s], vecinstr));
 		if (counters->vector_instr[s]>0){
 			double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s];
 			double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
 			double  totvother	= counters->vector_instr[s] - totvmem - totvarith - counters->vmask_instr[s];
-			printf("\t\t\t"  "avg_VL: %.2f elements\n",counters->velem[s] / counters->vector_instr[s]);
-			printf("\t\t\t"  "Arith: %.0f (%.2f %%)\n",totvarith, PERCENTAGE(totvarith, counters->vector_instr[s]));
-			printf("\t\t\t\t"   "FP: %.0f (%.2f %%)\n",counters->vfp_instr[s], PERCENTAGE(counters->vfp_instr[s], totvarith));
-			printf("\t\t\t\t"   "INT: %.0f (%.2f %%)\n", counters->vint_instr[s], PERCENTAGE(counters->vint_instr[s], totvarith));
-			printf("\t\t\t"  "Mem: %.0f (%.2f %%)\n", totvmem, PERCENTAGE(totvmem, counters->vector_instr[s]));
-			printf("\t\t\t\t"   "unit: %.0f (%.2f %%)\n", counters->vunit_instr[s], PERCENTAGE(counters->vunit_instr[s], totvmem));
-			printf("\t\t\t\t"   "strided: %.0f (%.2f %%)\n", counters->vstride_instr[s], PERCENTAGE(counters->vstride_instr[s], totvmem));
-			if (counters->vstride_instr[s] > 0) printf("\t\t\t\t\t"		"Avg. Stride (B): %.2f\n", counters->agg_strides[s] / counters->vstride_instr[s]);
-			printf("\t\t\t\t"   "indexed: %.0f (%.2f %%)\n", counters->vidx_instr[s], PERCENTAGE(counters->vidx_instr[s], totvmem));
-			printf("\t\t\t"  "Mask: %.0f (%.2f %%)\n", counters->vmask_instr[s], PERCENTAGE(counters->vmask_instr[s], counters->vector_instr[s]));
-			printf("\t\t\t"  "Other: %.0f (%.2f %%)\n", totvother, PERCENTAGE(totvother, counters->vector_instr[s]));
+			printf("\t\t\t\t"  "avg_VL: %.2f elements\n",counters->velem[s] / counters->vector_instr[s]);
+			printf("\t\t\t\t"  "Arith: %.0f (%.2f %%)\n",totvarith, PERCENTAGE(totvarith, counters->vector_instr[s]));
+			printf("\t\t\t\t\t"   "FP: %.0f (%.2f %%)\n",counters->vfp_instr[s], PERCENTAGE(counters->vfp_instr[s], totvarith));
+			printf("\t\t\t\t\t"   "INT: %.0f (%.2f %%)\n", counters->vint_instr[s], PERCENTAGE(counters->vint_instr[s], totvarith));
+			printf("\t\t\t\t"  "Mem: %.0f (%.2f %%)\n", totvmem, PERCENTAGE(totvmem, counters->vector_instr[s]));
+			printf("\t\t\t\t\t"   "unit: %.0f (%.2f %%)\n", counters->vunit_instr[s], PERCENTAGE(counters->vunit_instr[s], totvmem));
+			printf("\t\t\t\t\t"   "strided: %.0f (%.2f %%)\n", counters->vstride_instr[s], PERCENTAGE(counters->vstride_instr[s], totvmem));
+			if (counters->vstride_instr[s] > 0) printf("\t\t\t\t\t\t"		"Avg. Stride (B): %.2f\n", counters->agg_strides[s] / counters->vstride_instr[s]);
+			printf("\t\t\t\t\t"   "indexed: %.0f (%.2f %%)\n", counters->vidx_instr[s], PERCENTAGE(counters->vidx_instr[s], totvmem));
+			printf("\t\t\t\t"  "Mask: %.0f (%.2f %%)\n", counters->vmask_instr[s], PERCENTAGE(counters->vmask_instr[s], counters->vector_instr[s]));
+			printf("\t\t\t\t"  "Other: %.0f (%.2f %%)\n", totvother, PERCENTAGE(totvother, counters->vector_instr[s]));
 		}
 	}
 }
@@ -286,7 +289,7 @@ void print_region_csv(FILE * fd, int nregion, region_stats* curr){
 
 void print_report(){
 	region_stats * curr = global_region;
-	printf("-------------------"); printf(" SUMMARY "); printf("-------------------"); printf("\n");
+	printf("-------------------"); printf(" REPORT "); printf("-------------------"); printf("\n");
 	int nregion=0;
 	while (curr!=NULL){
 					//if (curr->prev!=NULL) free(curr->prev);

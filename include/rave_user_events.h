@@ -21,7 +21,7 @@
 
 #include <stdio.h>
 
-#define  rave_name(name)\
+//#define  rave_name(name)\
 {\
 		asm volatile("li x0, -1\n");\
 		for(int i=0; name[i]!='\0'; ++i){\
@@ -31,6 +31,16 @@
 			}\
 		}\
 		asm volatile("li x0, -1\n");\
+}
+static void rave_name(char * name){
+		asm volatile("li x0, -1\n");
+		for(int i=0; name[i]!='\0'; ++i){
+			int y=(int)name[i];
+			for(int tmp=y; tmp>0; tmp>>=4){
+				rave_write_hex(tmp&0x0f);
+			}
+		}
+		asm volatile("li x0, -1\n");
 }
 
 

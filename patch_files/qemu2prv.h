@@ -139,8 +139,9 @@ void open_file(FILE **fd, char * name){
 #endif
 void setup_paraver_trace(char * name){
 	int len = strlen(name)+4;
-	char * buff = (char*)malloc(len);
+	char * buff = (char*)malloc(len+1);
 	strcpy(buff, name);
+	buff[len]='\0';
 	buff[len-4]='.'; buff[len-3]='p'; buff[len-2]='r'; buff[len-1]='v';
 	open_file(&FD_PRV, buff);
 	buff[len-4]='.'; buff[len-3]='p'; buff[len-2]='c'; buff[len-1]='f';

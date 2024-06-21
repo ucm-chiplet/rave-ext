@@ -301,7 +301,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 						//Scalar instructions should always be printed when: row changed(1), type changed (2), is first scalar in the trace (3)
 						if (instr->type==SCALAR && !PRINT_SCALAR){
 							if (row_change || last_vsetvl || print_first_scalar)						
-								fprintf(FD_PRV,"2:%d:1:1:%d:%llu:"event_instruction":%d\n", row,row, qemu_trace_timestamp, instr->paraver_code);
+								fprintf(FD_PRV,"2:%d:1:1:%d:%llu:"event_instruction":%d\n", row,row, qemu_trace_timestamp, 1000);
 						}else{ //PRINT_SCALAR || instr!=SCALAR
 							fprintf(FD_PRV,"2:%d:1:1:%d"
 														":%llu"    //timestamp
