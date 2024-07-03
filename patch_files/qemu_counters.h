@@ -227,7 +227,7 @@ void print_region_human(int nregion, region_stats* curr){
 	printf("\t" "tot_instr: %.0f\n", totinstr);
 	printf("\t\t"   "scalar_instr: %.0f (%.2f %%)\n", counters->scalar_instr, PERCENTAGE(counters->scalar_instr, totinstr)); 
 	printf("\t\t"   "vsetvl_instr: %.0f (%.2f %%)\n", counters->vsetvl_instr, PERCENTAGE(counters->vsetvl_instr, totinstr));
-	printf("\t\t"   "vector_instr: %.0f (%.2f %%)\n", counters->scalar_instr, PERCENTAGE(vecinstr, totinstr)); 
+	printf("\t\t"   "vector_instr: %.0f (%.2f %%)\n", vecinstr, PERCENTAGE(vecinstr, totinstr)); 
 
 	//Print SEW-specific counters (vec)
 	for(int s=0; s<SEWS; ++s){

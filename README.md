@@ -144,6 +144,25 @@ You can copy these files back to your computer and open the trace in paraver:
 wxparaver example_prv.prv
 ```
 
-You can find Paraver configuration files in the `CFGs` folder. We recommend using value 1000 to instrument your code, so all CFGs work as expected.
 
 
+You can find Paraver configuration files in the `CFGs` folder:
+
+ - **Instruction_timeline.cfg:** Opens a sequence of simulated instructions, with one row for scalar and another for vector instructions. Scalar instructions are not individually separated unless "RAVE_PRINT_SCALAR" was set.
+
+ - **Bytes_per_vector.cfg:** Opens the sequence/evolution of the vector length (in Bytes) per instruction.
+
+ - **table_instruction_type_count.cfg:** Opens a table with the number of simulated instructions per each type.
+
+ - **table_average_bytes_per_instruction_type.cfg:** Opens a table with the average vector length (in Bytes) per each instruction type.
+
+In the subfolder `/apps/x86/rave/share/CFGs/per_phase_cfgs` you will find configuration files that can be used when your code has been instrumented with event 1000:
+ - **event_1000_code_region.cfg:** Opens the sequence of instrumented code regions, with their width equal to the number of simulated instructions.
+
+ - **table_vector_mix_per_phase.cfg:** Opens two tables, one with the absolute number of scalar and vector instructions per phase, and another with their relative numbers (what we usually call Vector Mix).
+
+ - **table_instruction_type_count_per_phase.cfg:** Opens a table that contains the number of simulated instructions per each type. The table can be configured (3D.Plane) to select which instrumented code phase is analyzed.
+
+ - **table_average_vl_per_phase.cfg:** Opens a table with the average vector length of each instrumented code phase.
+
+ - **table_average_vl_per_instruction_per_phase.cfg:** Opens a table that contains the averaged vector length per each simulated instruction type. The table can be configured (3D.Plane) to select which instrumented code phase is analyzed.

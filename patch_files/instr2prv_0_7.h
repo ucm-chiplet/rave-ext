@@ -200,17 +200,17 @@ int instr2prv(char * i){
 	if (startswith(i, "vmford."))        return 328; //Only 0.7
 	
 	//Memory
-	if (startswith(i, "vle."))           return 400;//0.7 
-	if (startswith(i, "vlse."))          return 401;// 0.7
-	if (startswith(i, "vlxe."))          return 402;//0.7
+	if (startswith(i, "vle."))           return 409;//0.7  //0
+	if (startswith(i, "vlse."))          return 406;//0.7  //1
+	if (startswith(i, "vlxe."))          return 400;//0.7  //2
 
 	if (startswith(i, "vlb."))           return 403;// 0.7
 	if (startswith(i, "vlbu."))          return 404;// 0.7
 	if (startswith(i, "vlh."))           return 405;// 0.7
-	if (startswith(i, "vlhu."))          return 406;// 0.7
+	if (startswith(i, "vlhu."))          return 401;// 0.7
 	if (startswith(i, "vlw."))           return 407;// 0.7
 	if (startswith(i, "vlwu."))          return 408;// 0.7
-	if (startswith(i, "vlsb."))          return 409;// 0.7
+	if (startswith(i, "vlsb."))          return 402;// 0.7
 	if (startswith(i, "vlsbu."))         return 410;// 0.7
 	if (startswith(i, "vlsh."))          return 411;// 0.7
 	if (startswith(i, "vlshu."))         return 412;// 0.7
@@ -400,21 +400,21 @@ int instr2prv(char * i){
 	if (startswith(i, "vlxseg8w."))      return 594; 
 	if (startswith(i, "vlxseg8wu."))     return 595; 
 
-	if (startswith(i, "vse."))           return 800;//0.7 
-	if (startswith(i, "vsse."))          return 801;// 0.7
-	if (startswith(i, "vsxe."))          return 802;//0.7
-	if (startswith(i, "vsuxe."))         return 803; //0.7
+	if (startswith(i, "vse."))           return 813;//0.7 //0
+	if (startswith(i, "vsse."))          return 804;// 0.7 //1
+	if (startswith(i, "vsxe."))          return 808;//0.7 //2
+	if (startswith(i, "vsuxe."))         return 800; //0.7 //3
 
-	if (startswith(i, "vsb."))           return 804;// 0.7
+	if (startswith(i, "vsb."))           return 802;// 0.7
 	if (startswith(i, "vsh."))           return 805;// 0.7
 	if (startswith(i, "vsw."))           return 806;// 0.7
 	if (startswith(i, "vssb."))          return 807;// 0.7
-	if (startswith(i, "vssh."))          return 808;// 0.7
+	if (startswith(i, "vssh."))          return 803;// 0.7
 	if (startswith(i, "vssw."))          return 809;// 0.7
 	if (startswith(i, "vsxb."))          return 810;// 0.7
 	if (startswith(i, "vsxh."))          return 811;// 0.7
 	if (startswith(i, "vsxw."))          return 812;// 0.7
-	if (startswith(i, "vsuxb."))         return 813;// 0.7
+	if (startswith(i, "vsuxb."))         return 801;// 0.7
 	if (startswith(i, "vsuxh."))         return 814;// 0.7
 	if (startswith(i, "vsuxw."))         return 815;// 0.7
 
