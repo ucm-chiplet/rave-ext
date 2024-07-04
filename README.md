@@ -73,13 +73,20 @@ This file can be included in your compilation after loading the rave module by u
 clang -O3 -mepi -I$(RAVE_INCLUDE) source.c -o source.x
 ```
 
-We also provide an example code instrumented with rave on `./test/example.c`
+We also provide an example code instrumented with rave on `./test/example.c` (and `./test/example.f90` for Fortran).
 
-You can compile it like this:
+You can compile the C version like this:
 
 ```bash
 cd test
 make example
+```
+
+And the Fortran version like this:
+
+```bash
+cd test
+make example-f
 ```
 
 ## Controlling RAVE

@@ -55,5 +55,5 @@ int main(){
 		if (A[i] > 0.5) C[i] += A[i]*0.2;
 	}
 	rave_event_and_value(1000,0)
-	volatile double noopt = A[0];
+	volatile double noopt = C[0];
 }

@@ -2,11 +2,22 @@ module rave_module
   use iso_c_binding
   implicit none
   interface
-    subroutine rave_event(event, val) bind(c, name="rave_event_f")
+    subroutine rave_event_and_value(event, val) bind(c, name="rave_event_and_value_f")
        use iso_c_binding
        integer(kind=c_int), value :: event, val
-    end subroutine rave_event 
+    end subroutine rave_event_and_value
 
+    subroutine rave_restart_trace() bind(c, name="rave_restart_trace_f")
+       use iso_c_binding
+    end subroutine rave_restart_trace
+
+    subroutine rave_start_trace() bind(c, name="rave_start_trace_f")
+       use iso_c_binding
+    end subroutine rave_start_trace
+
+    subroutine rave_stop_trace() bind(c, name="rave_stop_trace_f")
+       use iso_c_binding
+    end subroutine rave_stop_trace
     
     subroutine rave_name_event_2(event, nam) bind(c, name="rave_name_event_f")
        use iso_c_binding
@@ -28,6 +39,7 @@ contains
     integer(kind=c_int), value :: event
     character(kind=c_char, len=*), target :: nam
     type(c_ptr) :: cstr_ptr
+    nam(len(nam)+1:len(nam)+1)=C_NULL_CHAR
     cstr_ptr = c_loc(nam)
     call rave_name_event_2(event,cstr_ptr)
   end subroutine rave_name_event
@@ -36,6 +48,7 @@ contains
     integer(kind=c_int), value :: event, val
     character(kind=c_char, len=*), target :: nam
     type(c_ptr) :: cstr_ptr
+    nam(len(nam)+1:len(nam)+1)=C_NULL_CHAR
     cstr_ptr = c_loc(nam)
     call rave_name_value_2(event,val,cstr_ptr)
   end subroutine rave_name_value
