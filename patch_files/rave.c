@@ -121,6 +121,8 @@ uint64_t qemu_get_xreg(uint8_t * cpu, int reg){
 
 void *qemu_get_cpu(int index);
 
+static int QEMU_REGION_EVENT = 1000;
+
 static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 #ifdef TIMEDEBUG
 	uint64_t time1 = getmicros();
@@ -131,6 +133,7 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 	int src1 = (insn_opcode>>15)&0x1F;
 	int src2 = (insn_opcode>>20)&0x1F;
 	int qemu_trace_event = qemu_get_xreg(cpu,src1);
+	if (qemu_trace_event != QEMU_REGION_EVENT) return;
 	int qemu_trace_value = qemu_get_xreg(cpu,src2);
 
 

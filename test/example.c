@@ -3,6 +3,7 @@
 int main(){
 
 	int N = 256*10 + 13;
+	rave_name_event(1001,"flops");
 	rave_name_event(1000,"code_region");
 	rave_name_value(1000,0,"End");
 	rave_name_value(1000,1,"ini_A");
@@ -22,7 +23,6 @@ int main(){
 		A[i] = i;
 	}
 	rave_event_and_value(1000,0)
-
 
 	rave_event_and_value(1000,2)
 	#pragma clang loop vectorize(enable)
