@@ -91,17 +91,20 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
  */
 static uint64_t qemu_trace_timestamp=0;
 
-//target/riscv/cpu.h (0.7 :114 (def) :277 (env) ||||| 1.0 :143 (def) :493 (env)
-//include/hw/core/cpu.h (0.7 :307 (def) ||||| 1.0 : 323 (def)
-//accel/tcg/plugin-gen.c ( 175 (caller) )
+//include/hw/core/cpu.h (0.7 :307 (def) ||||| 1.0 : 323 (def CPUState) //Util for knowing OFFSET REGS
 #define sizeof_ulong sizeof(uint64_t)
 
+//qemu_get_cpu returns an ArchCPU, which has a CPURISCVState (typdef of CPUArchState), 
+//ArchCPU is defined in target/riscv/cpu.h (l:277 for 0.7, l:444 for 1.0)
+//CPUArchState is defined in target/riscv/cpu.h (l:114 for 0.7, l:161 for 1.0)
+//In accel/tcg/plugin-gen.c (l:175 for 0.7, l:165 for 1.0) is a good place to put : printf("Offset is %ld\n",offsetof(ArchCPU, env));
 #ifdef EPI_07
 #define OFFSET_CPUState (33552) //For 0.7
 #define OFFSET_REGS (sizeof_ulong*32 + sizeof(uint64_t)*32 + sizeof(uint64_t)*(32*RV_VLEN_MAX/64))
 #else
-#define OFFSET_CPUState (832) //For 1.0
-#define OFFSET_REGS (sizeof_ulong*32*2 + sizeof(uint64_t)*32 + sizeof(uint64_t)*(32*RV_VLEN_MAX/64))
+//#define OFFSET_CPUState (832) //For 1.0
+#define OFFSET_CPUState (10176) //For 1.0
+#define OFFSET_REGS (sizeof_ulong*32*2 + sizeof(uint64_t)*(32*RV_VLEN_MAX/64))
 #endif
 
 #define RV_VLEN_MAX (256*64)
@@ -123,6 +126,7 @@ void *qemu_get_cpu(int index);
 
 static int QEMU_REGION_EVENT = 1000;
 
+
 static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 #ifdef TIMEDEBUG
 	uint64_t time1 = getmicros();
@@ -132,6 +136,7 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 	uint8_t *cpu = qemu_get_cpu(cpu_index);
 	int src1 = (insn_opcode>>15)&0x1F;
 	int src2 = (insn_opcode>>20)&0x1F;
+
 	int qemu_trace_event = qemu_get_xreg(cpu,src1);
 	if (qemu_trace_event != QEMU_REGION_EVENT) return;
 	int qemu_trace_value = qemu_get_xreg(cpu,src2);

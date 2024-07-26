@@ -58,7 +58,11 @@ sed -i 's/^\#define\ RV_VLEN_MAX\ .*/\#define\ RV_VLEN_MAX\ \(256\*64\)/g' ./tar
 	cp ../patch_files/qemu-plugins.symbols plugins/.
 #fi
 
-sed -i 's/\(translator_loop.*\)max_insns\(.*\)/\11\2/g' ./target/riscv/translate.c
+if [[ $EXT" == 1_0" ]]; then
+sed -i 's/\(^translator_loop.*\)max_insns\(.*\)/int tmp=1; \1\&tmp \2/g' ./target/riscv/translate.c
+else
+sed -i 's/\(translator_loop.*\)max_insns\(.*\)/\11 \2/g' ./target/riscv/translate.c
+fi
 
 echo "Building QEMU... (This might take a while)"
 make -j $NUM_JOBS &>> ${LOGFILE}
