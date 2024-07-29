@@ -156,12 +156,15 @@ void instr_set_type(uint32_t insn_opcode, enum v_major_type *majortype, enum v_m
 
 instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 
-
 	char * instr_fields[8]; //8 is more than enough
 
 	//Look for fields in char* instr 
 	int field_start=0;
-	int field_idx=-1;
+	#ifdef EPI_07
+	int field_idx=-1; //Skip first
+	#else
+	int field_idx=0; 
+	#endif
 	int reading_field=0;
 	for(int i=0;; ++i){
 		char c = instr[i];
@@ -202,7 +205,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 
 	if (contains_string(instr_fields[0], "vset")){
 		data -> type = VSETVL;
-		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]);
+		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]); //Could be simplified
 	}else if (instr_fields[0][0]=='v'){
 		data -> type = VECTOR;
 		instr_set_type(insn_opcode, &data->v_majortype, &data->v_minortype);

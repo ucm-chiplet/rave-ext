@@ -573,9 +573,12 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 			//output = g_strdup_printf("vx%"PRIx64", 0x%"PRIx32",\"%s\"", insn_vaddr, insn_opcode, insn_disas);
 			is_vector=1;
 		}else{
+			#ifdef EPI_07
 			is_vector = contains_string(insn_disas," v");
+			#else
+			is_vector = insn_disas[0] == 'v';
+			#endif
 		}
-
 		if (is_vector){ //This includes vsetvl
 			//output = g_strdup_printf("vx%"PRIx64", 0x%"PRIx32", \"%s\"", insn_vaddr, insn_opcode, insn_disas);
 			instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
@@ -685,6 +688,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 	int pid = fork();
 	if (pid==0) helper_thread();
 #endif
+	/*
 	if (!PRINT_SCALAR){
 			scalar_empty_struct = (instr_data*)malloc(sizeof(instr_data));
 			scalar_empty_struct->PC=0;
@@ -696,6 +700,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			scalar_empty_struct->type=SCALAR;
 			scalar_empty_struct->asm_string='\0';
 	}
+	*/
 	add_event(-1,"Global");
 	qemu_eventandcounters(-1, 1); //Start global event
 
