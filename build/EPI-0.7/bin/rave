@@ -43,6 +43,9 @@ fi
 if [ "$RAVE_PRINT_REPORT" == "1" ]; then #OPT-in
 	args=$args",arg=PRINT_REPORT"
 fi
+if [ "$RAVE_DETECT_SYMBOLS" == "1" ]; then #OPT-in
+	args=$args",arg=DETECT_SYMBOLS"
+fi
 if [ "$RAVE_PRINT_CSV" == "1" ] || [ "$RAVE_CSV_NAME" != "" ]; then #OPT-in
 	if [ "$RAVE_CSV_NAME" == "" ]; then
 		RAVE_CSV_NAME=qemu_summary.csv

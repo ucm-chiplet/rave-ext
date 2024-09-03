@@ -24,20 +24,28 @@ static qemu_counters total_counters;
 //TODO: Names shouldn't be fixed size...
 struct value_info{
 	struct value_info * next;
-	char name[64];
+	char * name;
 	int64_t ID;
 };
 typedef struct value_info value_info;
 
 struct event_info{
 	struct event_info * next;
-	char name[64];
+	char * name; 
 	int64_t ID;
 	value_info * values;
+	value_info * last_value;
 };
 typedef struct event_info event_info;
 event_info * first_event_info = NULL;
 event_info * last_event_info = NULL;
+
+#define my_strcpy(dst, src)\
+{\
+	int len = strlen(src);\
+	dst = malloc(len+1);\
+	strcpy(dst,src);\
+}
 
 
 event_info * find_event(int id){
@@ -62,22 +70,16 @@ value_info *  add_new_value(event_info * event, int val, char * name){
 	value_info * new_values = (value_info*)malloc(sizeof(value_info));
 	new_values -> next = NULL;
 	new_values -> ID = val;
-	strcpy(new_values->name, name);
+	my_strcpy(new_values->name, name);
 
-	//Add it to the value queue
-	//TODO: Doing a Stack instead of Queue would accelerate this to O(1)
-	value_info * last = event->values;
-	if (last == NULL){
+	//Add it to the value stack
+	if (event->last_value == NULL){
 		event->values = new_values;
+		event->last_value = new_values;
 		return new_values;
 	}
-	while (last != NULL){
-		if (last->next == NULL){
-			last->next = new_values;
-			return new_values;
-		}
-		last = last->next;
-	}
+	event->last_value->next = new_values;
+	event->last_value = new_values;
 	return new_values;
 }
 
@@ -88,20 +90,40 @@ void add_value_to_event(int id, int val, char * name){
 	//If value already exists, just update its name
 	value_info * value = find_value(event, val);
 	if (value != NULL){
-		strcpy(value->name, name);
+		free(value->name);
+		my_strcpy(value->name, name);
 		return;
 	}
 
 	//value not found: create it
 	add_new_value(event,val,name);
+}
 
+//For symbols
+int add_value_name_to_event(int id, char * name){
+	event_info * event = find_event(id);
+	if (event == NULL) return -1;
+
+	value_info * curr = event->values;
+	int val = 1;
+	while (curr!=NULL){
+		if (!strcmp(curr->name, name)){
+		 	return curr->ID;
+		}
+		curr = curr->next;
+		++val;
+	}
+	//value not found: create it
+	add_new_value(event,val,name);
+	return val;
 }
 
 event_info * add_event(int id, char *name){
 
 	event_info * event = find_event(id);
 	if (event != NULL){
-		strcpy(event->name, name);
+		free(event->name);
+		my_strcpy(event->name, name);
 		return event;
 	}
 	//event not found: create it
@@ -109,7 +131,8 @@ event_info * add_event(int id, char *name){
 	new_event -> next = NULL;
 	new_event -> ID = id;
 	new_event -> values = NULL;
-	strcpy(new_event->name, name);
+	new_event -> last_value = NULL;
+	my_strcpy(new_event->name, name);
 
 	if (first_event_info==NULL) first_event_info = new_event;
 	if (last_event_info!=NULL) last_event_info->next = new_event;
@@ -147,6 +170,7 @@ typedef struct region_stats region_stats;
 
 region_stats * global_region;
 
+int xxx = 0;
 void qemu_eventandcounters(int event, int value){
 	//Find open region to close it:
 	region_stats * curr = global_region;
@@ -259,7 +283,7 @@ void print_region_csv(FILE * fd, int nregion, region_stats* curr){
 		for(int s=0; s<SEWS; ++s){
 			fprintf(fd,",vector_sew%d_instr,vector_sew%d_elems,vector_sew%d_arith,vector_sew%d_fp,vector_sew%d_int,vector_sew%d_mem,vector_sew%d_memunit,vector_sew%d_memstride,vector_sew%d_memidx,vector_sew%d_mask,vector_sew%d_other,vector_sew%d_avg_stride",1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3),1<<(s+3), 1<<(s+3));
 		}
-		fprintf(fd,"moved_bytes_s,moved_bytes_v\n");
+		fprintf(fd,",moved_bytes_s,moved_bytes_v\n");
 		first_csv_row = 0;
 	}
 	//Print Region header
@@ -282,7 +306,7 @@ void print_region_csv(FILE * fd, int nregion, region_stats* curr){
 		double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
 		double  totvother	= counters->vector_instr[s] - totvmem - totvarith - counters->vmask_instr[s];
 		double strides = (counters->vstride_instr[s] > 0)? counters->agg_strides[s] / counters->vstride_instr[s] : 0;
-		fprintf(fd,",%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f", counters->vector_instr[s], counters->velem[s], totvarith, counters->vfp_instr[s], counters->vint_instr[s], totvmem, counters->vunit_instr[s], counters->vstride_instr[s], counters->vidx_instr[s], counters->vmask_instr[s], totvother,strides);
+		fprintf(fd,",%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.2f", counters->vector_instr[s], counters->velem[s], totvarith, counters->vfp_instr[s], counters->vint_instr[s], totvmem, counters->vunit_instr[s], counters->vstride_instr[s], counters->vidx_instr[s], counters->vmask_instr[s], totvother,strides);
 	}
 	fprintf(fd,",%.0f,%.0f\n", counters->moved_bytes_s, counters->moved_bytes_v);
 }
@@ -295,7 +319,6 @@ void print_report(){
 					//if (curr->prev!=NULL) free(curr->prev);
 					if (curr->closed){
 						print_region_human(nregion++, curr);
-						//print_region_csv(nregion++, curr);
 					}
 					curr = curr->next;
 	}

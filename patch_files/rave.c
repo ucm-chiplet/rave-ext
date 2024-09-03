@@ -47,6 +47,7 @@ static char PRINT_PRV = 0;
 static char PRINT_REPORT = 0;
 static char PRINT_CSV = 0;
 static char TRACE_ENABLED = 1; //Enabled by default 
+static char DETECT_SYMBOLS = 0;
 static FILE * FD_PRV;
 static FILE * FD_PCF;
 static FILE * FD_ROW;
@@ -154,7 +155,7 @@ static void vcpu_qemu_event(unsigned int cpu_index, uint32_t insn_opcode){
 	if (PRINT_PRV){
 		int row=1;
 		fprintf(FD_PRV,"2:%d:1:1:%d:%llu:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
-		if (!PRINT_SCALAR) fprintf(FD_PRV,"2:%d:1:1:%d:%d:"event_instruction":%d\n", row,row, qemu_trace_timestamp, 1000);
+		if (!PRINT_SCALAR) fprintf(FD_PRV,"2:%d:1:1:%d:%d:"event_instruction":%d\n", row,row, qemu_trace_timestamp, 1000); //1000 = scalar
 		row=2;
 		fprintf(FD_PRV,"2:%d:1:1:%d:%llu:%d:%d\n",row,row,qemu_trace_timestamp,qemu_trace_event,qemu_trace_value);
 	}
@@ -249,6 +250,7 @@ static int last_row = 1;
 static int last_vsetvl = 0;
 static int scalar_instr_since_vector=0;
 static int waiting_zero_stride = 0;
+static int last_instr_symbol = -1;
 static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 #ifdef TIMEDEBUG
 	uint64_t time1 = getmicros();
@@ -259,6 +261,21 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				uint64_t vl, vtype, sew, lmul;
 				double lmul_value;
 				int stride = 0;
+
+				if (DETECT_SYMBOLS){
+					int symbol = instr->symbol_id;
+					if (/*symbol >= 0 && */last_instr_symbol != symbol){
+						last_instr_symbol = symbol;
+						if (TRACE_ENABLED){
+							qemu_eventandcounters(1001, symbol);
+							if (PRINT_PRV){
+								fprintf(FD_PRV,"2:%d:1:1:%d:%llu:%d:%d\n",1,1,qemu_trace_timestamp,1001,symbol);
+								fprintf(FD_PRV,"2:%d:1:1:%d:%llu:%d:%d\n",2,2,qemu_trace_timestamp,1001,symbol);
+							}
+						}
+					}
+					//if (instr->symbol_id >= 0) printf("Symbol is %s\n", get_symbol_name(instr->symbol_id)); 
+				}
 
 				if ( instr->type == VSETVL || instr->type == SCALAR){ //SETVL or individual SCALAR
 					row = 1;
@@ -525,6 +542,70 @@ char is_qemu_event(uint32_t insn_opcode){
 	return is_orx0;
 }
 
+
+int last_cache_length = 0;
+char * last_cache_symbol = NULL; //[32]={' ', ' '};
+int last_cache_symbol_id = -1;
+
+int reached_main = 0;
+
+int ignore_symbols = 0;
+int unlock_length = 0;
+char * unlock_ignore = NULL; //[32];
+
+#define update_saved_string(saved,oldlen,new)\
+{\
+	int newlen = strlen(new)+1;\
+	if (newlen > oldlen){\
+		if (last_cache_symbol!=NULL) free(saved);\
+		oldlen = newlen;\
+		saved = malloc(newlen);\
+	}\
+	strcpy(saved,new);\
+}
+
+int add_symbol(char * mangled){
+	if (mangled == NULL) return 0;
+
+	//Remember last symbol
+	if (last_cache_symbol != NULL && !strcmp(mangled,last_cache_symbol)){
+	 	return last_cache_symbol_id;
+	}
+	//For cache
+	update_saved_string(last_cache_symbol,last_cache_length,mangled);
+
+	//Wait for main
+	/*
+	if (!reached_main){
+	 if (contains_string(mangled,"main")) reached_main = 1;
+	 else return -1;
+	}
+	*/
+	//Unlock if found keyword
+#if 0
+	if (ignore_symbols && (!strcmp(mangled,unlock_ignore) || !strcmp(mangled,"main"))){
+		printf("Un-Locking on %s\n",mangled);
+	 	ignore_symbols = 0;
+	}
+	
+	//
+	if (!ignore_symbols && startswith(mangled,"_dl")){
+		printf("Locking on %s\n",mangled);
+		ignore_symbols = 1;
+		update_saved_string(unlock_ignore,unlock_length,mangled);
+	}
+
+#endif
+	int id;
+	if (ignore_symbols){
+		//printf("\tIgnoring %s...\n",mangled);
+	 	id = 0;
+	}else id = add_value_name_to_event(1001, mangled);
+	
+	last_cache_symbol_id = id;
+	return id;
+}
+
 static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 {
 #ifdef TIMEDEBUG
@@ -551,6 +632,7 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 		insn_disas = qemu_plugin_insn_disas(insn);
 
 		char is_illegal = contains_string(insn_disas,"ill");
+
 
 		char * output;
 		//Dissassembly
@@ -582,6 +664,7 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 		if (is_vector){ //This includes vsetvl
 			//output = g_strdup_printf("vx%"PRIx64", 0x%"PRIx32", \"%s\"", insn_vaddr, insn_opcode, insn_disas);
 			instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
+			if (DETECT_SYMBOLS) insn_struct -> symbol_id = add_symbol(qemu_plugin_insn_symbol(insn));
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
 		}else if (is_qemu_event(insn_opcode)){
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_qemu_event, QEMU_PLUGIN_CB_NO_REGS, insn_opcode);
@@ -601,10 +684,12 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 			//output = g_strdup_printf("0x%"PRIx64", 0x%"PRIx32", \"%s\"", insn_vaddr, insn_opcode, insn_disas); //normal
 			if (PRINT_SCALAR){
 				instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
+				if (DETECT_SYMBOLS) insn_struct -> symbol_id = add_symbol(qemu_plugin_insn_symbol(insn));
 				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
 			}else{ //TODO: I need a callback for noprint
 				instr_basic_data * insn_struct = (instr_basic_data *)malloc(sizeof(instr_basic_data));
 				insn_struct->type = SCALAR; insn_struct->instr32  = insn_opcode;
+				if (DETECT_SYMBOLS) insn_struct -> symbol_id = add_symbol(qemu_plugin_insn_symbol(insn));
 				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct /*scalar_empty_struct*/);
 			}
 		}
@@ -624,6 +709,7 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 static void plugin_exit(qemu_plugin_id_t id, void *p)
 {
 		qemu_eventandcounters(-1, 0); //End Global event
+		if (DETECT_SYMBOLS) qemu_eventandcounters(1001, 0); //End Symbols event
 		if(PRINT_REPORT){
 			print_report();
 		}
@@ -663,7 +749,10 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			else if (contains_string(argv[i], "PRINT_LOGFILE")) PRINT_LOGFILE = 1;
 			else if (contains_string(argv[i], "PRINT_REPORT")) PRINT_REPORT = 1;
 			else if (contains_string(argv[i], "PRINT_CSV")) PRINT_CSV = 1;
-			else if (contains_string(argv[i], "PRV_NAME")){
+			else if (contains_string(argv[i], "DETECT_SYMBOLS")){
+			 	DETECT_SYMBOLS = 1;
+				add_event(1001, "symbols");
+			}else if (contains_string(argv[i], "PRV_NAME")){
 							//++i;
 							int j; for(j=0; j<strlen(argv[i]); ++j)	if (argv[i][j] == '=') break;
 							setup_paraver_trace(&argv[i][j+1]);
