@@ -34,7 +34,7 @@ Finally, install the RISC-V toolchain to provide a sysroot to your QEMU Virtual 
 
 You may need a vectorizing compiler to generate RVV binaries.
 
-The LLVM-based cross-compiler used on the EPI project is avaiable online, for [rvv1.0](https://ssh.hca.bsc.es/epi/ftp/LATEST_llvm-EPI-development-toolchain-cross_IS_2024-06-17-1541) and [rvv0.7](https://ssh.hca.bsc.es/epi/ftp/LATEST_llvm-EPI-0.7-release-toolchain-cross_IS_2022-10-10-1012).
+The LLVM-based cross-compiler used on the EPI project is avaiable online, for [rvv1.0](https://ssh.hca.bsc.es/epi/ftp/llvm-EPI-development-toolchain-cross-latest.tar.bz2) and [rvv0.7](https://ssh.hca.bsc.es/epi/ftp/llvm-EPI-0.7-development-toolchain-cross-latest.tar.bz2).
 
 
 # Running RISC-V binaries
