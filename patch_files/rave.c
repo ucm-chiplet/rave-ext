@@ -367,11 +367,13 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 
 				// Counters //
+				#ifndef EPI_07
 				if (instr->type == VECTOR && instr->v_majortype == MEMORY){
 					int width = (instr->instr32 >> 12)&0x3; //3 instead of 7 to %4
 					sew = width;
 //					sew = width == 5 ? 1 : width == 6 ? 2 : width == 7 ? 3 : 0; //sew is eew for memory instr
 				}
+				#endif
 
 				if (instr->type == VECTOR) {
 					scalar_instr_since_vector=0;
@@ -618,6 +620,7 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 	char *insn_disas;
 
 	size_t n = qemu_plugin_tb_n_insns(tb);
+	//printf("N is %d\n",n);
 	for (size_t i = 0; i < n; i++) {
 		/*
 		 * `insn` is shared between translations in QEMU, copy needed data here.
