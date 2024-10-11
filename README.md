@@ -24,8 +24,14 @@ After that, install the QEMU tracing plugins using again the `0_7` or `1_0` flag
 ./install_plugins.sh [0_7 / 1_0]
 ```
 
-Finally, install the RISC-V toolchain to provide a sysroot to your QEMU Virtual Machine. This is independent of the RVV specification and should be installed just once, as it is quite time-consuming. **WARNING**: If you already have a RISC-V sysroot installed in your machine, you can edit the `./run_qemu_0_7.sh` and `./run_qemu_1_0.sh` files to change the sysroot
+Finally, your QEMU needs a RISC-V sysroot to run the emulated binaries. You can either download the sysroot we provide:
+```bash
+wget https://ssh.hca.bsc.es/epi/ftp/RAVE/sysroot.tar.gz
+tar -xzf sysroot.tar.gz
+```
+This will create the folder `build/riscv-glibc-toolchain/sysroot`. **WARNING**: If you already have a RISC-V sysroot installed in your machine, you can edit the `./run_qemu_0_7.sh` and `./run_qemu_1_0.sh` files to change the sysroot, or create a softlink from your sysroot to `build/riscv-glibc-toolchain/sysroot`
 
+If you want to build the sysroot from scracth, you can install the RISC-V toolchain. This should be installed just once, as it is quite time-consuming. 
 ```bash
 ./install_toolchain.sh 
 ```
@@ -163,7 +169,7 @@ You can find Paraver configuration files in the `CFGs` folder:
 
  - **table_average_bytes_per_instruction_type.cfg:** Opens a table with the average vector length (in Bytes) per each instruction type.
 
-In the subfolder `/apps/x86/rave/share/CFGs/per_phase_cfgs` you will find configuration files that can be used when your code has been instrumented with event 1000:
+In the subfolder `CFGs/per_phase_cfgs` you will find configuration files that can be used when your code has been instrumented with event 1000:
  - **event_1000_code_region.cfg:** Opens the sequence of instrumented code regions, with their width equal to the number of simulated instructions.
 
  - **table_vector_mix_per_phase.cfg:** Opens two tables, one with the absolute number of scalar and vector instructions per phase, and another with their relative numbers (what we usually call Vector Mix).
