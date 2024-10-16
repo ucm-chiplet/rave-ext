@@ -152,7 +152,7 @@ RAVE_PRV_NAME=example_prv ./build/EPI-0.7/bin/rave ./test/example.x
 ```
 
 This will generate a triplet of files called `example_prv.prv`, `example_prv.pcf`, and `example_prv.row`.
-You can copy these files back to your computer and open the trace in paraver:
+You can copy these files back to your computer and open the trace in Paraver. If you don't have Paraver, you can download it from [the bsc tools webpage](https://tools.bsc.es/downloads)
 ```bash
 wxparaver example_prv.prv
 ```
