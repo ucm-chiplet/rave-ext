@@ -4,6 +4,11 @@
 
 The RISC-V Analyzer of Vector Executions (RAVE) is a QEMU plugin that simulates the EPAC VEC tile, allowing users to run on binaries compiled for the rvv1.0 and rvv0.7 RISC-V extensions.
 
+# Relevant material
+
+Here you can download [the slides presented at the RISC-V Techincal Session](https://ssh.hca.bsc.es/epi/ftp/RAVE/RAVE_RISC-V_Technical_Session.pdf) on the 10th of October, 2024.
+In the presentation, [this demo code](https://ssh.hca.bsc.es/epi/ftp/RAVE/SDV_Tutorial_rave.tar.gz) is used to showcase RAVE's potential.
+
 # Installation
 
 First, clone the repo (recommended **without** recursing subumodules, as they can be quite heavy):
@@ -179,3 +184,4 @@ In the subfolder `CFGs/per_phase_cfgs` you will find configuration files that ca
  - **table_average_vl_per_phase.cfg:** Opens a table with the average vector length of each instrumented code phase.
 
  - **table_average_vl_per_instruction_per_phase.cfg:** Opens a table that contains the averaged vector length per each simulated instruction type. The table can be configured (3D.Plane) to select which instrumented code phase is analyzed.
+
