@@ -70,6 +70,8 @@ cp ${rave_sources_dir}/rave-$EXT.sh $install_dir/../bin/rave
 echo "Building the API...[2/2]"
 
 cd -
+LLVM_DIR=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross
+PATH=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross/bin/:$PATH
 cd interfaces
 make
 cd -

@@ -58,9 +58,9 @@ make distclean &>> $LOGFILE
 
 
 options="$targets --disable-docs --prefix="${install_dir}" --enable-plugins"
-#if [[ "$EXT" == "0_7" ]]; then
-#	options="$options --python=python3.8"
-#fi
+if [[ "$EXT" == "1_0" ]]; then
+	options="$options --python=python3.10"
+fi
 
 ./configure $options &>> $LOGFILE
 if [ $? -ne 0 ]; then

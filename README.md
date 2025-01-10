@@ -4,10 +4,6 @@
 
 The RISC-V Analyzer of Vector Executions (RAVE) is a QEMU plugin that simulates the EPAC VEC tile, allowing users to run on binaries compiled for the rvv1.0 and rvv0.7 RISC-V extensions.
 
-## TUTORIAL (Relevant Material)
-
-Here you can download [the slides presented at the RISC-V Techincal Session](https://ssh.hca.bsc.es/epi/ftp/RAVE/RAVE_RISC-V_Technical_Session.pdf) on the 10th of October, 2024.
-In the presentation, [this demo code](https://ssh.hca.bsc.es/epi/ftp/RAVE/SDV_Tutorial_rave.tar.gz) is used to showcase RAVE's potential. You can see the [video tutorial in this link](https://www.youtube.com/watch?v=7eUnhmvcDtY)
 
 ## Installation
 
@@ -18,7 +14,7 @@ We strongly encourage to follow the following installation steps in the specific
 First, clone the repo (recommended **without** recursing subumodules, as they can be quite heavy):
 
 ```bash
-git clone https://repo.hca.bsc.es/gitlab/pvizcaino/qemu-sdv.git
+git clone https://repo.hca.bsc.es/gitlab/pvizcaino/rave.git
 ```
 
 ### 2. Install QEMU
@@ -37,18 +33,18 @@ Then, download and install the LLVM-based cross-compiler using the following scr
 ./install_compiler.sh [0_7 / 1_0]
 ```
 
-### 4. Install a RISC-V sysroot for emulated binaries
+### 4. Install the RAVE plugin
+
+```bash
+./install_rave.sh [0_7 / 1_0]
+```
+
+### 5. Install a RISC-V sysroot for emulated binaries
 
 Donwload and install it with the following script:
 
 ```bash
 ./install_sysroot.sh 
-```
-
-### 5. Install the RAVE plugin
-
-```bash
-./install_rave.sh [0_7 / 1_0]
 ```
 
 ### 6. Install the Parallel support for RAVE (OMP and MPI)
@@ -326,5 +322,18 @@ def main():
 		# ...
 ```
 
+## Using RAVE: TUTORIAL (Relevant Material!)
 
+Here you can download [the slides presented at the RISC-V Techincal Session](https://ssh.hca.bsc.es/epi/ftp/RAVE/RAVE_RISC-V_Technical_Session.pdf) on the 10th of October, 2024.
+In the presentation, [this demo code](https://ssh.hca.bsc.es/epi/ftp/RAVE/SDV_Tutorial_rave.tar.gz) is used to showcase RAVE's potential. You can see the [video tutorial in this link](https://www.youtube.com/watch?v=7eUnhmvcDtY)
 
+## Citing RAVE
+
+```
+@article{vizcaino2024rave,
+  title={{RAVE: RISC-V Analyzer of Vector Executions, a QEMU tracing plugin}},
+  author={{Vizcaino, Pablo and Mantovani, Filippo and Labarta, Jesus and Ferrer, Roger}},
+  journal={{arXiv preprint arXiv:2409.13639}},
+  year={2024}
+}
+```
