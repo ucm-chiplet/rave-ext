@@ -1,0 +1,32 @@
+--- qemu-0_7/target/riscv/translate.c	2024-12-12 08:49:40.028863861 +0100
++++ qemu-0_7/target/riscv/translate.c	2024-12-12 08:49:35.532885695 +0100
+@@ -906,6 +906,20 @@
+                 gen_exception_illegal(ctx);
+             }
+         }
++				//If rd==x0, end basic block
++				int rd=-1;
++				int op = opcode & 0x03;
++				int funct3 = (opcode >> 13) & 0x07;
++
++				if (op == 0){
++					if (funct3 < 4) rd = (opcode>>2) & 0x07;
++				}else if (op==1){
++					if (funct3 < 4) rd = (opcode>>7) & 0x1F;
++					else if (funct3 == 4)  rd = (opcode>>7) & 0x07;
++				}else if (op==2){
++					if (funct3 <= 4) rd = (opcode>>7) & 0x1F;
++				}
++				if (rd==0) ctx->base.is_jmp = DISAS_TOO_MANY; 
+     } else {
+         uint32_t opcode32 = opcode;
+         opcode32 = deposit32(opcode32, 16, 16,
+@@ -914,6 +928,8 @@
+         if (!decode_insn32(ctx, opcode32)) {
+             gen_exception_illegal(ctx);
+         }
++				//If rd==x0, end basic block
++				if (((opcode32 >> 7) & 0x1F)==0) ctx->base.is_jmp = DISAS_TOO_MANY; 
+     }
+ }
+ 
