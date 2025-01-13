@@ -950,8 +950,8 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 	alloc_threads = omp_threads > rave_threads ? omp_threads : rave_threads;
 
 	char * world_rank = getenv("OMPI_COMM_WORLD_SIZE");
+	if (world_rank!=NULL && alloc_threads < 3) alloc_threads += 2; //Mpi process adds two threads
 	mpi_size = world_rank==NULL? 1 : atoi(world_rank);
-	if (mpi_size > 1 && alloc_threads < 3) alloc_threads += 2; //Mpi process adds two threads
 
 	cpu_trace_state = (trace_state_t*)malloc(sizeof(trace_state_t)*alloc_threads);
 

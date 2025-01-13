@@ -78,13 +78,6 @@ cp ../../utils/qemu-plugins.symbols plugins/.
 #Hybrid translator loop 
 patch -p 1 < ../../utils/translate_${EXT}.patch
 
-#Translator loop set to 1
-#if [[ "$EXT" == "1_0" ]]; then
-#sed -i 's/\(translator_loop.*\)max_insns\(.*\)/int tmp=1; \1\&tmp \2/g' ./target/riscv/translate.c
-#else
-#sed -i 's/\(translator_loop.*\)max_insns\(.*\)/\11 \2/g' ./target/riscv/translate.c
-#fiV
-
 echo "Building QEMU... [5/5] (This might take a while)"
 make -j $NUM_JOBS &>> ${LOGFILE}
 if [ $? -ne 0 ]; then
