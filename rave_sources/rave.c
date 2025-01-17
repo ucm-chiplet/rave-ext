@@ -61,7 +61,7 @@ FILE * FD_COMM;
 	#define EPI_10
 #endif
 
-#include "qemu_counters.h"
+#include "rave_counters.h"
 #include "qemu2prv.h"
 #include "instr_data.h"
 
@@ -80,8 +80,8 @@ struct parallel_region_t{
 	volatile int lock;
 	int master_thread;
 	int first_barrier;
-	qemu_counters first_barrier_counters;
-	qemu_counters last_barrier_counters;
+	rave_counters parallel_region_counter;
+	rave_counters last_barrier_counters;
 };
 typedef struct parallel_region_t parallel_region_t;
 parallel_region_t parallel_region;
@@ -155,11 +155,11 @@ void trace_event_value(int event, uint64_t value){
 #define SCALAR_ROW 0
 #define VECTOR_ROW 1
 
-uint64_t qemu_trace_global_timestamp=0;
+uint64_t timestamp=0;
 
 
 //Per-thread info
-struct trace_state_t{
+struct thread_state_t{
 	int last_row;
 	int reset_stride;
 	int last_instr_symbol;
@@ -167,14 +167,14 @@ struct trace_state_t{
 	int scalar_instr_since_vector;
 	int print_first_scalar;
 	char need_align;
-	uint64_t qemu_trace_timestamp;
-	qemu_counters accum_counters;
+	uint64_t timestamp;
+	rave_counters accum_counters;
 };
-typedef struct trace_state_t trace_state_t;
-static trace_state_t * cpu_trace_state;
+typedef struct thread_state_t thread_state_t;
+thread_state_t * cpus_state;
 
 
-void reset_thread(trace_state_t * state){
+void reset_thread(thread_state_t * state){
 	state -> last_row = 0;
 	state -> reset_stride = 0;
 	state -> last_instr_symbol = -1;
@@ -182,7 +182,7 @@ void reset_thread(trace_state_t * state){
 	state -> scalar_instr_since_vector = 0;
 	state -> print_first_scalar = 1;
 	state -> need_align = 1;
-	state -> qemu_trace_timestamp = 0;
+	state -> timestamp = 0;
 	reset_counters(&(state->accum_counters));
 }
 
@@ -213,24 +213,24 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 #endif
 	//
 	//Core info
-	uint64_t qemu_trace_timestamp = cpu_trace_state[cpu_index].qemu_trace_timestamp;
+	uint64_t thread_timestamp = cpus_state[cpu_index].timestamp;
 
 	if (N_THREADS>1){	
-		if (cpu_trace_state[cpu_index].need_align){
+		if (cpus_state[cpu_index].need_align){
 			//Target is global when align=1, is parallle barrier when align=2
-			uint64_t target_time = cpu_trace_state[cpu_index].need_align==1 ? qemu_trace_global_timestamp : parallel_region.barrier_time;
+			uint64_t target_time = cpus_state[cpu_index].need_align==1 ? thread_timestamp : parallel_region.barrier_time;
 
-			if (qemu_trace_timestamp < target_time){ //Jump only forward
+			if (thread_timestamp < target_time){ //Jump only forward
 				if (TRACE_ENABLED && PRINT_PRV){
 					set_lock(write_lock);
-					trace_row(mpi_rank, cpu_index, cpu_trace_state[cpu_index].last_row, qemu_trace_timestamp);
+					trace_row(mpi_rank, cpu_index, cpus_state[cpu_index].last_row, thread_timestamp);
 					clean_event(FD_PRV); 
 					release_lock(write_lock);
 				}
-				qemu_trace_timestamp=target_time; 
-				cpu_trace_state[cpu_index].print_first_scalar = 1;
+				thread_timestamp=target_time; 
+				cpus_state[cpu_index].print_first_scalar = 1;
 			}
-			cpu_trace_state[cpu_index].need_align = 0;
+			cpus_state[cpu_index].need_align = 0;
 		}
 	}
 
@@ -238,19 +238,19 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 	if (DETECT_SYMBOLS){
 		int symbol = instr->symbol_id;
-		if (cpu_trace_state[cpu_index].last_instr_symbol != symbol){
+		if (cpus_state[cpu_index].last_instr_symbol != symbol){
 			if (!found_main && symbol==SYMBOL_MAIN){
 				found_main=1;
 			}
 			if (found_main){
 				if (symbol!=SYMBOL_EMPTY){
-					cpu_trace_state[cpu_index].last_instr_symbol = symbol;
+					cpus_state[cpu_index].last_instr_symbol = symbol;
 					if (print_sym && TRACE_ENABLED){
 						if (PRINT_PRV){
 							set_lock(write_lock);
-							trace_row(mpi_rank, cpu_index, SCALAR_ROW, qemu_trace_timestamp);
+							trace_row(mpi_rank, cpu_index, SCALAR_ROW, thread_timestamp);
 							trace_event_value(1001,symbol);
-							trace_row(mpi_rank, cpu_index, VECTOR_ROW, qemu_trace_timestamp);
+							trace_row(mpi_rank, cpu_index, VECTOR_ROW, thread_timestamp);
 							trace_event_value(1001,symbol);
 							release_lock(write_lock);
 						}
@@ -298,8 +298,8 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 	if (TRACE_ENABLED){
 		if (PRINT_LOGFILE){
 			set_lock(write_lock);
-			if (!PRINT_SCALAR && !is_type(instr->type, T_SCALAR) && cpu_trace_state[cpu_index].scalar_instr_since_vector>0){
-				char * string = g_strdup_printf("%d scalar instructions\n", cpu_trace_state[cpu_index].scalar_instr_since_vector); 
+			if (!PRINT_SCALAR && !is_type(instr->type, T_SCALAR) && cpus_state[cpu_index].scalar_instr_since_vector>0){
+				char * string = g_strdup_printf("%d scalar instructions\n", cpus_state[cpu_index].scalar_instr_since_vector); 
 				qemu_plugin_outs(string);
 				free(string);
 			} 
@@ -312,18 +312,18 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 		//  PRV  //
 		if (PRINT_PRV){
-			char row_change = (row != cpu_trace_state[cpu_index].last_row) ?1:0;
+			char row_change = (row != cpus_state[cpu_index].last_row) ?1:0;
 			if (row_change){ 
 				set_lock(write_lock);
-				trace_row(mpi_rank, cpu_index, cpu_trace_state[cpu_index].last_row, qemu_trace_timestamp);
+				trace_row(mpi_rank, cpu_index, cpus_state[cpu_index].last_row, thread_timestamp);
 				clean_event(FD_PRV); 
 				release_lock(write_lock);
 			}
 			//Scalar instructions should always be printed when: row changed(1), type changed (2), is first scalar in the trace (3)
 			if (is_type(instr->type, T_SCALAR) && !PRINT_SCALAR){
-				if (row_change || cpu_trace_state[cpu_index].last_was_vsetvl || cpu_trace_state[cpu_index].print_first_scalar){	
+				if (row_change || cpus_state[cpu_index].last_was_vsetvl || cpus_state[cpu_index].print_first_scalar){	
 					set_lock(write_lock);
-					trace_row(mpi_rank, cpu_index, row, qemu_trace_timestamp);
+					trace_row(mpi_rank, cpu_index, row, thread_timestamp);
 					trace_event_value(event_instruction,1000);
 					trace_event_value(event_class,instr->type);
 					trace_event_value(event_pc, instr->PC);
@@ -331,17 +331,17 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				}
 			}else if (is_type(instr->type, T_VSETVL)){
 				set_lock(write_lock);
-				trace_row(mpi_rank, cpu_index, row, qemu_trace_timestamp);
+				trace_row(mpi_rank, cpu_index, row, thread_timestamp);
 				trace_event_value(event_class,instr->type);
 				trace_event_value(event_pc, instr->PC);
 				trace_event_value(event_instruction, instr->paraver_code);
 				release_lock(write_lock);
 			}else{ //PRINT_SCALAR || (instr!=SCALAR && instr!=VSETVL)
 				set_lock(write_lock);
-				trace_row(mpi_rank, cpu_index, row, qemu_trace_timestamp);
+				trace_row(mpi_rank, cpu_index, row, thread_timestamp);
 				trace_event_value(event_class,instr->type);
 				trace_event_value(event_pc, instr->PC);
-				trace_event_value(event_scalb, cpu_trace_state[cpu_index].scalar_instr_since_vector);
+				trace_event_value(event_scalb, cpus_state[cpu_index].scalar_instr_since_vector);
 				trace_event_value(event_dst, instr->dst);
 				trace_event_value(event_src1, instr->src1);
 				trace_event_value(event_src2, instr->src2);
@@ -352,10 +352,10 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 				if (is_type(instr->type, T_VECTOR) && is_subtype(instr->type, T_MEMORY) && is_subsubtype(instr->type, T_STRIDE)){
 					trace_event_value(event_stride, stride);
-					cpu_trace_state[cpu_index].reset_stride = 1;
-				}else if (cpu_trace_state[cpu_index].reset_stride){
+					cpus_state[cpu_index].reset_stride = 1;
+				}else if (cpus_state[cpu_index].reset_stride){
 					trace_event_value(event_stride, 0);
-					cpu_trace_state[cpu_index].reset_stride = 0;
+					cpus_state[cpu_index].reset_stride = 0;
 				}	
 				release_lock(write_lock);
 			}
@@ -366,48 +366,48 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 
 	if (is_type(instr->type, T_SCALAR)) {
-		cpu_trace_state[cpu_index].scalar_instr_since_vector++;
-		++cpu_trace_state[cpu_index].accum_counters.scalar_instr;
+		cpus_state[cpu_index].scalar_instr_since_vector++;
+		++cpus_state[cpu_index].accum_counters.scalar_instr;
 
 		int opcode = (instr->instr32 & 0x3F);
 		if (opcode == 0b0000011 || opcode == 0b0100011 || opcode == 0b0000111 || opcode == 0b0100111){ 
 			int width = (instr->instr32 >> 12)&0x3; //3 instead of 7 to %4
-			cpu_trace_state[cpu_index].accum_counters.moved_bytes_s += (1<<(width));
+			cpus_state[cpu_index].accum_counters.moved_bytes_s += (1<<(width));
 			//B 0, 4
 			//H 1, 5
 			//W 2, 6
 			//D 3
 		} 
 	}else if (is_type(instr->type, T_VECTOR)) {
-		cpu_trace_state[cpu_index].scalar_instr_since_vector=0;
-		++cpu_trace_state[cpu_index].accum_counters.vector_instr[sew];
-		cpu_trace_state[cpu_index].accum_counters.velem[sew] += vl; 
+		cpus_state[cpu_index].scalar_instr_since_vector=0;
+		++cpus_state[cpu_index].accum_counters.vector_instr[sew];
+		cpus_state[cpu_index].accum_counters.velem[sew] += vl; 
 		if (is_subsubtype(instr->type, T_FP)){
-			++cpu_trace_state[cpu_index].accum_counters.vfp_instr[sew];
-		}else if (is_subsubtype(instr->type, T_INT)){ ++cpu_trace_state[cpu_index].accum_counters.vint_instr[sew];
-		}else if (is_subtype(instr->type, T_MASK)){ ++cpu_trace_state[cpu_index].accum_counters.vmask_instr[sew];
+			++cpus_state[cpu_index].accum_counters.vfp_instr[sew];
+		}else if (is_subsubtype(instr->type, T_INT)){ ++cpus_state[cpu_index].accum_counters.vint_instr[sew];
+		}else if (is_subtype(instr->type, T_MASK)){ ++cpus_state[cpu_index].accum_counters.vmask_instr[sew];
 		}else if (is_subtype(instr->type, T_MEMORY)){
-			cpu_trace_state[cpu_index].accum_counters.moved_bytes_v += vl*(1<<(sew));
-			if (is_subsubtype(instr->type, T_UNIT)) ++cpu_trace_state[cpu_index].accum_counters.vunit_instr[sew];
+			cpus_state[cpu_index].accum_counters.moved_bytes_v += vl*(1<<(sew));
+			if (is_subsubtype(instr->type, T_UNIT)) ++cpus_state[cpu_index].accum_counters.vunit_instr[sew];
 			else if (is_subsubtype(instr->type, T_STRIDE)){
-				++cpu_trace_state[cpu_index].accum_counters.vstride_instr[sew];
-				cpu_trace_state[cpu_index].accum_counters.agg_strides[sew] += stride;
+				++cpus_state[cpu_index].accum_counters.vstride_instr[sew];
+				cpus_state[cpu_index].accum_counters.agg_strides[sew] += stride;
 			}
-			else if (is_subsubtype(instr->type, T_INDEX)) ++cpu_trace_state[cpu_index].accum_counters.vidx_instr[sew];
+			else if (is_subsubtype(instr->type, T_INDEX)) ++cpus_state[cpu_index].accum_counters.vidx_instr[sew];
 		}
 	}else if (is_type(instr->type, T_VSETVL)){ 
-		++cpu_trace_state[cpu_index].accum_counters.vsetvl_instr;
+		++cpus_state[cpu_index].accum_counters.vsetvl_instr;
 	}
 
-	qemu_trace_timestamp++;
+	thread_timestamp++;
 	//TODO: Use an atomic here?
-	if (qemu_trace_timestamp > qemu_trace_global_timestamp) qemu_trace_global_timestamp = qemu_trace_timestamp;
+	if (thread_timestamp > timestamp) timestamp = thread_timestamp;
 
 	//Update state
-	cpu_trace_state[cpu_index].qemu_trace_timestamp = qemu_trace_timestamp;
-	cpu_trace_state[cpu_index].last_row = row;
-	cpu_trace_state[cpu_index].print_first_scalar = 0;
-	cpu_trace_state[cpu_index].last_was_vsetvl = is_type(instr->type, T_VSETVL);
+	cpus_state[cpu_index].timestamp = thread_timestamp;
+	cpus_state[cpu_index].last_row = row;
+	cpus_state[cpu_index].print_first_scalar = 0;
+	cpus_state[cpu_index].last_was_vsetvl = is_type(instr->type, T_VSETVL);
 
 
 #ifdef TIMEDEBUG
@@ -435,14 +435,26 @@ static void vcpu_rave_event(unsigned int cpu_index, uint32_t insn_opcode){
 	int qemu_trace_value = qemu_get_xreg(cpu,src2);
 
 	set_lock(write_lock);
-	rave_eventandcounters(qemu_trace_event, qemu_trace_value, cpu_index, &cpu_trace_state[cpu_index].accum_counters);
+	rave_eventandcounters(qemu_trace_event, qemu_trace_value, cpu_index, &cpus_state[cpu_index].accum_counters);
 	if (PRINT_PRV){
-		uint64_t qemu_trace_timestamp = cpu_trace_state[cpu_index].qemu_trace_timestamp;
-		trace_row(mpi_rank, cpu_index, SCALAR_ROW, qemu_trace_timestamp);
-		trace_event_value(qemu_trace_event,qemu_trace_value);
-		if (!PRINT_SCALAR) trace_event_value(event_instruction, 1000);
-		trace_row(mpi_rank, cpu_index, VECTOR_ROW, qemu_trace_timestamp);
-		trace_event_value(qemu_trace_event,qemu_trace_value);
+		/*
+		if (parallel_region.master_thread == -1){ //Not in a parallel region -> Propagate event to all threads
+			for(int cpu_id = 0; cpu_id < alloc_threads; ++cpu_id){
+				trace_row(mpi_rank, cpu_id, SCALAR_ROW, timestamp);
+				trace_event_value(qemu_trace_event,qemu_trace_value);
+				if (!PRINT_SCALAR) trace_event_value(event_instruction, 1000);
+				trace_row(mpi_rank, cpu_id, VECTOR_ROW, timestamp);
+				trace_event_value(qemu_trace_event,qemu_trace_value);
+			}
+		}else{ //In a parallel region -> Event is local to this thread
+		*/
+			uint64_t thread_timestamp = cpus_state[cpu_index].timestamp;
+			trace_row(mpi_rank, cpu_index, SCALAR_ROW, thread_timestamp);
+			trace_event_value(qemu_trace_event,qemu_trace_value);
+			if (!PRINT_SCALAR) trace_event_value(event_instruction, 1000);
+			trace_row(mpi_rank, cpu_index, VECTOR_ROW, thread_timestamp);
+			trace_event_value(qemu_trace_event,qemu_trace_value);
+		//}
 	}
 	release_lock(write_lock);
 
@@ -501,10 +513,10 @@ static void vcpu_parallel_end(unsigned int cpu_index, uint32_t insn_opcode){
 	//Wait for everyone to cross the last barrier
 	while (__sync_val_compare_and_swap(&parallel_region.crossed_barrier, 0, 0) != 0) {;} 
 	
-	//Substract counters and add to master
-	update_counters(&parallel_region.first_barrier_counters, &parallel_region.last_barrier_counters); //first = last-first
-	//printf("I'm going to add %.2f\n",parallel_region.first_barrier_counters.vector_instr[3]);
-	add_counters(&cpu_trace_state[cpu_index].accum_counters, &parallel_region.first_barrier_counters);// thread += first
+	//Substract counters and add to master's
+	update_counters(&parallel_region.parallel_region_counter, &parallel_region.last_barrier_counters); //region_c = last_b - region_c
+	add_counters(&cpus_state[cpu_index].accum_counters, &parallel_region.parallel_region_counter);// master_thread += region_c
+	parallel_region.master_thread = -1;
 }
 
 static void vcpu_parallel_begin(unsigned int cpu_index, uint32_t insn_opcode){
@@ -522,7 +534,7 @@ static void vcpu_parallel_begin(unsigned int cpu_index, uint32_t insn_opcode){
 	//Allocate more threads if needed (It shouldn't cause a race condition here)
 	if (parallelism > alloc_threads){
 		alloc_threads = parallelism;
-		cpu_trace_state = (trace_state_t*)realloc(cpu_trace_state, sizeof(trace_state_t)*alloc_threads);
+		cpus_state = (thread_state_t*)realloc(cpus_state, sizeof(thread_state_t)*alloc_threads);
 	}
 
 	parallel_region.in_barrier = 0;
@@ -545,10 +557,18 @@ static void vcpu_parallel_barrier(unsigned int cpu_index, void *udata){
 	//Set max barrier time
 	while (1) {
 		int old_tmax = parallel_region.barrier_time; // Read the current tmax
-		if (cpu_trace_state[cpu_index].qemu_trace_timestamp<= old_tmax) break; // No need to update if the thread's t is not greater than tmax
+		if (cpus_state[cpu_index].timestamp<= old_tmax) break; // No need to update if the thread's t is not greater than tmax
 
 		// Atomically update tmax if it has not changed
-		if (__sync_val_compare_and_swap(&parallel_region.barrier_time, old_tmax, cpu_trace_state[cpu_index].qemu_trace_timestamp) == old_tmax) break; // Successful update, exit loop
+		if (__sync_val_compare_and_swap(&parallel_region.barrier_time, old_tmax, cpus_state[cpu_index].timestamp) == old_tmax) break; // Successful update, exit loop
+	}
+	
+	//Add counters to parallel region
+	if (cpu_index != parallel_region.master_thread){
+		//Critical region! Locking
+		set_lock(parallel_region.lock);
+		add_counters(&parallel_region.last_barrier_counters, &cpus_state[cpu_index].accum_counters);
+		release_lock(parallel_region.lock);
 	}
 	
 	//Increase the barrier (+1)
@@ -558,27 +578,19 @@ static void vcpu_parallel_barrier(unsigned int cpu_index, void *udata){
 	while (__sync_val_compare_and_swap(&parallel_region.in_barrier, parallel_region.n_threads, parallel_region.n_threads) != parallel_region.n_threads) {sched_yield();} 
 
 
-	//Add counters to parallel region
-	if (cpu_index != parallel_region.master_thread){
-		//Critical region! Locking
-		set_lock(parallel_region.lock);
-		add_counters(&parallel_region.last_barrier_counters, &cpu_trace_state[cpu_index].accum_counters);
-		release_lock(parallel_region.lock);
-	}
-
 	//Cross the barrier (+1). If everyone crossed it, enter if: 
 	if (__sync_add_and_fetch(&parallel_region.crossed_barrier, 1) == parallel_region.n_threads){
 		//If first barrier, set its counters
 		if (parallel_region.first_barrier){
 			parallel_region.first_barrier = 0;
-			copy_counters(&parallel_region.first_barrier_counters, &parallel_region.last_barrier_counters);
+			copy_counters(&parallel_region.parallel_region_counter, &parallel_region.last_barrier_counters);
 		}
 
 		//**Afterwards** Unlock barrier, so next can start
 		parallel_region.crossed_barrier = 0;
 		parallel_region.in_barrier = 0;
 	}
-	cpu_trace_state[cpu_index].need_align = 2;
+	cpus_state[cpu_index].need_align = 2;
 }
 
 
@@ -589,19 +601,19 @@ static void vcpu_restart_trace(unsigned int cpu_index, void *udata){
 		write_prv(FD_PRV, 1, &N_THREADS, 2); 
 	}
 	//restart global region
-	global_region -> closed = 0;
-	reset_counters(&global_region->counters);
+	//global_region -> closed = 0;
+	//reset_counters(&global_region->counters);
 
-	qemu_trace_global_timestamp=0;
+	timestamp=0;
 	for(int i=0; i<N_THREADS; ++i){
-		reset_thread(&cpu_trace_state[i]);
+		reset_thread(&cpus_state[i]);
 	}
 	TRACE_ENABLED=1;
 }
 
 static void vcpu_start_trace(unsigned int cpu_index, void *udata){
 	for(int i=0; i<N_THREADS; ++i){
-		cpu_trace_state[i].print_first_scalar = 1;
+		cpus_state[i].print_first_scalar = 1;
 	}
 	TRACE_ENABLED=1;
 }
@@ -609,9 +621,9 @@ static void vcpu_start_trace(unsigned int cpu_index, void *udata){
 static void vcpu_stop_trace(unsigned int cpu_index, void *udata){
 	TRACE_ENABLED=0;
 	if (PRINT_PRV){
-		trace_row(mpi_rank, cpu_index, SCALAR_ROW, qemu_trace_global_timestamp);
+		trace_row(mpi_rank, cpu_index, SCALAR_ROW, timestamp);
 		clean_event(FD_PRV); 
-		trace_row(mpi_rank, cpu_index, VECTOR_ROW, qemu_trace_global_timestamp);
+		trace_row(mpi_rank, cpu_index, VECTOR_ROW, timestamp);
 		clean_event(FD_PRV); 
 	}
 }
@@ -769,7 +781,7 @@ static void newthread_cb(){
 #if 0
 	if (!alloc_threads){
 		alloc_threads = 1;
-		cpu_trace_state = (trace_state_t*)malloc(sizeof(trace_state_t)*alloc_threads);
+		cpus_state = (thread_state_t*)malloc(sizeof(thread_state_t)*alloc_threads);
 	}else if (alloc_threads < N_THREADS+1){
 #else
 	if (alloc_threads < N_THREADS+1){
@@ -779,9 +791,9 @@ static void newthread_cb(){
 		printf("\t - RAVE will allocate the maximum between OMP_NUM_THREADS and RAVE_MAX_THREADS\n");
 		exit(-1);
 		//alloc_threads *= 2;
-		//cpu_trace_state = (trace_state_t*)realloc(cpu_trace_state, sizeof(trace_state_t)*alloc_threads);
+		//cpus_state = (thread_state_t*)realloc(cpus_state, sizeof(thread_state_t)*alloc_threads);
 	}
-	reset_thread(&cpu_trace_state[N_THREADS]);
+	reset_thread(&cpus_state[N_THREADS]);
 	++N_THREADS;
 }
 
@@ -790,12 +802,12 @@ static void newthread_cb(){
  */
 static void plugin_exit(qemu_plugin_id_t id, void *p)
 {
-		qemu_counters global_counters;
+		rave_counters global_counters;
 		reset_counters(&global_counters);
 		double * global_counters_ptr = (double *)&global_counters;
 		for(int i=0; i<N_THREADS; ++i){
-			double * thread_counters_ptr = (double *)&cpu_trace_state[i].accum_counters; 
-			for(int c=0; c<sizeof(qemu_counters)/sizeof(double); ++c){
+			double * thread_counters_ptr = (double *)&cpus_state[i].accum_counters; 
+			for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
 				global_counters_ptr[c] += thread_counters_ptr[c]; 
 			}
 		}
@@ -820,8 +832,8 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 			//Align end of trace
 			if (TRACE_ENABLED){
 				for(int i=0; i<N_THREADS; ++i){
-					if (cpu_trace_state[i].qemu_trace_timestamp > 0){
-						trace_row(mpi_rank, i, cpu_trace_state[i].last_row, cpu_trace_state[i].qemu_trace_timestamp+1);
+					if (cpus_state[i].timestamp > 0){
+						trace_row(mpi_rank, i, cpus_state[i].last_row, cpus_state[i].timestamp+1);
 						clean_event(FD_PRV); 
 					}
 				}
@@ -942,7 +954,9 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
                                            char **argv)
 {
 
-
+	parallel_region.master_thread = -1;
+	//long nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+	//printf("nprocs: %d\n", nprocs);
 	char * OMP_NUM_THREADS = getenv("OMP_NUM_THREADS");
 	int omp_threads = OMP_NUM_THREADS==NULL? 1 : atoi(OMP_NUM_THREADS);
 	char * RAVE_MAX_THREADS = getenv("RAVE_MAX_THREADS");
@@ -953,7 +967,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 	if (world_rank!=NULL && alloc_threads < 3) alloc_threads += 2; //Mpi process adds two threads
 	mpi_size = world_rank==NULL? 1 : atoi(world_rank);
 
-	cpu_trace_state = (trace_state_t*)malloc(sizeof(trace_state_t)*alloc_threads);
+	cpus_state = (thread_state_t*)malloc(sizeof(thread_state_t)*alloc_threads);
 
 	for(int i=0; i<argc; ++i){
 			if (contains_string(argv[i], "PRINT_SCALAR")) PRINT_SCALAR = 1;
@@ -1028,7 +1042,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 	}
 
 	add_event(-1,"Global");
-	qemu_counters global_counters;
+	rave_counters global_counters;
 	reset_counters(&global_counters);
 	rave_eventandcounters(-1, 1, -1, &global_counters); //Start global event
 

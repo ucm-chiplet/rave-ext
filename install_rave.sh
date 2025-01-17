@@ -47,8 +47,8 @@ else
 fi
 cp ${rave_sources_dir}/my_decode.h contrib/plugins/.
 cp ${rave_sources_dir}/instr_data.h contrib/plugins/.
-cp ${rave_sources_dir}/qemu_counters.h contrib/plugins/.
-cp ${rave_sources_dir}/qemu2prv.h contrib/plugins/.
+cp ${rave_sources_dir}/rave_counters.h contrib/plugins/.
+cp ${rave_sources_dir}/rave2prv.h contrib/plugins/.
 
 if ! grep -q $plugin_name contrib/plugins/Makefile; then
 	sed	 -i "/^NAMES :=/a NAMES += ${plugin_name}" contrib/plugins/Makefile

@@ -1,5 +1,6 @@
 #include "rave_user_events.h"
-#include "stdlib.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 __attribute__((noinline))
 void validate(double * Y, double * X, double alpha, int N){
