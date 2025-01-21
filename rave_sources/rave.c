@@ -1027,7 +1027,6 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 
 							flock(fileno(FD_PRV), LOCK_EX); //Lock PRV for this process
 							//setup_paraver_trace(filename);
-							printf("expected threads: %d\n", expected_threads);
 							write_prv(FD_PRV, 1, &expected_threads, 2);
 			}
 			else if (contains_string(argv[i], "CSV_NAME")){
