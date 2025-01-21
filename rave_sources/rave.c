@@ -62,13 +62,14 @@ FILE * FD_COMM;
 #endif
 
 #include "rave_counters.h"
-#include "qemu2prv.h"
+#include "rave2prv.h"
 #include "instr_data.h"
 
 
 int mpi_rank = 0;
 int mpi_size = 1;
 volatile int N_THREADS = 0; //This increases when a new CPU is online
+int expected_threads = 0;
 int alloc_threads = 0;
 
 struct parallel_region_t{
@@ -297,17 +298,24 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 	//  Logfile  //
 	if (TRACE_ENABLED){
 		if (PRINT_LOGFILE){
-			set_lock(write_lock);
 			if (!PRINT_SCALAR && !is_type(instr->type, T_SCALAR) && cpus_state[cpu_index].scalar_instr_since_vector>0){
 				char * string = g_strdup_printf("%d scalar instructions\n", cpus_state[cpu_index].scalar_instr_since_vector); 
+				set_lock(write_lock);
 				qemu_plugin_outs(string);
+				if (!is_type(instr->type, T_SCALAR) || PRINT_SCALAR){ 
+					qemu_plugin_outs(instr->asm_string);
+					qemu_plugin_outs("\n");
+				}
+				release_lock(write_lock);
 				free(string);
-			} 
-			if (!is_type(instr->type, T_SCALAR) || PRINT_SCALAR){ 
-				qemu_plugin_outs(instr->asm_string);
-				qemu_plugin_outs("\n");
+			}else{
+				if (!is_type(instr->type, T_SCALAR) || PRINT_SCALAR){ 
+					set_lock(write_lock);
+					qemu_plugin_outs(instr->asm_string);
+					qemu_plugin_outs("\n");
+					release_lock(write_lock);
+				}
 			}
-			release_lock(write_lock);
 		}
 
 		//  PRV  //
@@ -598,7 +606,8 @@ static void vcpu_restart_trace(unsigned int cpu_index, void *udata){
 	//restart prv
 	if (PRINT_PRV){
 		FD_PRV = freopen(NULL, "w+", FD_PRV);
-		write_prv(FD_PRV, 1, &N_THREADS, 2); 
+		if (N_THREADS > expected_threads) expected_threads = N_THREADS;
+		write_prv(FD_PRV, 1, &expected_threads, 2); 
 	}
 	//restart global region
 	//global_region -> closed = 0;
@@ -888,7 +897,7 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 				free(ext_filename);
 
 				//Rewrite header when more than 1 cpu was used (either MPI, OMP, or both)
-				if (mpi_size > 1 || N_THREADS > 1){ 
+				if (mpi_size > 1 || N_THREADS > expected_threads){ 
 					FILE * FD_NEWPRV;
 					char namebuff[32];
 					sprintf(namebuff, "tmpfile-%d", getpid());
@@ -967,6 +976,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 	if (world_rank!=NULL && alloc_threads < 3) alloc_threads += 2; //Mpi process adds two threads
 	mpi_size = world_rank==NULL? 1 : atoi(world_rank);
 
+	expected_threads = alloc_threads;
 	cpus_state = (thread_state_t*)malloc(sizeof(thread_state_t)*alloc_threads);
 
 	for(int i=0; i<argc; ++i){
@@ -1017,8 +1027,8 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 
 							flock(fileno(FD_PRV), LOCK_EX); //Lock PRV for this process
 							//setup_paraver_trace(filename);
-							int num_threads=1;
-							write_prv(FD_PRV, 1, &num_threads, 2); //Assume only 1 thread will run...
+							printf("expected threads: %d\n", expected_threads);
+							write_prv(FD_PRV, 1, &expected_threads, 2);
 			}
 			else if (contains_string(argv[i], "CSV_NAME")){
 				//++i;
