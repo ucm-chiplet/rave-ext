@@ -1,4 +1,7 @@
+*.tar*
 *.log
 *.pcf
 *.row
 *.prv
+*.x
+*.o

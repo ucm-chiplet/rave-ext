@@ -1,11 +1,9 @@
-[submodule "qemu-0_7"]
-	path = qemu-0_7
+[submodule "qemu_sources/qemu-rvv-0_7_1"]
+	path = qemu_sources/qemu-rvv-0_7_1
 	url = https://gitlab.com/qemu-project/qemu.git
 	branch = stable-6.1
-[submodule "qemu-1_0"]
-	path = qemu-1_0
+
+[submodule "qemu_sources/qemu-rvv-1_0"]
+	path = qemu_sources/qemu-rvv-1_0
 	url = https://gitlab.com/qemu-project/qemu.git
 	branch = stable-9.0
-[submodule "riscv-gnu-toolchain"]
-	path = riscv-gnu-toolchain
-	url = https://github.com/riscv-collab/riscv-gnu-toolchain

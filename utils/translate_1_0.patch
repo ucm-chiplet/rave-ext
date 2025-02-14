@@ -1,0 +1,33 @@
+--- ./target/riscv/translate.c	2024-12-12 09:23:29.992935306 +0100
++++ ./target/riscv/translate.c	2024-12-12 09:23:14.485011191 +0100
+@@ -1149,6 +1149,21 @@
+          * The Zca extension is added as way to refer to instructions in the C
+          * extension that do not include the floating-point loads and stores
+          */
++				//If rd==x0, end basic block
++				int rd=-1;
++				int op = opcode & 0x03;
++				int funct3 = (opcode >> 13) & 0x07;
++
++				if (op == 0){
++					if (funct3 < 4) rd = (opcode>>2) & 0x07;
++				}else if (op==1){
++					if (funct3 < 4) rd = (opcode>>7) & 0x1F;
++					else if (funct3 == 4)  rd = (opcode>>7) & 0x07;
++				}else if (op==2){
++					if (funct3 <= 4) rd = (opcode>>7) & 0x1F;
++				}
++				if (rd==0) ctx->base.is_jmp = DISAS_TOO_MANY; 
++
+         if ((has_ext(ctx, RVC) || ctx->cfg_ptr->ext_zca) &&
+             decode_insn16(ctx, opcode)) {
+             return;
+@@ -1159,6 +1174,8 @@
+                              translator_lduw(env, &ctx->base,
+                                              ctx->base.pc_next + 2));
+         ctx->opcode = opcode32;
++				//If rd==x0, end basic block
++				if (((opcode32 >> 7) & 0x1F)==0) ctx->base.is_jmp = DISAS_TOO_MANY; 
+ 
+         for (size_t i = 0; i < ARRAY_SIZE(decoders); ++i) {
+             if (decoders[i].guard_func(ctx->cfg_ptr) &&
