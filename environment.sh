@@ -2,7 +2,7 @@
 if [[ "$RVV" != "0_7" ]] && [[ "$RVV" != "1_0" ]]; then
 	echo "Environment variable RVV must be set to either 0_7 or 1_0. Now its set at: $RVV"
 else
-	SCRIPT_DIR=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
+	SCRIPT_DIR=$(realpath $(dirname -- "$(readlink -f -- "$BASH_SOURCE")"))
 	if [[ "$RVV" == "0_7" ]]; then
 		export RAVE_DIR=${SCRIPT_DIR}/build/qemu-rave/RVV-0_7_1
 		export LLVM_DIR=${SCRIPT_DIR}/build/llvm-cross/llvm-EPI-0.7-development-toolchain-cross
@@ -25,12 +25,12 @@ else
 		echo "WARNING: LLVM cross-compiler is not installed!"
 	else
 		echo "LLVM path: $LLVM_DIR"
-		export PATH=${LLVM_DIR}/bin:${PATH}
+		#export PATH=${LLVM_DIR}/bin:${PATH}
 	fi
 
 	#MPICC_DIR=${SCRIPT_DIR}/build/parallel/openmpi/cross/4.1.6_gcc11.4.0
 	MPICC_DIR=${SCRIPT_DIR}/build/parallel/openmpi-4.1.6/
-	if [ ! -d ${SYSROOT_DIR} ]; then
+	if [ ! -d ${MPICC_DIR} ]; then
 		echo "WARNING: MPI cross-compiler not installed!"
 	else
 		echo "MPICC path: $MPICC_DIR"

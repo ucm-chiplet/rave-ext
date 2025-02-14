@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <qemu-plugin.h>
 #include <fcntl.h>
+#include <sys/file.h>
 
 
 //#define TIMEDEBUG
@@ -191,6 +192,10 @@ void reset_thread(thread_state_t * state){
 volatile int write_lock = 0;
 #define set_lock(lock) if(N_THREADS>1){ while (! __sync_bool_compare_and_swap(&lock, 0, 1)){sched_yield();}}//Wait until lock is 0, then put it to 1
 #define release_lock(lock) if (N_THREADS>1) { __sync_val_compare_and_swap(&lock, 1, 0);} //Unlock 
+#define file_lock(fd, action) flock(fd,action); 
+//#define set_lock(lock) ; 
+//#define release_lock(lock) ; 
+//#define file_lock(fd, action) {printf("%d: flock " #fd #action "\n", mpi_rank); flock(fd,action); printf("done\n");}
 
 
 //Symbols:
@@ -202,8 +207,6 @@ int print_sym = 1;
 
 
 static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
-
-	//Wait if realloc is in process
 
 	if (cpu_index >= N_THREADS){ //Wait for the thread to be properly initialized
 		sched_yield();
@@ -428,7 +431,8 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 
 
-static void vcpu_rave_event(unsigned int cpu_index, uint32_t insn_opcode){
+static void vcpu_rave_event(unsigned int cpu_index, void * insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)insn_opcode_void;
 #ifdef TIMEDEBUG
 	uint64_t time1 = getmicros();
 #endif
@@ -481,7 +485,7 @@ int qemu_event_number=-1;
 int qemu_value_number=-1;
 char qemu_event_name_first_digit=1;
 
-static void vcpu_rave_name_event_toggle(unsigned int cpu_index, uint32_t insn_opcode){
+static void vcpu_rave_name_event_toggle(unsigned int cpu_index, void * udata){
 
 		if (qemu_name_offset>0){//End of name
 			qemu_event_name[qemu_name_offset]='\0';
@@ -496,7 +500,8 @@ static void vcpu_rave_name_event_toggle(unsigned int cpu_index, uint32_t insn_op
 		}
 }
 
-static void vcpu_rave_name_event_value(unsigned int cpu_index, uint32_t insn_opcode){
+static void vcpu_rave_name_event_value(unsigned int cpu_index, void* insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)insn_opcode_void;
 	uint8_t *cpu = qemu_get_cpu(cpu_index);
 	int src1 = (insn_opcode>>15)&0x1F;
 	int src2 = (insn_opcode>>20)&0x1F;
@@ -516,7 +521,7 @@ static void vcpu_rave_name_char(unsigned int cpu_index, uint32_t insn_opcode){
 		}
 }
 
-static void vcpu_parallel_end(unsigned int cpu_index, uint32_t insn_opcode){
+static void vcpu_parallel_end(unsigned int cpu_index, void * udata){
 
 	//Wait for everyone to cross the last barrier
 	while (__sync_val_compare_and_swap(&parallel_region.crossed_barrier, 0, 0) != 0) {;} 
@@ -527,7 +532,8 @@ static void vcpu_parallel_end(unsigned int cpu_index, uint32_t insn_opcode){
 	parallel_region.master_thread = -1;
 }
 
-static void vcpu_parallel_begin(unsigned int cpu_index, uint32_t insn_opcode){
+static void vcpu_parallel_begin(unsigned int cpu_index, void* insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)insn_opcode_void;
 	
 	//Atomicity assumed (only on thread active when this happens -> No nested parallel regions
 	//TODO: Check this assumption, act accordingly
@@ -551,7 +557,7 @@ static void vcpu_parallel_begin(unsigned int cpu_index, uint32_t insn_opcode){
 	parallel_region.first_barrier = 1;
 }
 
-static void vcpu_parallel_barrier(unsigned int cpu_index, void *udata){
+static void vcpu_parallel_barrier(unsigned int cpu_index, void * udata){
 
 	//Wait if the previous barrier has not been crossed by other threads
 	while (__sync_val_compare_and_swap(&parallel_region.crossed_barrier, 0, 0) != 0) {sched_yield();} 
@@ -850,14 +856,14 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 
 			int fd = fileno(FD_PRV);
 			fclose(FD_PRV);
-			flock(fd, LOCK_UN); //Unlock PRV
+			file_lock(fd, LOCK_UN); //Unlock PRV
 
 			if (mpi_rank > 0){
 				//Write NTHREADS to file
 				fprintf(FD_COMM,"%d\n",N_THREADS);
 				fd=fileno(FD_COMM);
 				fclose(FD_COMM);
-				flock(fd, LOCK_UN); //Unlock COMM
+				file_lock(fd, LOCK_UN); //Unlock COMM
 			}else if (mpi_rank == 0){
 				//Read COMM from others
 				int * N_THREADS_all = (int *)malloc(sizeof(int)*mpi_size);
@@ -867,13 +873,13 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 						sprintf(rank_comm_file, "%s-%d.com", filename,i);
 
 						FD_COMM = fopen(rank_comm_file, "r");
-						flock(fileno(FD_COMM), LOCK_EX); //Wait for lock on COM
+						file_lock(fileno(FD_COMM), LOCK_EX); //Wait for lock on COM
 						//Read N_THREADS
 						int n_threads_rank=0;
 						fscanf(FD_COMM, "%d\n", &n_threads_rank);
 						N_THREADS_all[i] = n_threads_rank;
 
-						flock(fileno(FD_COMM), LOCK_UN); //Unlock COMM
+						file_lock(fileno(FD_COMM), LOCK_UN); //Unlock COMM
 						fclose(FD_COMM);
 						remove(rank_comm_file);
 						free(rank_comm_file);
@@ -922,7 +928,7 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 						}
 
 						FD_PRV = fopen(rank_file, "r");
-						flock(fileno(FD_PRV), LOCK_EX); //Wait for lock on PRV
+						file_lock(fileno(FD_PRV), LOCK_EX); //Wait for lock on PRV
 
 						int found_newline=0;
 						int r;
@@ -940,7 +946,7 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 						while ((r=fread(buff, 1, PRV_BUFFSIZE, FD_PRV)))	fwrite(buff, 1, r, FD_NEWPRV);
 
 						fclose(FD_PRV);
-						flock(fileno(FD_PRV), LOCK_UN); //Unlock PRV
+						file_lock(fileno(FD_PRV), LOCK_UN); //Unlock PRV
 						remove(rank_file);
 						free(rank_file);
 					}
@@ -990,6 +996,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			 	DETECT_SYMBOLS = 1;
 				add_event(1001, "symbols");
 			}else if (contains_string(argv[i], "PRV_NAME")){
+#if 1
 							int j; for(j=0; j<strlen(argv[i]); ++j)	if (argv[i][j] == '=') break;
 
 							int l_filename = strlen(&argv[i][j+1]);
@@ -1008,26 +1015,27 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 								prv_filename = malloc(l_filename+l_rank+l_ext+1);
 								strcpy(prv_filename, &argv[i][j+1]);
 								sprintf(&prv_filename[l_filename],"-%s.prv",rank);
+								open_file(&FD_PRV, prv_filename);
+								file_lock(fileno(FD_PRV), LOCK_EX); //Lock PRV for this process
 
 								//Communications file
 								if (mpi_rank > 0){
 									sprintf(&prv_filename[l_filename],"-%s.com",rank);
 									open_file(&FD_COMM,prv_filename);
-									flock(fileno(FD_COMM), LOCK_EX); //Lock COM for this process
+									file_lock(fileno(FD_COMM), LOCK_EX); //Lock COM for this process
 								}
-
 							}else{
 								prv_filename = malloc(l_filename+l_ext+1);
 								strcpy(prv_filename, &argv[i][j+1]);
 								strcpy(&prv_filename[l_filename],".prv");
+								open_file(&FD_PRV, prv_filename);
+								file_lock(fileno(FD_PRV), LOCK_EX); //Lock PRV for this process
 							}
-
-							open_file(&FD_PRV, prv_filename);
 							free(prv_filename);
 
-							flock(fileno(FD_PRV), LOCK_EX); //Lock PRV for this process
 							//setup_paraver_trace(filename);
 							write_prv(FD_PRV, 1, &expected_threads, 2);
+#endif
 			}
 			else if (contains_string(argv[i], "CSV_NAME")){
 				//++i;

@@ -1,4 +1,6 @@
 all: vecmix
 
+CC=${LLVM_DIR}/bin/clang
+
 vecmix: vecmix.c
-	clang -O3 -mepi -fno-vectorize $^ -o $@.x
+	$(CC) -O3 -mepi -fno-vectorize $^ -o $@.x
