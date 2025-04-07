@@ -19,9 +19,9 @@ args=;
 if [ "$RAVE_PRINT_SCALAR" == "1" ]; then #OPT-in
 	args=$args",PRINT_SCALAR=on"
 fi
-#if [ "$RAVE_PRINT_ADDR" == "1" ]; then
-#	args=$args",arg=PRINT_ADDR"
-#fi
+if [ "$RAVE_PRINT_ADDR" == "1" ]; then
+	args=$args",arg=PRINT_ADDR"
+fi
 if [ "$RAVE_PRINT_LOGFILE" == "1" ] || [ "$RAVE_LOGFILE_NAME" != "" ]; then
 	args=$args",PRINT_LOGFILE=on"
 	if [ "$RAVE_LOGFILE_NAME" == "" ];then

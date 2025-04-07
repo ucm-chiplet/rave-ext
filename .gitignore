@@ -5,3 +5,4 @@
 *.prv
 *.x
 *.o
+*.trace

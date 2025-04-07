@@ -35,7 +35,7 @@ Then, download and install the LLVM-based cross-compiler using the following scr
 
 ### 4. Install the RAVE plugin
 
-If you want to build the sysroot from scracth, you can install the RISC-V toolchain. This should be installed just once, as it is quite time-consuming. 
+Then install RAVE
 ```bash
 ./install_rave.sh [0_7 / 1_0]
 ```
@@ -52,6 +52,12 @@ Donwload and install it with the following script:
 
 ```bash
 ./install_parallel.sh
+```
+
+### 7. Install GDB for RAVE:
+
+```bash
+./install_gdb.sh [0_7 / 1_0]
 ```
 
 ## Testing

@@ -96,6 +96,9 @@ fprintf(fd,
 "9   47000001     program-counter\n"
 
 "EVENT_TYPE\n"
+"9   47000005     address\n"
+
+"EVENT_TYPE\n"
 "9   47000006     RDest\n"
 "VALUES\n"
 "102 zero\n"
@@ -1053,6 +1056,12 @@ fprintf(fd,
 
 
 "EVENT_TYPE\n"
+"9   47000029     VLEN\n"
+
+"EVENT_TYPE\n"
+"9   47000030     ELEN\n"
+
+"EVENT_TYPE\n"
 "9   47000003     num-scalar-instr-before\n"
 
 "EVENT_TYPE\n"
@@ -1060,9 +1069,23 @@ fprintf(fd,
 
 "EVENT_TYPE\n"
 "9   47000031     single-element-width\n"
+"VALUES\n"
+"0 e8\n"
+"1 e16\n"
+"2 e32\n"
+"3 e64\n"
 
 "EVENT_TYPE\n"
 "9   47000032     length-multiplier\n"
+"VALUES\n"
+"0 m1\n"
+"1 m2\n"
+"2 m4\n"
+"3 m8\n"
+"4 reserved\n"
+"5 mf8\n"
+"6 mf4\n"
+"7 mf2\n"
 );
 
 }
