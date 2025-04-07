@@ -39,6 +39,8 @@ int num_vcpu_control=0;
 #endif
 
 ////////////////////////////////    Control variables    /////////////////////////////////
+int RAVE_VLMAX = 0;
+int RAVE_ELEN = 64;
 char PRINT_LOGFILE = 0;
 char PRINT_SCALAR = 0;
 char PRINT_ADDR = 0;
@@ -269,6 +271,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 	int row = SCALAR_ROW;
 	uint64_t vl=0, vtype, sew, lmul;
 	//double lmul_value;
+	uint64_t addr = 0;
 	int stride = 0;
 
 	if (is_type(instr->type, T_VECTOR)){ //VECTOR
@@ -286,6 +289,12 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 		//lmul_value = (lmul < 4) ? (double)(1<<lmul) : (lmul==7)? 0.5 : (lmul==6)? 0.25 : 0.125;
 #endif
 		if (is_subtype(instr->type, T_MEMORY)){
+
+			if (PRINT_ADDR){
+				int src1 = (instr->instr32>>15)&0x1F;
+				addr = qemu_get_xreg(cpu,src1);
+			}
+
 		 	if (is_subsubtype(instr->type, T_STRIDE)){
 				int src2 = (instr->instr32>>20)&0x1F;
 				stride = qemu_get_xreg(cpu,src2);
@@ -294,6 +303,17 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 			#ifndef EPI_07
 			int width = (instr->instr32 >> 12)&0x3; 
 			sew = width;
+
+			if ((((instr->instr32>>20)&0xFF) == 0x28)){
+				sew = 0; //sew: 1 byte (8 bits)
+				vl = RAVE_VLMAX / 8; //vl
+			}
+		}else if ( ((instr->instr32&0x7F)==0x57) && (((instr->instr32>>26)&0x3F)==0x27) && (((instr->instr32>>12)&0x07)==0x03)) {
+			//Whole register move
+			int NFIELDS = (instr->instr32>>15)&0x1F;
+			lmul = NFIELDS==7?3 : NFIELDS==3?2 : NFIELDS==1?1 : 0;
+			sew = 0; //sew: 1 byte (8 bits)
+			vl = RAVE_VLMAX / 8; //vl
 			#endif
 		}
 	}
@@ -346,6 +366,8 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				trace_event_value(event_class,instr->type);
 				trace_event_value(event_pc, instr->PC);
 				trace_event_value(event_instruction, instr->paraver_code);
+				trace_event_value(event_dst, instr->dst);
+				trace_event_value(event_src1, instr->src1);
 				release_lock(write_lock);
 			}else{ //PRINT_SCALAR || (instr!=SCALAR && instr!=VSETVL)
 				set_lock(write_lock);
@@ -353,6 +375,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				trace_event_value(event_class,instr->type);
 				trace_event_value(event_pc, instr->PC);
 				trace_event_value(event_scalb, cpus_state[cpu_index].scalar_instr_since_vector);
+				if (PRINT_ADDR) trace_event_value(event_addr, addr);
 				trace_event_value(event_dst, instr->dst);
 				trace_event_value(event_src1, instr->src1);
 				trace_event_value(event_src2, instr->src2);
@@ -614,6 +637,10 @@ static void vcpu_restart_trace(unsigned int cpu_index, void *udata){
 		FD_PRV = freopen(NULL, "w+", FD_PRV);
 		if (N_THREADS > expected_threads) expected_threads = N_THREADS;
 		write_prv(FD_PRV, 1, &expected_threads, 2); 
+		trace_row(0, 0, SCALAR_ROW, 0);
+		trace_event_value(event_VLEN,RAVE_VLMAX);
+		trace_event_value(event_ELEN,RAVE_ELEN);
+
 	}
 	//restart global region
 	//global_region -> closed = 0;
@@ -750,7 +777,6 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 		insn_disas = qemu_plugin_insn_disas(insn);
 
 		char is_illegal = contains_string(insn_disas,"ill");
-
 
 		//Dissassembly
 		char my_disas[64];
@@ -909,6 +935,9 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 					sprintf(namebuff, "tmpfile-%d", getpid());
 					open_file(&FD_NEWPRV, namebuff);
 					write_prv(FD_NEWPRV, mpi_size, N_THREADS_all, 2); // write header
+					trace_row(0, 0, SCALAR_ROW, 0);
+					trace_event_value(event_VLEN,RAVE_VLMAX);
+					trace_event_value(event_ELEN,RAVE_ELEN);
 
 
 					#define PRV_BUFFSIZE 2048
@@ -968,6 +997,8 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
                                            const qemu_info_t *info, int argc,
                                            char **argv)
 {
+	char * RAVE_VLEN = getenv("RAVE_VLEN");
+	RAVE_VLMAX = RAVE_VLEN==NULL? 16384 : atoi(RAVE_VLEN);
 
 	parallel_region.master_thread = -1;
 	//long nprocs = sysconf(_SC_NPROCESSORS_ONLN);
@@ -1035,6 +1066,9 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 
 							//setup_paraver_trace(filename);
 							write_prv(FD_PRV, 1, &expected_threads, 2);
+							trace_row(0, 0, SCALAR_ROW, 0);
+							trace_event_value(event_VLEN,RAVE_VLMAX);
+							trace_event_value(event_ELEN,RAVE_ELEN);
 #endif
 			}
 			else if (contains_string(argv[i], "CSV_NAME")){

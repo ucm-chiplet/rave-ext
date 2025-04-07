@@ -1,16 +1,19 @@
 #if 1
 #define event_pc 47000001
 #define event_scalb 47000003
+#define event_addr 47000005
 #define event_dst 47000006
 #define event_src1 47000007
 #define event_src2 47000008
 #define event_instruction 47000015
+#define event_class 47000016
 #define event_vl 47000019
+#define event_VLEN 47000029
+#define event_ELEN 47000030
 #define event_sew 47000031
 #define event_lmul 47000032
 #define event_stride 48000000
 
-#define event_class 47000016
 #else
 #define event_pc "47000001"
 #define event_scalb "47000003"
@@ -24,7 +27,7 @@
 #define event_stride "48000000"
 #endif
 
-#define clean_event(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_pc, event_scalb, event_dst, event_src1, event_src2, event_instruction, event_vl, event_sew, event_lmul, event_stride);
+#define clean_event(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_pc, event_scalb, event_addr, event_dst, event_src1, event_src2, event_instruction, event_vl, event_sew, event_lmul, event_stride);
 
 
 //Added in 1.0

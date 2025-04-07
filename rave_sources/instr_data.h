@@ -11,8 +11,10 @@
 
 #define T_OTHER  0x0000
 #define T_ARITH  0x0010
-#define T_MEMORY 0x0020
-#define T_MASK   0x0030
+#define T_LOAD   0x0020
+#define T_STORE  0x0030
+#define T_MASK   0x0040
+#define T_MEMORY T_LOAD //Until we report ld/st separately
 
 #define T_FP     0x0001
 #define T_INT    0x0002
@@ -78,7 +80,7 @@ int16_t instr_set_type(uint32_t insn_opcode){
 				int funct6,funct3,mop,vs1;
 				switch (opcode){
 								case MAJOR_LOAD:
-												subtype = T_MEMORY;
+												subtype = T_LOAD;
 #ifdef EPI_07
 												mop = get_bit_field(insn_opcode,28,26);
 												if (mop == 0 || mop == 4) subsubtype = T_UNIT;
@@ -92,7 +94,7 @@ int16_t instr_set_type(uint32_t insn_opcode){
 #endif
 												break;
 								case MAJOR_STORE:
-												subtype = T_MEMORY;
+												subtype = T_STORE;
 #ifdef EPI_07
 												mop = get_bit_field(insn_opcode,28,26);
 												if (mop == 0) subsubtype = T_UNIT;
@@ -231,20 +233,21 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 	data -> dst =  (field_idx > 1) ? reg2prv(instr_fields[1]) : 0;
 	data -> src1 = (field_idx > 2) ? reg2prv(instr_fields[2]) : 0; 
 	data -> src2 = (field_idx > 3) ? reg2prv(instr_fields[3]) : 0;
+	data -> src3 = 0;
 
 	if (contains_string(instr_fields[0], "vset")){
 		data -> type = T_VSETVL;
 		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]); //Could be simplified
 	}else if (instr_fields[0][0]=='v'){
 		data -> type = instr_set_type(insn_opcode);
-		//if (data->majortype==OTHER) printf("%s\t%s\t%s\n",majornames[data->majortype], minornames[data->minortype],&instr[offsets[1]]);
-#if 0
-			int opcode = get_bit_field(insn_opcode,6,0); //7 bits
-			int funct3 = get_bit_field(insn_opcode,14,12); //3 bits
-			int	funct6 = get_bit_field(insn_opcode,31,26); //6 bits
-		 	int instr_prv_code = (opcode | (funct3<<7) | (funct6<<10)); //16 bits (0....65535)
-			printf("%04x\t%lu\t%s\n",instr_prv_code,instr_prv_code, instr_fields[0]);
-#endif
+
+		if (is_subtype(data->type, T_STORE)){
+			//change it back to "memory" (general)
+			data -> type &= 0x0F0F;
+			data -> type |= T_MEMORY;
+			data -> src3 = data -> dst;
+			data -> dst = 0;
+		}
 		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]);
 	}else{
 		data -> type = T_SCALAR;

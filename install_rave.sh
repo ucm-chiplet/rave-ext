@@ -67,6 +67,9 @@ cp build/contrib/plugins/librave.so $install_dir/.
 mkdir -p $install_dir/../bin
 cp ${rave_sources_dir}/rave-$EXT.sh $install_dir/../bin/rave
 
+cp ../../utils/rave_gdb $install_dir/../bin/rave_gdb
+sed -i "s/EXT/${EXT}/g" $install_dir/../bin/rave_gdb
+
 echo "Building the API...[2/2]"
 
 cd -

@@ -2,7 +2,7 @@
 if [[ "$RVV" != "0_7" ]] && [[ "$RVV" != "1_0" ]]; then
 	echo "Environment variable RVV must be set to either 0_7 or 1_0. Now its set at: $RVV"
 else
-	SCRIPT_DIR=$(realpath $(dirname -- "$(readlink -f -- "$BASH_SOURCE")"))
+	SCRIPT_DIR=$(realpath $(dirname -- "$(readlink -f -- "$0")"))
 	if [[ "$RVV" == "0_7" ]]; then
 		export RAVE_DIR=${SCRIPT_DIR}/build/qemu-rave/RVV-0_7_1
 		export LLVM_DIR=${SCRIPT_DIR}/build/llvm-cross/llvm-EPI-0.7-development-toolchain-cross
