@@ -1,0 +1,40 @@
+#!/bin/bash
+trap : SIGTERM SIGINT
+
+SCRIPT_DIR=$(realpath $(dirname -- "$(readlink -f -- "$0")"))
+
+port=42$UID
+
+out=`pgrep -f "\-g $port"`
+err=$?
+while [ $err -eq 0 ]
+do	
+		#echo "Warning: You are already running a GDB emulation on port $port. Consider killing these PIDs: $out"
+		port=$((port+1))
+		out=`pgrep -f "\-g $port"`
+		err=$?
+done
+
+RAVE=${SCRIPT_DIR}/rave
+GDB=${SCRIPT_DIR}/../../../gdb/gdb-rvv-EXT/bin/riscv64-linux-gnu-gdb
+SYSROOT=${SCRIPT_DIR}/../../../sysroot
+
+echo "----------------------------------------------------------"
+echo "Creating RAVE emulation with port $port"
+${RAVE} -g $port $@ & 
+echo "GDB running" 
+sleep 1
+echo "Running GDB with target remote localhost:$port"
+echo "Write \"c\" or \"continue\" in GDB to start your program"
+echo "----------------------------------------------------------"
+${GDB} \
+	-ex "target remote localhost:$port" \
+	-ex "set sysroot ${SYSROOT}" \
+	-ex "set debug-file-directory ${SYSROOT}/usr/lib/debug" \
+	./$1
+
+
+PID=`pgrep -f "\-g $port"`
+echo "Killing pid $PID"
+kill -9 $PID 2>/dev/null
+
