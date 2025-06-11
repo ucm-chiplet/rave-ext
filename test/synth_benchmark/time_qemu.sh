@@ -5,7 +5,7 @@ for freq in `seq 0 10 300`
 do
 	oldIFS=$IFS
 	IFS=;
-	out=`/usr/bin/time rave ./vecmix.x $freq $((1*(10**8))) 2>&1`
+	out=`/usr/bin/time ../../build/qemu-rave/RVV-0_7_1/bin/rave ./vecmix.x $freq $((1*(10**8))) 2>&1`
 	IFS=$oldIFS
 	echo $freq $out 
 done

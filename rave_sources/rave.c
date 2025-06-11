@@ -763,6 +763,11 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 	char *insn_disas;
 
 	size_t n = qemu_plugin_tb_n_insns(tb);
+
+	if (!PRINT_PRV && !PRINT_LOGFILE && !PRINT_REPORT && !PRINT_CSV){
+		return;
+	}
+
 	for (size_t i = 0; i < n; i++) {
 		/*
 		 * `insn` is shared between translations in QEMU, copy needed data here.

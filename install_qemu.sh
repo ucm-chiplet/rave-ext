@@ -58,9 +58,9 @@ make distclean &>> $LOGFILE
 
 
 options="$targets --disable-docs --prefix="${install_dir}" --enable-plugins"
-if [[ "$EXT" == "1_0" ]]; then
-	options="$options --python=python3.10"
-fi
+#if [[ "$EXT" == "1_0" ]]; then
+	#options="$options --python=python3.10"
+#fi
 
 ./configure $options &>> $LOGFILE
 if [ $? -ne 0 ]; then
@@ -72,7 +72,16 @@ echo "Patching QEMU... [4/5]"
 
 ##Set VLEN to 16k bits
 sed -i 's/^\#define\ RV_VLEN_MAX\ .*/\#define\ RV_VLEN_MAX\ \(256\*64\)/g' ./target/riscv/cpu.h
-cp ../../utils/qemu-plugins.symbols plugins/.
+#cp ../../utils/qemu-plugins.symbols plugins/.
+
+#if [[ "$EXT" == "0_7" ]]; then
+	git checkout plugins/qemu-plugins.symbols
+	sed -i '/};/i qemu_get_cpu;' plugins/qemu-plugins.symbols
+	sed -i '/};/i qemu_plugin_hwaddr_device_name;' plugins/qemu-plugins.symbols
+	sed -i '/};/i qemu_plugin_hwaddr_is_io;' plugins/qemu-plugins.symbols
+	sed -i '/};/i qemu_plugin_hwaddr_phys_addr;' plugins/qemu-plugins.symbols
+	sed -i '/};/i qemu_plugin_insn_symbol;' plugins/qemu-plugins.symbols
+#fi
 
 
 #Hybrid translator loop 
