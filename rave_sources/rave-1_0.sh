@@ -41,13 +41,15 @@ if [ "$RAVE_PRINT_PRV" == "1" ] || [ "$RAVE_PRV_NAME" != "" ]; then #OPT-in
 	args=$args",PRINT_PRV=on,PRV_NAME=$RAVE_PRV_NAME"
 fi
 
-if [ "$RAVE_PRINT_REPORT" == "1" ]; then #OPT-in
-	args=$args",PRINT_REPORT=on"
-fi
 if [ "$RAVE_DETECT_SYMBOLS" == "1" ]; then #OPT-in
 	args=$args",DETECT_SYMBOLS=on"
 fi
-
+if [ "$RAVE_PRINT_REPORT" == "1" ]; then #OPT-in
+	args=$args",PRINT_REPORT=on"
+fi
+if [ "$RAVE_REPORT_NAME" != "" ]; then #OPT-in
+	args=$args",PRINT_REPORT=on,REPORT_NAME=$RAVE_REPORT_NAME"
+fi
 if [ "$RAVE_PRINT_CSV" == "1" ] || [ "$RAVE_CSV_NAME" != "" ]; then #OPT-in
 	if [ "$RAVE_CSV_NAME" == "" ]; then
 		RAVE_CSV_NAME=qemu_summary.csv
@@ -64,6 +66,9 @@ fi
 RAVE_PLUGIN=${SCRIPT_DIR}/../lib 
 QEMU_PATH=${SCRIPT_DIR}/../qemu/bin
 QEMU_CPU=rv64,v=true,vext_spec=v1.0,vlen=$RAVE_VLEN
+if [ "$RAVE_CUSTOM_EXTENSIONS" != "" ]; then 
+	QEMU_CPU=${QEMU_CPU},${RAVE_CUSTOM_EXTENSIONS}
+fi
 
 ${QEMU_PATH}/qemu-riscv64 $QEMU_OPTION $RAVE_LOGFILE_NAME -d plugin -plugin ${RAVE_PLUGIN}/librave.so$args -L ${RAVE_SYSROOT} -E LD_LIBRARY_PATH=${QEMU_SYSROOT}/lib:${SCRIPT_DIR}/../../../parallel:$LD_LIBRARY_PATH -E PATH=$PATH -E LD_RUN_PATH=$LD_RUN_PATH -E LD_PRELOAD=${SCRIPT_DIR}/../../../parallel/ompt.so:$LD_PRELOAD -cpu $QEMU_CPU $@
 

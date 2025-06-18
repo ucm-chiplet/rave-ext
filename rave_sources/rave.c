@@ -55,6 +55,7 @@ FILE * FD_PCF;
 FILE * FD_ROW;
 FILE * FD_CSV;
 FILE * FD_COMM;
+FILE * FD_REPORT;
 
 //#define EPI_07
 
@@ -861,7 +862,7 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 		rave_eventandcounters(-1, 0, -1, &global_counters); //End Global event
 		if (DETECT_SYMBOLS) rave_eventandcounters(1001, 0, -1, &global_counters); //End Symbols event
 		if(PRINT_REPORT){
-			print_report();
+			print_report(FD_REPORT);
 		}
 		if (PRINT_CSV){
 			print_csv(FD_CSV);
@@ -1093,9 +1094,13 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 				}else{
 					FD_CSV = fopen(&argv[i][j+1], "w+");
 				}
-
+			}
+			else if (contains_string(argv[i], "REPORT_NAME")){
+				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				FD_REPORT = fopen(&argv[i][j+1], "w");
 			}
 	}
+	if (PRINT_REPORT && FD_REPORT==NULL) FD_REPORT = stdout; 
 
 	add_event(-1,"Global");
 	rave_counters global_counters;

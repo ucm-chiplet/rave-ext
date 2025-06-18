@@ -105,10 +105,12 @@ Additionally, you can control RAVE's execution and output using these environmen
  - **RAVE_VLEN**: Sets the maximum available vector-length in bits (default: 16384).
  - **RAVE_PRINT_PRV**: If set to \"1\", a paraver trace is generated with all the executed instructions. (default: 0). 
  - **RAVE_PRV_NAME**: Sets the name of the generated paraver trace (default: qemutrace). Additionally, automatically sets RAVE_PRINT_PRV to 1.
- - **RAVE_PRINT_REPORT**: If set to "1", the tracer will print a hardware counter summary for each executed code region. (default: 0).
+ - **RAVE_PRINT_REPORT**: If set to "1", the tracer will print to stdout a hardware counter summary for each executed code region. (default: 0).
+ - **RAVE_REPORT_NAME**: Redirects the report to the provided file name. Additionally, automatically sets RAVE_PRINT_REPORT to 1. 
  - **RAVE_PRINT_CSV**: If set to "1", the tracer will print a CSV with the hardware counter summary for each executed code region. (default: 0).
  - **RAVE_CSV_NAME**: Sets the name of the generated csv trace (default: qemu_summary.csv). Additionally, automatically sets RAVE_PRINT_CSV to 1. 
  - **RAVE_SYSROOT**: Sets the path to a user-specified RISC-V sysroot."
+ - **RAVE_CUSTOM_EXTENSIONS**: Appends RISC-V extensions to the QEMU cpu (e.g. "zicbom=true,zicboz=true,zicbop=true,zicond=true" to emulate the bananapif3 boards). 
 
 For example, generate a RAVE report like this:
 
@@ -138,6 +140,11 @@ Region #2: Event 1000 (code_region), Value 2 (ini_B), Rank 0, Thread 0
 				Mask: 0 (0.00 %)
 				Other: 11 (50.00 %)
 ...
+```
+
+If you want to redirect the report to a file, do:
+```bash
+RAVE_REPORT_NAME=myfile rave ./example-c.x
 ```
 
 You can generate this report in a CSV format using the "RAVE_CSV_NAME" or "RAVE_PRINT_CSV" environment variables.
