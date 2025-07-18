@@ -533,8 +533,8 @@ static void vcpu_rave_name_event_value(unsigned int cpu_index, void* insn_opcode
 	qemu_value_number = qemu_get_xreg(cpu,src2);
 }
 
-static void vcpu_rave_name_char(unsigned int cpu_index, uint32_t insn_opcode){
-
+static void vcpu_rave_name_char(unsigned int cpu_index, void* insn_opcode_void){
+    uint32_t insn_opcode = (uint32_t)insn_opcode_void;
 	int value = (insn_opcode>>12)&0x0FFFFF;
 		if (qemu_event_name_first_digit==1){
 			qemu_event_name[qemu_name_offset] = (char)value;	
