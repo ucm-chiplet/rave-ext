@@ -15,12 +15,6 @@ void validate(double * Y, double * X, double alpha, int N){
 
 int main(){
 	long gvl;
-	rave_name_event(1000,"code_region");
-	rave_name_value(1000,0,"End");
-	rave_name_value(1000,1,"ini_simd");
-	rave_name_value(1000,2,"ini_omp");
-	rave_name_value(1000,3,"axpy");
-	rave_name_value(1000,4,"validate");
 	rave_restart_trace();
 
 	int N = 1<<20;
@@ -28,22 +22,24 @@ int main(){
 	double * X = (double *)malloc(sizeof(double)*N);
 	double alpha = 42;
 
-	rave_event_and_value(1000,1)
+	rave_begin_region("ini-simd");
 	#pragma omp simd
 	for(int i=0; i<N; ++i){
 		Y[i]=0;
 	}
-	rave_event_and_value(1000,2)
+	rave_end_region("ini-simd");
+	rave_begin_region("ini-omp");
 	#pragma omp parallel for
 	for(int i=0; i<N; ++i){
 		X[i]=(double)(i%32);
 	}
-	rave_event_and_value(1000,3)
+	rave_end_region("ini-omp");
+	rave_begin_region("axpy");
 	#pragma omp parallel for simd
 	for(int i=0; i<N; ++i){
 		Y[i] += X[i] * alpha;
 	}
-	rave_event_and_value(1000,0)
+	rave_end_region("axpy");
 
 	#pragma omp parallel
 	{
@@ -53,9 +49,9 @@ int main(){
 	for(int i=0; i<N; i+=batch){
 		#pragma omp task 
 		{
-		rave_event_and_value(1000,4)
+		rave_begin_region("validate");
 		validate(&Y[i], &X[i], alpha, batch);
-		rave_event_and_value(1000,0)
+		rave_end_region("validate");
 		}
 	}
 	}

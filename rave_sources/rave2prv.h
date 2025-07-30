@@ -212,8 +212,17 @@ void setup_paraver_trace(char * name){
 }
 */
 
-
-void events_and_values_to_pcf(FILE * fd){
+#if 1
+void events_and_values_to_pcf(FILE * fd, int event){
+	for(int i=1; i<=track_regions.max_nested; ++i){
+		fprintf(fd,"EVENT_TYPE\n9\t%ld\tRegions_nest_%d\n",event+i-1, i);
+		region_unique_list_t * curr = first_unique_region;
+		if (curr!=NULL) fprintf(fd,"VALUES\n");
+		while (curr != NULL){
+			if (curr->region->nesting==i) fprintf(fd,"%ld\t%s\n",curr->region_id, curr->region->name);
+			curr = curr->next;
+		}
+	}
 	event_info * curr = first_event_info;
 	while(curr != NULL){
 		fprintf(fd,"EVENT_TYPE\n9\t%ld\t%s\n",curr->ID, curr->name);
@@ -227,4 +236,9 @@ void events_and_values_to_pcf(FILE * fd){
 		}
 		curr = curr->next;
 	}
-}	
+}
+
+#else
+void events_and_values_to_pcf(FILE * fd){
+}
+#endif

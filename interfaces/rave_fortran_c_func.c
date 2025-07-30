@@ -12,6 +12,14 @@ void rave_name_value_f(int event, int value, char * nam){
 	rave_name_value(event,value,nam);
 }
 
+void rave_begin_region_f(char * name){
+	rave_begin_region(name);
+}
+
+void rave_end_region_f(char * name){
+	rave_end_region(name);
+}
+
 void rave_restart_trace_f(){
  	rave_restart_trace();
 }

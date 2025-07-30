@@ -4,6 +4,7 @@
 #endif
 #include "rave_user_events.h"
 #include "stdlib.h"
+#include <stdio.h>
 
 #define reps 1
 
@@ -35,14 +36,6 @@ int main(){
 	MPI_Status status;
 
 	long gvl;
-	rave_name_event(1000,"code_region");
-	rave_name_value(1000,0,"End");
-	rave_name_value(1000,1,"ini-simd");
-	rave_name_value(1000,2,"ini-omp");
-	rave_name_value(1000,3,"axpy");
-	rave_name_value(1000,4,"validate");
-	rave_name_value(1000,5,"Scatter");
-	rave_name_value(1000,6,"Gather");
 	rave_restart_trace();
 
 	int N = 1<<20; 
@@ -55,29 +48,29 @@ int main(){
 
 	//Rank 0 initializes Y
 	if (world_rank == 0){
-		rave_event_and_value(1000,1)
+		rave_begin_region("ini-simd");
 		for(int r=0; r<reps; ++r){
 		#pragma clang loop vectorize(enable)
 		for(int i=0; i<N; ++i){
 			Y[i]=0;
 		}
 		}
-		rave_event_and_value(1000,0)
+		rave_end_region("ini-simd");
 	}
 
 	//Rank 1 initializes X
 	if (world_size == 1 || world_rank == 1){
-		rave_event_and_value(1000,2)
+		rave_begin_region("ini-omp");
 		for(int r=0; r<reps; ++r){
 		#pragma omp parallel for
 		for(int i=0; i<N; ++i){
 			X[i]=(double)(i%32);
 		}
 		}
-		rave_event_and_value(1000,0)
+		rave_end_region("ini-omp");
 	}
 
-	rave_event_and_value(1000,5)
+	rave_begin_region("Scatter");
 
 #if 0
 	//Scatter Y to everybody
@@ -108,8 +101,7 @@ int main(){
 	}
 #endif
 
-
-	rave_event_and_value(1000,0)
+	rave_end_region("Scatter");
 
 
 	#ifdef _OPENMP
@@ -119,7 +111,7 @@ int main(){
 
 	#pragma omp parallel
 	{
-	rave_event_and_value(1000,3)
+	rave_begin_region("axpy");
 	for(int r=0; r<reps; ++r){
 	#pragma omp for
 	#pragma clang loop vectorize(enable)
@@ -127,11 +119,11 @@ int main(){
 		Y[i] += X[i] * alpha;
 	}
 	}
-	rave_event_and_value(1000,0)
+	rave_end_region("axpy");
 	}
 
 	//Rank 0 receives the Y buffer
-	rave_event_and_value(1000,6)
+	rave_begin_region("gather");
 #if 0
 	MPI_Gather(Y, N_local, MPI_DOUBLE, Y, N_local, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 #else
@@ -141,7 +133,7 @@ int main(){
 		for(int i=0; i<N_nop2/2; ++i) asm volatile("nop\n");
 	}
 #endif
-	rave_event_and_value(1000,0)
+	rave_end_region("gather");
 
 
 	//Rank 0 validates the result
@@ -155,9 +147,9 @@ int main(){
 			if (i+batch > N) batch = N-i;
 			#pragma omp task
 			{
-			rave_event_and_value(1000,4)
+			rave_begin_region("validate");
 			validate(&Y[i], &X[i], alpha*reps, batch);
-			rave_event_and_value(1000,0)
+			rave_end_region("validate");
 			}
 		}
 	}

@@ -1,5 +1,8 @@
 all: example-c example-cpp example-f
 
+LLVM_DIR?=../../build/llvm-cross/llvm-EPI-development-toolchain-cross
+RAVE_INCLUDE?=../../interfaces
+
 CC=${LLVM_DIR}/bin/clang
 CPP=${LLVM_DIR}/bin/clang++
 FC=${LLVM_DIR}/bin/flang

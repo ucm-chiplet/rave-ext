@@ -1,4 +1,4 @@
-
+#if 0
 #define rave_write_hex(x)\
 			switch (x){\
 							case 0: asm volatile("lui x0, 0\n"); break;\
@@ -32,7 +32,6 @@ static void rave_name(char * name){
 		asm volatile("li x0, -1\n");
 }
 
-
 #define rave_name_event(x,name)\
 {\
 	/*asm volatile("lui x0, %0\n"::"i"(x));*/\
@@ -46,9 +45,24 @@ static void rave_name(char * name){
 	asm volatile("and x0, %0, %1\n"::"r"(x), "r"(y));\
 	rave_name(name);\
 }
+#else
+#define rave_name_event(x,name)\
+{\
+	asm volatile("and x0, %0, x0\n" :: "r"(x));\
+	asm volatile("addi x0, %0, 2\n" :: "r"(&name[0]));\
+}
+#define rave_name_value(x,y,name)\
+{\
+	asm volatile("and x0, %0, %1\n" :: "r"(x), "r"(y));\
+	asm volatile("addi x0, %0, 3\n" :: "r"(&name[0]));\
+}
+#endif
 
 #define rave_restart_trace() asm volatile("li x0, -2\n");
 #define rave_start_trace() asm volatile("li x0, -3\n");
 #define rave_stop_trace() asm volatile("li x0, -4\n");
 
 #define rave_event_and_value(x,y) asm volatile("or x0, %0, %1\n"::"r"(x),"r"(y));
+
+#define rave_begin_region(name) asm volatile("addi x0, %0, 1\n" :: "r"(&name[0]))
+#define rave_end_region(name) asm volatile("addi x0, %0, 0\n" :: "r"(&name[0]))

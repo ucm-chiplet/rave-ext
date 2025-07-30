@@ -59,7 +59,7 @@ make distclean &>> $LOGFILE
 
 options="$targets --disable-docs --prefix="${install_dir}" --enable-plugins"
 #if [[ "$EXT" == "1_0" ]]; then
-	#options="$options --python=python3.10"
+#	options="$options --python=python3.10"
 #fi
 
 ./configure $options &>> $LOGFILE
@@ -81,6 +81,7 @@ sed -i 's/^\#define\ RV_VLEN_MAX\ .*/\#define\ RV_VLEN_MAX\ \(256\*64\)/g' ./tar
 	sed -i '/};/i qemu_plugin_hwaddr_is_io;' plugins/qemu-plugins.symbols
 	sed -i '/};/i qemu_plugin_hwaddr_phys_addr;' plugins/qemu-plugins.symbols
 	sed -i '/};/i qemu_plugin_insn_symbol;' plugins/qemu-plugins.symbols
+	sed -i '/};/i cpu_memory_rw_debug;' plugins/qemu-plugins.symbols
 #fi
 
 

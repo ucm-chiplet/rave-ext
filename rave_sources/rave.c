@@ -42,13 +42,16 @@ int num_vcpu_control=0;
 int RAVE_VLMAX = 0;
 int RAVE_ELEN = 64;
 char PRINT_LOGFILE = 0;
-char PRINT_SCALAR = 0;
-char PRINT_ADDR = 0;
+char TRACE_SCALAR = 0;
+char TRACE_ADDR = 0;
 char PRINT_PRV = 0;
 char PRINT_REPORT = 0;
+char PRINT_PROFILE = 0;
 char PRINT_CSV = 0;
 char TRACE_ENABLED = 1; //Enabled by default 
+char ACCUM_REGIONS = 0;
 char DETECT_SYMBOLS = 0;
+int REGION_EVENT = 1000;
 char * filename = NULL; 
 FILE * FD_PRV;
 FILE * FD_PCF;
@@ -56,6 +59,7 @@ FILE * FD_ROW;
 FILE * FD_CSV;
 FILE * FD_COMM;
 FILE * FD_REPORT;
+FILE * FD_PROFILE;
 
 //#define EPI_07
 
@@ -65,7 +69,19 @@ FILE * FD_REPORT;
 	#define EPI_10
 #endif
 
+#define my_strcpy(dst, src)\
+{\
+	int len = strlen(src);\
+	dst = malloc(len+1);\
+	strcpy(dst,src);\
+}
+
+//The order of the includes is relevant, as they depend on each other
+#include "formatting.h"
 #include "rave_counters.h"
+#include "rave_events.h"
+#include "rave_regions_legacy.h"
+#include "rave_regions.h"
 #include "rave2prv.h"
 #include "instr_data.h"
 
@@ -174,6 +190,13 @@ struct thread_state_t{
 	char need_align;
 	uint64_t timestamp;
 	rave_counters accum_counters;
+
+	//For name reading (legacy...)
+	int rave_name_offset; 
+	int rave_event_number;
+	char rave_event_name[128];
+	int rave_value_number;
+	char rave_event_name_first_digit;
 };
 typedef struct thread_state_t thread_state_t;
 thread_state_t * cpus_state;
@@ -188,6 +211,10 @@ void reset_thread(thread_state_t * state){
 	state -> print_first_scalar = 1;
 	state -> need_align = 1;
 	state -> timestamp = 0;
+	state -> rave_name_offset=-1; //-1: wait for name
+	state -> rave_event_number=-1;
+	state -> rave_value_number=-1;
+	state -> rave_event_name_first_digit=1;
 	reset_counters(&(state->accum_counters));
 }
 
@@ -291,7 +318,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 #endif
 		if (is_subtype(instr->type, T_MEMORY)){
 
-			if (PRINT_ADDR){
+			if (TRACE_ADDR){
 				int src1 = (instr->instr32>>15)&0x1F;
 				addr = qemu_get_xreg(cpu,src1);
 			}
@@ -322,18 +349,18 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 	//  Logfile  //
 	if (TRACE_ENABLED){
 		if (PRINT_LOGFILE){
-			if (!PRINT_SCALAR && !is_type(instr->type, T_SCALAR) && cpus_state[cpu_index].scalar_instr_since_vector>0){
+			if (!TRACE_SCALAR && !is_type(instr->type, T_SCALAR) && cpus_state[cpu_index].scalar_instr_since_vector>0){
 				char * string = g_strdup_printf("%d scalar instructions\n", cpus_state[cpu_index].scalar_instr_since_vector); 
 				set_lock(write_lock);
 				qemu_plugin_outs(string);
-				if (!is_type(instr->type, T_SCALAR) || PRINT_SCALAR){ 
+				if (!is_type(instr->type, T_SCALAR) || TRACE_SCALAR){ 
 					qemu_plugin_outs(instr->asm_string);
 					qemu_plugin_outs("\n");
 				}
 				release_lock(write_lock);
 				free(string);
 			}else{
-				if (!is_type(instr->type, T_SCALAR) || PRINT_SCALAR){ 
+				if (!is_type(instr->type, T_SCALAR) || TRACE_SCALAR){ 
 					set_lock(write_lock);
 					qemu_plugin_outs(instr->asm_string);
 					qemu_plugin_outs("\n");
@@ -352,7 +379,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				release_lock(write_lock);
 			}
 			//Scalar instructions should always be printed when: row changed(1), type changed (2), is first scalar in the trace (3)
-			if (is_type(instr->type, T_SCALAR) && !PRINT_SCALAR){
+			if (is_type(instr->type, T_SCALAR) && !TRACE_SCALAR){
 				if (row_change || cpus_state[cpu_index].last_was_vsetvl || cpus_state[cpu_index].print_first_scalar){	
 					set_lock(write_lock);
 					trace_row(mpi_rank, cpu_index, row, thread_timestamp);
@@ -370,13 +397,13 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				trace_event_value(event_dst, instr->dst);
 				trace_event_value(event_src1, instr->src1);
 				release_lock(write_lock);
-			}else{ //PRINT_SCALAR || (instr!=SCALAR && instr!=VSETVL)
+			}else{ //TRACE_SCALAR || (instr!=SCALAR && instr!=VSETVL)
 				set_lock(write_lock);
 				trace_row(mpi_rank, cpu_index, row, thread_timestamp);
 				trace_event_value(event_class,instr->type);
 				trace_event_value(event_pc, instr->PC);
 				trace_event_value(event_scalb, cpus_state[cpu_index].scalar_instr_since_vector);
-				if (PRINT_ADDR) trace_event_value(event_addr, addr);
+				if (TRACE_ADDR) trace_event_value(event_addr, addr);
 				trace_event_value(event_dst, instr->dst);
 				trace_event_value(event_src1, instr->src1);
 				trace_event_value(event_src2, instr->src2);
@@ -419,10 +446,16 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 		cpus_state[cpu_index].accum_counters.velem[sew] += vl; 
 		if (is_subsubtype(instr->type, T_FP)){
 			++cpus_state[cpu_index].accum_counters.vfp_instr[sew];
-		}else if (is_subsubtype(instr->type, T_INT)){ ++cpus_state[cpu_index].accum_counters.vint_instr[sew];
-		}else if (is_subtype(instr->type, T_MASK)){ ++cpus_state[cpu_index].accum_counters.vmask_instr[sew];
+			cpus_state[cpu_index].accum_counters.velem_arith[sew] += vl; 
+		}else if (is_subsubtype(instr->type, T_INT)){
+		 	++cpus_state[cpu_index].accum_counters.vint_instr[sew];
+			cpus_state[cpu_index].accum_counters.velem_arith[sew] += vl; 
+		}else if (is_subtype(instr->type, T_MASK)){
+		 	++cpus_state[cpu_index].accum_counters.vmask_instr[sew];
+			cpus_state[cpu_index].accum_counters.velem_mask[sew] += vl; 
 		}else if (is_subtype(instr->type, T_MEMORY)){
 			cpus_state[cpu_index].accum_counters.moved_bytes_v += vl*(1<<(sew));
+			cpus_state[cpu_index].accum_counters.velem_mem[sew] += vl; 
 			if (is_subsubtype(instr->type, T_UNIT)) ++cpus_state[cpu_index].accum_counters.vunit_instr[sew];
 			else if (is_subsubtype(instr->type, T_STRIDE)){
 				++cpus_state[cpu_index].accum_counters.vstride_instr[sew];
@@ -454,8 +487,56 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 }
 
 
+void region_trace(unsigned int cpu_index, int event, int value){
+	set_lock(write_lock);
+	if (PRINT_PRV){
+			uint64_t thread_timestamp = cpus_state[cpu_index].timestamp;
+			trace_row(mpi_rank, cpu_index, SCALAR_ROW, thread_timestamp);
+			trace_event_value(event,value);
+			if (!TRACE_SCALAR) trace_event_value(event_instruction, 1000);
+			trace_row(mpi_rank, cpu_index, VECTOR_ROW, thread_timestamp);
+			trace_event_value(event, value);
+	}
+	release_lock(write_lock);
+}
 
-static void vcpu_rave_event(unsigned int cpu_index, void * insn_opcode_void){
+
+#define STRING_ACTION_REGION_END 0
+#define STRING_ACTION_REGION_BEGIN 1
+#define STRING_ACTION_EVENT_NAME 2
+#define STRING_ACTION_VALUE_NAME 3
+
+static void vcpu_rave_string(unsigned int cpu_index, void * insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)insn_opcode_void;
+	int src1 = (insn_opcode>>15)&0x1F;
+	int imm = (insn_opcode>>20); 
+	uint8_t *cpu = qemu_get_cpu(cpu_index);
+	uint64_t string_addr = qemu_get_xreg(cpu,src1);
+
+	//Read string from guest memory
+	char data[128];
+	int i;
+	for(i=0; i<128; ++i){
+		cpu_memory_rw_debug(cpu, string_addr + i, &data[i], 1, 0);
+		if (data[i] == '\0') break;
+	}
+
+	//Act depending on the immediate
+	if (imm==STRING_ACTION_REGION_END){
+		rave_end_region(cpu_index, data, &cpus_state[cpu_index].accum_counters, ACCUM_REGIONS);
+		region_trace(cpu_index, REGION_EVENT+track_regions.nesting, 0);
+	}else if (TRACE_ENABLED && imm==STRING_ACTION_REGION_BEGIN){
+		rave_begin_region(cpu_index, data, &cpus_state[cpu_index].accum_counters, ACCUM_REGIONS);
+		region_trace(cpu_index, REGION_EVENT+track_regions.nesting-1, name_to_id(data));
+	}else if (imm==STRING_ACTION_EVENT_NAME){
+		add_event(cpus_state[cpu_index].rave_event_number,data); 
+	}else if (imm==STRING_ACTION_VALUE_NAME){
+		add_value_to_event(cpus_state[cpu_index].rave_event_number,cpus_state[cpu_index].rave_value_number,data); 
+	}
+}
+
+
+static void vcpu_rave_event_and_value(unsigned int cpu_index, void * insn_opcode_void){
 	uint32_t insn_opcode = (uint32_t)insn_opcode_void;
 #ifdef TIMEDEBUG
 	uint64_t time1 = getmicros();
@@ -471,14 +552,14 @@ static void vcpu_rave_event(unsigned int cpu_index, void * insn_opcode_void){
 	int qemu_trace_value = qemu_get_xreg(cpu,src2);
 
 	set_lock(write_lock);
-	rave_eventandcounters(qemu_trace_event, qemu_trace_value, cpu_index, &cpus_state[cpu_index].accum_counters);
+	//rave_eventandcounters(qemu_trace_event, qemu_trace_value, cpu_index, &cpus_state[cpu_index].accum_counters);
 	if (PRINT_PRV){
 		/*
 		if (parallel_region.master_thread == -1){ //Not in a parallel region -> Propagate event to all threads
 			for(int cpu_id = 0; cpu_id < alloc_threads; ++cpu_id){
 				trace_row(mpi_rank, cpu_id, SCALAR_ROW, timestamp);
 				trace_event_value(qemu_trace_event,qemu_trace_value);
-				if (!PRINT_SCALAR) trace_event_value(event_instruction, 1000);
+				if (!TRACE_SCALAR) trace_event_value(event_instruction, 1000);
 				trace_row(mpi_rank, cpu_id, VECTOR_ROW, timestamp);
 				trace_event_value(qemu_trace_event,qemu_trace_value);
 			}
@@ -487,7 +568,7 @@ static void vcpu_rave_event(unsigned int cpu_index, void * insn_opcode_void){
 			uint64_t thread_timestamp = cpus_state[cpu_index].timestamp;
 			trace_row(mpi_rank, cpu_index, SCALAR_ROW, thread_timestamp);
 			trace_event_value(qemu_trace_event,qemu_trace_value);
-			if (!PRINT_SCALAR) trace_event_value(event_instruction, 1000);
+			if (!TRACE_SCALAR) trace_event_value(event_instruction, 1000);
 			trace_row(mpi_rank, cpu_index, VECTOR_ROW, thread_timestamp);
 			trace_event_value(qemu_trace_event,qemu_trace_value);
 		//}
@@ -501,26 +582,22 @@ static void vcpu_rave_event(unsigned int cpu_index, void * insn_opcode_void){
 #endif
 }
 
-
-//Warning: This assumes only 1 Thread is reading a name
-int qemu_name_offset=-1; //-1: wait for name
-char qemu_event_name[128];
-int qemu_event_number=-1;
-int qemu_value_number=-1;
-char qemu_event_name_first_digit=1;
-
+////////////////////////////////////////////
+//Old way of sending names (will be removed eventually, it's here for legacy support)
 static void vcpu_rave_name_event_toggle(unsigned int cpu_index, void * udata){
 
-		if (qemu_name_offset>0){//End of name
-			qemu_event_name[qemu_name_offset]='\0';
-			if(qemu_value_number!=-1) add_value_to_event(qemu_event_number,qemu_value_number,qemu_event_name);
-			else add_event(qemu_event_number,qemu_event_name);
-			qemu_name_offset =-1;
-			qemu_event_number=-1;
-			qemu_value_number=-1;
+		if (cpus_state[cpu_index].rave_name_offset>0){//End of name
+			cpus_state[cpu_index].rave_event_name[cpus_state[cpu_index].rave_name_offset]='\0';
+			if(cpus_state[cpu_index].rave_value_number!=-1)
+				add_value_to_event(cpus_state[cpu_index].rave_event_number,cpus_state[cpu_index].rave_value_number,cpus_state[cpu_index].rave_event_name);
+			else
+				add_event(cpus_state[cpu_index].rave_event_number,cpus_state[cpu_index].rave_event_name);
+			cpus_state[cpu_index].rave_name_offset =-1;
+			cpus_state[cpu_index].rave_event_number=-1;
+			cpus_state[cpu_index].rave_value_number=-1;
 		}else{ //Start of name
-			qemu_event_name_first_digit=1;
-			qemu_name_offset = 0;
+			cpus_state[cpu_index].rave_event_name_first_digit=1;
+			cpus_state[cpu_index].rave_name_offset = 0;
 		}
 }
 
@@ -529,21 +606,23 @@ static void vcpu_rave_name_event_value(unsigned int cpu_index, void* insn_opcode
 	uint8_t *cpu = qemu_get_cpu(cpu_index);
 	int src1 = (insn_opcode>>15)&0x1F;
 	int src2 = (insn_opcode>>20)&0x1F;
-	qemu_event_number = qemu_get_xreg(cpu,src1);
-	qemu_value_number = qemu_get_xreg(cpu,src2);
+	cpus_state[cpu_index].rave_event_number = qemu_get_xreg(cpu,src1);
+	cpus_state[cpu_index].rave_value_number = qemu_get_xreg(cpu,src2);
 }
 
-static void vcpu_rave_name_char(unsigned int cpu_index, uint32_t insn_opcode){
+static void vcpu_rave_name_char(unsigned int cpu_index, void* insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)insn_opcode_void;
 
 	int value = (insn_opcode>>12)&0x0FFFFF;
-		if (qemu_event_name_first_digit==1){
-			qemu_event_name[qemu_name_offset] = (char)value;	
-			qemu_event_name_first_digit=0;
+		if (cpus_state[cpu_index].rave_event_name_first_digit==1){
+			cpus_state[cpu_index].rave_event_name[cpus_state[cpu_index].rave_name_offset] = (char)value;	
+			cpus_state[cpu_index].rave_event_name_first_digit=0;
 		}else{
-			qemu_event_name[qemu_name_offset++] += (char)(value<<4);
-			qemu_event_name_first_digit=1;
+			cpus_state[cpu_index].rave_event_name[cpus_state[cpu_index].rave_name_offset++] += (char)(value<<4);
+			cpus_state[cpu_index].rave_event_name_first_digit=1;
 		}
 }
+///////////////////////////////////////////
 
 static void vcpu_parallel_end(unsigned int cpu_index, void * udata){
 
@@ -674,26 +753,55 @@ static void vcpu_stop_trace(unsigned int cpu_index, void *udata){
 
 //API
 char is_rave_api(uint32_t insn_opcode, struct qemu_plugin_insn * insn){
-	if (insn_opcode == 0xffe00013){ //li x0, -2 (restart trace)
+	//----------------------------------------
+	// TRACE control
+	//----------------------------------------
+	//li x0, -2 (restart trace)
+	if (insn_opcode == 0xffe00013){ 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_restart_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
-	}else if (insn_opcode == 0xffd00013){ //li x0, -3 (start trace)
+	//li x0, -3 (start trace)
+	}else if (insn_opcode == 0xffd00013){
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_start_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
-	}else if (insn_opcode == 0xffc00013){ //li x0, -4 (stop trace)
+	//li x0, -4 (stop trace)		
+	}else if (insn_opcode == 0xffc00013){
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_stop_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
-	}else if (insn_opcode == 0xffb00013){ //li x0, -5 (parallel_barrier)
-			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_parallel_barrier, QEMU_PLUGIN_CB_NO_REGS, NULL);
-	}else if (((insn_opcode&0xFFF)==0x033) && (((insn_opcode>>12)&0x7) == 0x4)){ //xor x0, ..., ... (parallel begin)
-			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_parallel_begin, QEMU_PLUGIN_CB_R_REGS, (void *)insn_opcode);
-	}else if (insn_opcode == 0xffa00013){ //li x0, -6 (parallel_end)
-			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_parallel_end, QEMU_PLUGIN_CB_NO_REGS, NULL);
-	}else if (((insn_opcode&0xFFF)==0x033) && (((insn_opcode>>12)&0x7) == 0x7)){ //and x0, ..., ... (name event value)
+	// or x0, ..., ... (rave_event_and_value)		
+	}else if (((insn_opcode&0xFFF)==0x033) && (((insn_opcode>>12)&0x7) == 0x6)){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_event_and_value, QEMU_PLUGIN_CB_NO_REGS, (void *)insn_opcode);
+	//and x0, ..., ... (name event value)		
+	}else if (((insn_opcode&0xFFF)==0x033) && (((insn_opcode>>12)&0x7) == 0x7)){
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_name_event_value, QEMU_PLUGIN_CB_NO_REGS, (void *)insn_opcode);
-	}else if (insn_opcode==0xfff00013){ //li x0, -1 (start/stop name)
+
+	//----------------------------------------
+	// Old way of sending names (for legacy binary support, will be removed at some point.)
+	//----------------------------------------
+	
+	//li x0, -1 (start/stop name)		
+	}else if (insn_opcode==0xfff00013){
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_name_event_toggle, QEMU_PLUGIN_CB_NO_REGS, NULL);
-	}else if ((insn_opcode&0xFFF)==0x037){ //lui x0, ... (name[i])
+	//lui x0, ... (name[i])		
+	}else if ((insn_opcode&0xFFF)==0x037){
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_name_char, QEMU_PLUGIN_CB_NO_REGS, (void *)insn_opcode);
-	}else if (((insn_opcode&0xFFF)==0x033) && (((insn_opcode>>12)&0x7) == 0x6)){ // or x0, ..., ... (qemu event)
-			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_event, QEMU_PLUGIN_CB_NO_REGS, (void *)insn_opcode);
+
+	//----------------------------------------
+	// New way of sending names (supported from now on)
+	//----------------------------------------
+	// addi x0, ..., ... (addr, action: for sending strings)
+	}else if ((insn_opcode&0x7FFF)==0x0013){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_string, QEMU_PLUGIN_CB_NO_REGS, (void *)insn_opcode);
+
+	//----------------------------------------
+	// OMP control
+	//----------------------------------------
+	//li x0, -5 (parallel_barrier)		
+	}else if (insn_opcode == 0xffb00013){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_parallel_barrier, QEMU_PLUGIN_CB_NO_REGS, NULL);
+	//xor x0, ..., ... (parallel begin)		
+	}else if (((insn_opcode&0xFFF)==0x033) && (((insn_opcode>>12)&0x7) == 0x4)){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_parallel_begin, QEMU_PLUGIN_CB_R_REGS, (void *)insn_opcode);
+	//li x0, -6 (parallel_end)		
+	}else if (insn_opcode == 0xffa00013){
+			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_parallel_end, QEMU_PLUGIN_CB_NO_REGS, NULL);
 	}else{
 		return 0;
 	}
@@ -765,7 +873,7 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 
 	size_t n = qemu_plugin_tb_n_insns(tb);
 
-	if (!PRINT_PRV && !PRINT_LOGFILE && !PRINT_REPORT && !PRINT_CSV){
+	if (!PRINT_PRV && !PRINT_LOGFILE && !PRINT_REPORT && !PRINT_CSV && !PRINT_PROFILE){
 		return;
 	}
 
@@ -805,7 +913,7 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 			if (DETECT_SYMBOLS) insn_struct -> symbol_id = add_symbol(qemu_plugin_insn_symbol(insn));
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
 		}else if (!is_rave_api(insn_opcode, insn)){
-			if (PRINT_SCALAR){
+			if (TRACE_SCALAR){
 				instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
 				if (DETECT_SYMBOLS) insn_struct -> symbol_id = add_symbol(qemu_plugin_insn_symbol(insn));
 				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
@@ -859,16 +967,32 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 			}
 		}
 
-		rave_eventandcounters(-1, 0, -1, &global_counters); //End Global event
+		rave_end_region(-1, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS);
+
+		//rave_eventandcounters(-1, 0, -1, &global_counters); //End Global event
 		if (DETECT_SYMBOLS) rave_eventandcounters(1001, 0, -1, &global_counters); //End Symbols event
 		if(PRINT_REPORT){
-			print_report(FD_REPORT);
+			//Warning:
+			if (track_regions.total_regions<=1){
+				fprintf(FD_REPORT, BOLD_R("----------------- WARNING!\n ---------------"));
+				fprintf(FD_REPORT, "You did not define any code regions. Remember that code regions are defined with \"rave_begin/end_region\" now (or trace_\"begin/end\"_region if you are using sdv_trace\n");
+				fprintf(FD_REPORT, BOLD_R("--------------------------------------------"));
+			}
+			print_region_report(FD_REPORT, ACCUM_REGIONS);
+			//print_events_report(FD_REPORT);
 		}
 		if (PRINT_CSV){
-			print_csv(FD_CSV);
+			print_region_csv(FD_CSV, ACCUM_REGIONS);
+			//print_events_csv(FD_CSV);
 		}
+		if (PRINT_PROFILE){
+			print_region_profile(FD_PROFILE, ACCUM_REGIONS);
+		}
+
+		if (FD_CSV!=NULL) fclose(FD_CSV);
+		if (FD_REPORT!=NULL) fclose(FD_REPORT);
+		if (FD_PROFILE!=NULL) fclose(FD_PROFILE);
 		
-		free_regions();
 #ifdef TIMEDEBUG
 		printf("Cycles in Translation: %.4f %d times, %lu (%.2f)\n", (double)time_trans/num_trans, num_trans, time_trans, (double)time_trans/(time_trans+time_vcpu_exe+time_vcpu_control));
 		printf("Cycles in VCPU_exe: %.4f %d times, %lu (%.2f)\n", (double)time_vcpu_exe/num_vcpu_exe, num_vcpu_exe, time_vcpu_exe, (double)time_vcpu_exe/(time_trans+time_vcpu_exe+time_vcpu_control));
@@ -928,7 +1052,7 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 				//Write PCF
 				sprintf(ext_filename, "%s.pcf", filename);
 				open_file(&FD_PCF, ext_filename);
-				events_and_values_to_pcf(FD_PCF);
+				events_and_values_to_pcf(FD_PCF, REGION_EVENT);
 				write_pcf(FD_PCF);
 				fclose(FD_PCF);
 
@@ -994,6 +1118,8 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 			}
 			free(filename);
 		}
+		free_regions();
+		free_event_regions(); //Legacy
 }
 
 /**
@@ -1023,12 +1149,15 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 	cpus_state = (thread_state_t*)malloc(sizeof(thread_state_t)*alloc_threads);
 
 	for(int i=0; i<argc; ++i){
-			if (contains_string(argv[i], "PRINT_SCALAR")) PRINT_SCALAR = 1;
-			else if (contains_string(argv[i], "PRINT_ADDR")) PRINT_ADDR = 1;
+			if (contains_string(argv[i], "TRACE_SCALAR")) TRACE_SCALAR = 1;
+			else if (contains_string(argv[i], "TRACE_ADDR")) TRACE_ADDR = 1;
 			else if (contains_string(argv[i], "PRINT_PRV")) PRINT_PRV = 1;
 			else if (contains_string(argv[i], "PRINT_LOGFILE")) PRINT_LOGFILE = 1;
 			else if (contains_string(argv[i], "PRINT_REPORT")) PRINT_REPORT = 1;
 			else if (contains_string(argv[i], "PRINT_CSV")) PRINT_CSV = 1;
+			else if (contains_string(argv[i], "PRINT_PROFILE")) PRINT_PROFILE = 1;
+			else if (contains_string(argv[i], "ACCUM_REGIONS")) ACCUM_REGIONS = 1;
+			else if (contains_string(argv[i], "PLAIN_TEXT")) PLAIN_TEXT = 1;
 			else if (contains_string(argv[i], "DETECT_SYMBOLS")){
 			 	DETECT_SYMBOLS = 1;
 				add_event(1001, "symbols");
@@ -1099,13 +1228,25 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
 				FD_REPORT = fopen(&argv[i][j+1], "w");
 			}
+			else if (contains_string(argv[i], "PROFILE_NAME")){
+				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				FD_PROFILE = fopen(&argv[i][j+1], "w");
+			}
+			else if (contains_string(argv[i], "REGION_EVENT")){
+				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				int event = atoi(&argv[i][j+1]);
+				REGION_EVENT = event>0 ? event : REGION_EVENT;
+			}
 	}
 	if (PRINT_REPORT && FD_REPORT==NULL) FD_REPORT = stdout; 
+	if (PRINT_PROFILE && FD_PROFILE==NULL) FD_PROFILE = stdout; 
 
-	add_event(-1,"Global");
+	rave_ini_regions();
+
 	rave_counters global_counters;
 	reset_counters(&global_counters);
-	rave_eventandcounters(-1, 1, -1, &global_counters); //Start global event
+	//rave_eventandcounters(-1, 1, -1, &global_counters); //Start global event
+	rave_begin_region(0, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS);
 
     /* Register translation block and exit callbacks */
     qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb_trans);

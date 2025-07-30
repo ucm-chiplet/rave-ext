@@ -914,7 +914,7 @@ fprintf(fd,
 "811 vsoxei32\n"
 "815 vsoxei64\n"
 
-"822 vsm\n"
+"820 vsm\n"
 "823 vs1r\n"
 "824 vs2r\n"
 "825 vs4r\n"
