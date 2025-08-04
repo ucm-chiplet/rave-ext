@@ -74,7 +74,7 @@ echo "Building the API...[2/2]"
 
 cd -
 LLVM_DIR=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross
-PATH=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross/bin/:$PATH
+PATH=${LLVM_DIR}/bin/:$PATH
 cd interfaces
 make
 cd -
