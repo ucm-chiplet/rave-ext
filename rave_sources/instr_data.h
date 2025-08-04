@@ -33,7 +33,6 @@ struct instr_basic_data{
 	uint16_t type;
 	//enum instr_type type;
 	uint32_t instr32;
-	int symbol_id;
   uint64_t PC;
 };
 typedef struct instr_basic_data instr_basic_data;
@@ -42,7 +41,6 @@ struct instr_data{
 	//enum instr_type type;
 	uint16_t type;
 	uint32_t instr32; //Only for strided...and mem eew.. and scalar mem?
-	int symbol_id;
 
   uint64_t PC;
 	uint32_t paraver_code;

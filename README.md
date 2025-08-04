@@ -451,6 +451,85 @@ It is advised not to generate console reports with MPI binaries, as all processe
 In an MPI trace you will find groups of rows per each process. Each has a touples of scalar-vector rows per each OMP thread of the specific process. 
 
 
+## Using GDB to debug RAVE
+
+If your emulated code has e.g. a SEGFAULT and you want to debug it, you can do so using the `rave_gdb` utility (:warning: Remember to compile your code with "-g"!):
+
+```bash
+rave_gdb ./main.x 
+----------------------------------------------------------
+Creating RAVE emulation with port 4210212
+GDB running
+Running GDB with target remote localhost:4210212
+Write "c" or "continue" in GDB to start your program
+----------------------------------------------------------
+/apps/x86/rave/rave-2502260926/gdb/gdb-rvv-0_7/share/gdb/python/gdb/command/prompt.py:48: SyntaxWarning: "is not" with a literal. Did you mean "!="?
+  if self.value is not '':
+/apps/x86/rave/rave-2502260926/gdb/gdb-rvv-0_7/share/gdb/python/gdb/command/prompt.py:60: SyntaxWarning: "is not" with a literal. Did you mean "!="?
+  if self.value is not '':
+GNU gdb (GDB) 8.2.50.20190202-git
+Copyright (C) 2019 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "--host=x86_64-pc-linux-gnu --target=riscv64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+    <http://www.gnu.org/software/gdb/documentation/>.
+
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from ././main.x...
+Remote debugging using localhost:4210212
+warning: remote target does not support file transfer, attempting to access files from local filesystem.
+warning: Unable to find dynamic linker breakpoint function.
+GDB will be unable to debug shared library initializers
+and track explicitly loaded dynamic code.
+0x00000040008125e0 in ?? ()
+Reading symbols from /apps/x86/rave/rave-2502260926/qemu-rave/RVV-0_7_1/bin/../../../sysroot/lib/ld-linux-riscv64-lp64d.so.1...
+(No debugging symbols found in /apps/x86/rave/rave-2502260926/qemu-rave/RVV-0_7_1/bin/../../../sysroot/lib/ld-linux-riscv64-lp64d.so.1)
+(gdb) 
+```
+
+From this point, use "continue" or "c" to start the program, and "bt" to print the back-trace:
+```bash
+(gdb) c
+Continuing.
+warning: Could not load shared library symbols for /apps/x86/rave/rave-2502260926/qemu-rave/RVV-0_7_1/bin/../../../parallel/ompt.so.
+Do you need "set solib-search-path" or "set sysroot"?
+
+Program received signal SIGSEGV, Segmentation fault.
+_wordcopy_fwd_aligned (dstp=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>, srcp=<error reading variable: dwarf2_find_location
+    _expression: Corrupted DWARF expression.>, len=<error reading variable: dwarf2_find_location_expression: Corrupt
+    ed DWARF expression.>) at wordcopy.c:79
+79	wordcopy.c: No such file or directory.
+(gdb) bt
+#0  _wordcopy_fwd_aligned (dstp=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>, srcp=<error reading variable: dwarf2_find_
+    location_expression: Corrupted DWARF expression.>, len=<error reading variable: dwarf2_find_location_expression: Corrupt
+    ed DWARF expression.>) at wordcopy.c:79
+#1  0x00000040008a7bde in __GI_memcpy (dstpp=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>,
+     srcpp=<error reading variable: dwarf2_find_location_expression: Corr
+    upted DWARF expression.>, len=<error reading variable: dwarf2_find_location_expression: Corrup
+    ted DWARF expression.>) at memcpy.c:51
+#2  0x00000000000105de in myfunc (A=0x132a0, B=0x26b30, N=10000) at main.c:4
+#3  main (argc=<optimized out>, argv=<optimized out>) at main.c:13
+```
+
+In this case, the SEGFAULT occurs on `main.c:4`:
+```c
+1: void myfunc(double * A, double * B, int N){
+2:
+3:	for(int i=0; i<N; ++i){
+4:		A[i] = B[1000000000+i];
+5:	}
+6: }
+```
+
+If the SEGFAULT does not happen within your program, contact `pablo.vizcaino@bsc.es`
+
 ## Using RAVE: TUTORIAL (Relevant Material!)
 
 Here you can download [the slides presented at the RISC-V Techincal Session](https://ssh.hca.bsc.es/epi/ftp/RAVE/RAVE_RISC-V_Technical_Session.pdf) on the 10th of October, 2024.

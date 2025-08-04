@@ -50,9 +50,9 @@ char PRINT_PROFILE = 0;
 char PRINT_CSV = 0;
 char TRACE_ENABLED = 1; //Enabled by default 
 char ACCUM_REGIONS = 0;
-char DETECT_SYMBOLS = 0;
 int REGION_EVENT = 1000;
 char * filename = NULL; 
+char * BINARY_NAME = NULL;
 FILE * FD_PRV;
 FILE * FD_PCF;
 FILE * FD_ROW;
@@ -82,6 +82,7 @@ FILE * FD_PROFILE;
 #include "rave_events.h"
 #include "rave_regions_legacy.h"
 #include "rave_regions.h"
+#include "profiling.h"
 #include "rave2prv.h"
 #include "instr_data.h"
 
@@ -183,13 +184,16 @@ uint64_t timestamp=0;
 struct thread_state_t{
 	int last_row;
 	int reset_stride;
-	int last_instr_symbol;
 	int last_was_vsetvl;
 	int scalar_instr_since_vector;
 	int print_first_scalar;
 	char need_align;
 	uint64_t timestamp;
 	rave_counters accum_counters;
+
+	//For loop detection:
+	uint64_t loop_PC;
+	uint64_t next_PC;
 
 	//For name reading (legacy...)
 	int rave_name_offset; 
@@ -205,12 +209,13 @@ thread_state_t * cpus_state;
 void reset_thread(thread_state_t * state){
 	state -> last_row = 0;
 	state -> reset_stride = 0;
-	state -> last_instr_symbol = -1;
 	state -> last_was_vsetvl = 0;
 	state -> scalar_instr_since_vector = 0;
 	state -> print_first_scalar = 1;
 	state -> need_align = 1;
 	state -> timestamp = 0;
+	state -> loop_PC = -1;
+	state -> next_PC = -1;
 	state -> rave_name_offset=-1; //-1: wait for name
 	state -> rave_event_number=-1;
 	state -> rave_value_number=-1;
@@ -226,14 +231,6 @@ volatile int write_lock = 0;
 //#define set_lock(lock) ; 
 //#define release_lock(lock) ; 
 //#define file_lock(fd, action) {printf("%d: flock " #fd #action "\n", mpi_rank); flock(fd,action); printf("done\n");}
-
-
-//Symbols:
-int found_main=0;
-int SYMBOL_MAIN = -1;
-#define SYMBOL_EMPTY 0
-int SYMBOL_DL = -1;
-int print_sym = 1;
 
 
 static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
@@ -270,29 +267,26 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 	instr_data * instr = (instr_data*)udata;
 
-	if (DETECT_SYMBOLS){
-		int symbol = instr->symbol_id;
-		if (cpus_state[cpu_index].last_instr_symbol != symbol){
-			if (!found_main && symbol==SYMBOL_MAIN){
-				found_main=1;
-			}
-			if (found_main){
-				if (symbol!=SYMBOL_EMPTY){
-					cpus_state[cpu_index].last_instr_symbol = symbol;
-					if (print_sym && TRACE_ENABLED){
-						if (PRINT_PRV){
-							set_lock(write_lock);
-							trace_row(mpi_rank, cpu_index, SCALAR_ROW, thread_timestamp);
-							trace_event_value(1001,symbol);
-							trace_row(mpi_rank, cpu_index, VECTOR_ROW, thread_timestamp);
-							trace_event_value(1001,symbol);
-							release_lock(write_lock);
-						}
-					}
-					if (print_sym && symbol==SYMBOL_DL) print_sym=0;
-					else if (!print_sym && symbol==SYMBOL_DL) print_sym=1;
-				}
-			}
+
+	//Loop profiling
+	if (cpus_state[cpu_index].next_PC!=-1){
+		if (instr->PC != cpus_state[cpu_index].next_PC){ //Loop not taken
+			update_PC(cpus_state[cpu_index].loop_PC - base);
+		}
+		cpus_state[cpu_index].next_PC=-1;
+	}
+	//Detect loop
+	int insn_opcode = instr->instr32;
+	if ((insn_opcode&0x7F) == 0x063){
+		int highest = ((insn_opcode>>31)&0x1);
+		if (highest){ //Is it backwards?
+			//printf("Loop on %lx (base is %lx)\n", cpus_state[cpu_index].loop_PC - base, base);
+			int64_t offset = (((insn_opcode>>31)&0x1)<<12) + (((insn_opcode>>7)&0x1)<<11) + (((insn_opcode>>25)&0x3F)<<5) + (((insn_opcode>>8)&0xF)<<1);
+			//Sign extend the 13 bit number
+			offset <<= (64-13);
+			offset >>= (64-13);
+			cpus_state[cpu_index].loop_PC = instr->PC;
+			cpus_state[cpu_index].next_PC = instr->PC + offset;
 		}
 	}
 
@@ -345,6 +339,8 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 			#endif
 		}
 	}
+
+
 
 	//  Logfile  //
 	if (TRACE_ENABLED){
@@ -808,48 +804,6 @@ char is_rave_api(uint32_t insn_opcode, struct qemu_plugin_insn * insn){
 	return 1;
 }
 
-//TODO:  Make cache bigger than 1 element
-//TODO: Thread safety!
-int last_cache_length = 0;
-char * last_cache_symbol = NULL; //[32]={' ', ' '};
-int last_cache_symbol_id = -1;
-
-int reached_main = 0;
-
-int ignore_symbols = 0;
-int unlock_length = 0;
-char * unlock_ignore = NULL; //[32];
-
-#define update_saved_string(saved,oldlen,new)\
-{\
-	int newlen = strlen(new)+1;\
-	if (newlen > oldlen){\
-		if (last_cache_symbol!=NULL) free(saved);\
-		oldlen = newlen;\
-		saved = malloc(newlen);\
-	}\
-	strcpy(saved,new);\
-}
-
-int add_symbol(char * mangled){
-	if (mangled == NULL) return SYMBOL_EMPTY;
-
-	//Remember last symbol
-	if (last_cache_symbol != NULL && !strcmp(mangled,last_cache_symbol)){
-	 	return last_cache_symbol_id;
-	}
-	//For cache
-	update_saved_string(last_cache_symbol,last_cache_length,mangled);
-
-	int id;
-	id = add_value_name_to_event(1001, mangled);
-	if (SYMBOL_MAIN==-1 && !strcmp(mangled,"main")) SYMBOL_MAIN = id;
-	if (SYMBOL_DL ==-1 && !strcmp(mangled,"_dl_fixup")) SYMBOL_DL = id;
-
-	last_cache_symbol_id = id;
-	return id;
-}
-
 
 /**
  * On translation block new translation
@@ -859,6 +813,9 @@ int add_symbol(char * mangled){
  */
 
 #include "my_decode.h"
+
+
+
 
 static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 {
@@ -877,6 +834,10 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 		return;
 	}
 
+	if (PRINT_PROFILE && BINARY_NAME != NULL && base==-1){
+		init_dwfl(BINARY_NAME);
+	}
+
 	for (size_t i = 0; i < n; i++) {
 		/*
 		 * `insn` is shared between translations in QEMU, copy needed data here.
@@ -889,6 +850,28 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 		insn_vaddr = qemu_plugin_insn_vaddr(insn);
 		insn_opcode = *((uint32_t *)qemu_plugin_insn_data(insn));
 		insn_disas = qemu_plugin_insn_disas(insn);
+
+
+#if 0
+		//Is it a conditional jump?
+		if ((insn_opcode&0x7F) == 0x063){
+			int highest = ((insn_opcode>>31)&0x1);
+			//Is it backwards?
+			if (highest){
+				int64_t offset = (((insn_opcode>>31)&0x1)<<12) + (((insn_opcode>>7)&0x1)<<11) + (((insn_opcode>>25)&0x3F)<<5) + (((insn_opcode>>8)&0xF)<<1);
+				//Sign extend the 13 bit number
+				offset <<= (64-13);
+				offset >>= (64-13);
+				uint64_t loop_end = insn_vaddr-base;
+				uint64_t loop_start = loop_end + offset;
+				char * pc_file, *pc_symbol;
+				int pc_line, pc_column;
+				int ret = resolve_pc_to_source(loop_end, &pc_file, &pc_symbol, &pc_line, &pc_column);
+				if (!ret) printf("%s Loop on %lx to %lx at %s(%s):%d,%d\n", insn_disas, loop_start, loop_end, pc_file, pc_symbol, pc_line, pc_column); 
+				fflush(stdout);
+			}
+		}
+#endif
 
 		char is_illegal = contains_string(insn_disas,"ill");
 
@@ -910,17 +893,14 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 
 		if (is_vector){ //This includes vsetvl
 			instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
-			if (DETECT_SYMBOLS) insn_struct -> symbol_id = add_symbol(qemu_plugin_insn_symbol(insn));
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
 		}else if (!is_rave_api(insn_opcode, insn)){
 			if (TRACE_SCALAR){
 				instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
-				if (DETECT_SYMBOLS) insn_struct -> symbol_id = add_symbol(qemu_plugin_insn_symbol(insn));
 				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
 			}else{ 
 				instr_basic_data * insn_struct = (instr_basic_data *)malloc(sizeof(instr_basic_data));
 				insn_struct->type = T_SCALAR; insn_struct->instr32  = insn_opcode; insn_struct->PC = insn_vaddr; 
-				if (DETECT_SYMBOLS) insn_struct -> symbol_id = add_symbol(qemu_plugin_insn_symbol(insn));
 				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
 			}
 		}
@@ -969,8 +949,8 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 
 		rave_end_region(-1, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS);
 
+		//print_samples();
 		//rave_eventandcounters(-1, 0, -1, &global_counters); //End Global event
-		if (DETECT_SYMBOLS) rave_eventandcounters(1001, 0, -1, &global_counters); //End Symbols event
 		if(PRINT_REPORT){
 			//Warning:
 			if (track_regions.total_regions<=1){
@@ -986,7 +966,8 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 			//print_events_csv(FD_CSV);
 		}
 		if (PRINT_PROFILE){
-			print_region_profile(FD_PROFILE, ACCUM_REGIONS);
+			print_loop_profile(FD_PROFILE);
+			//print_region_profile(FD_PROFILE, ACCUM_REGIONS);
 		}
 
 		if (FD_CSV!=NULL) fclose(FD_CSV);
@@ -1129,6 +1110,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
                                            const qemu_info_t *info, int argc,
                                            char **argv)
 {
+
 	char * RAVE_VLEN = getenv("RAVE_VLEN");
 	RAVE_VLMAX = RAVE_VLEN==NULL? 16384 : atoi(RAVE_VLEN);
 
@@ -1158,10 +1140,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 			else if (contains_string(argv[i], "PRINT_PROFILE")) PRINT_PROFILE = 1;
 			else if (contains_string(argv[i], "ACCUM_REGIONS")) ACCUM_REGIONS = 1;
 			else if (contains_string(argv[i], "PLAIN_TEXT")) PLAIN_TEXT = 1;
-			else if (contains_string(argv[i], "DETECT_SYMBOLS")){
-			 	DETECT_SYMBOLS = 1;
-				add_event(1001, "symbols");
-			}else if (contains_string(argv[i], "PRV_NAME")){
+			else if (contains_string(argv[i], "PRV_NAME")){
 #if 1
 							int j; for(j=0; j<strlen(argv[i]); ++j)	if (argv[i][j] == '=') break;
 
@@ -1237,9 +1216,16 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 				int event = atoi(&argv[i][j+1]);
 				REGION_EVENT = event>0 ? event : REGION_EVENT;
 			}
+			else if (contains_string(argv[i], "BINARY_NAME")){
+				int len = strlen(argv[i]);
+				int j; for(j=0; j<len; ++j) if (argv[i][j] == '=') break;
+				BINARY_NAME = malloc(len-j+1);
+				strcpy(BINARY_NAME,&argv[i][j+1]);
+			}
 	}
 	if (PRINT_REPORT && FD_REPORT==NULL) FD_REPORT = stdout; 
 	if (PRINT_PROFILE && FD_PROFILE==NULL) FD_PROFILE = stdout; 
+
 
 	rave_ini_regions();
 

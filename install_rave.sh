@@ -45,6 +45,7 @@ else
 	cp ${rave_sources_dir}/instr2prv_0_7.h contrib/plugins/.
 	cp ${rave_sources_dir}/example_trace_0_7.h contrib/plugins/.
 fi
+cp ${rave_sources_dir}/profiling.h contrib/plugins/.
 cp ${rave_sources_dir}/formatting.h contrib/plugins/.
 cp ${rave_sources_dir}/my_decode.h contrib/plugins/.
 cp ${rave_sources_dir}/instr_data.h contrib/plugins/.
@@ -57,8 +58,10 @@ cp ${rave_sources_dir}/rave2prv.h contrib/plugins/.
 if ! grep -q $plugin_name contrib/plugins/Makefile; then
 	sed	 -i "/^NAMES :=/a NAMES += ${plugin_name}" contrib/plugins/Makefile
 fi
-
-make -j${NUM_JOBS} plugins &>> ${LOGFILE}
+ 
+#LDLIBS
+elfutils=${build_dir}/../elfutils/
+make LDLIBS="-L${elfutils}/lib -Wl,-rpath=${elfutils}/lib -lelf -ldw" CFLAGS=-I${elfutils}/include  V=1 -j${NUM_JOBS} plugins &>> ${LOGFILE}
 if [ $? -ne 0 ]; then
 	echo "Building plugins FAILED! Check $LOGFILE"
 	exit -1

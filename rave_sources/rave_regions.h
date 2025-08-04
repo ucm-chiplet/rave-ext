@@ -201,58 +201,6 @@ void free_regions(){
 	}
 }
 
-void dfs_profile_recursive(FILE * fd, region_node_t* curr, int accumulate, double global, double local){
-	if (curr==NULL) return;
-	//Order its siblings by weight
-	double last_max = DBL_MAX;
-	while (1){
-		double max = 0;
-		region_node_t* sibling = curr->parent != NULL ? curr->parent->first_child : curr; 
-		region_node_t* max_sibling = NULL;
-		int siblings_left = 0;
-		while(sibling != NULL){
-			double weight = get_tot_instr(accumulate ? &sibling->region.acc_counters : &sibling->region.delta_counters);
-			if (weight < last_max){
-				++siblings_left;
-				if (weight > max){
-				 	max = weight;
-					max_sibling = sibling;
-				}
-			}
-			sibling = sibling->next_sibling;
-		}
-		if (max_sibling == NULL) break;
-		last_max = max;
-		//Print region name
-		indent(fd, max_sibling->region.nesting + 1, siblings_left==1);
-		P_NAME(fd,"%s ", max_sibling->region.name); 
-		//Add spaces so they are all the same size
-		int len = strlen(max_sibling->region.name);
-		int spaces = 3 + track_regions.max_name - len - max_sibling->region.nesting*2;
-		for(int i=0; i<spaces; ++i) fprintf(fd,".");
-		fprintf(fd," executions: "); P_NUMBER(fd,"%d",max_sibling->region.executions);
-		fprintf(fd,", total instr: "); P_NUMBER(fd,"%.0f",max);
-		fprintf(fd," ("); P_PERCENTAGE(fd, "%.2f %%", 100.0*max/global);
-		fprintf(fd," of total, "); P_PERCENTAGE(fd,"%.2f %%",100.0*max/local);
-		fprintf(fd," of parent)\n"); 
-		region_node_t* child = max_sibling->first_child;
-		dfs_profile_recursive(fd, child, accumulate, global, max);
-	}
-}
-
-void print_region_profile(FILE * fd, int accumulate){
-	fprintf(fd,"-------------------" " PROFILE " "--------------------" "\n");
-
-	reset_indent();
-	ic.spaces = 1;
-	double global = get_tot_instr(&track_regions.first_region->region.delta_counters);
-	dfs_profile_recursive(fd, track_regions.first_region, accumulate, global, global);
-
-	ic.prev_nest=0;
-
-	fprintf(fd, "------------------------------------------------\n");
-	fflush(fd);
-}
 
 
 void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate, int * nregion){

@@ -28,7 +28,7 @@ Control report / profile / csv generation:
  - RAVE_REPORT: If set to "1", the tracer will print to stdout a hardware counter summary for each executed code region. (default: 0).
  - RAVE_REPORT_NAME: Redirects the report to the provided file name. Additionally, automatically sets RAVE_REPORT to 1. 
 
- - RAVE_PROFILE: If set to "1", the tracer will print to stdout a profiling of the most time consuming regions. (default: 0).
+ - RAVE_PROFILE: If set to "1", the tracer will print to stdout a profiling of the executed loops. (default: 0).
  - RAVE_PROFILE_NAME: Redirects the profile to the provided file name. Additionally, automatically sets RAVE_PROFILE to 1. 
 
  - RAVE_CSV: If set to "1", the tracer will print a CSV with the hardware counter summary for each executed code region. (default: 0).
@@ -73,9 +73,6 @@ if [ "$RAVE_PRINT_PRV" == "1" ] || [ "$RAVE_PRV_NAME" != "" ]; then #OPT-in
 	args=$args",PRINT_PRV=on,PRV_NAME=$RAVE_PRV_NAME"
 fi
 
-if [ "$RAVE_DETECT_SYMBOLS" == "1" ]; then #OPT-in
-	args=$args",DETECT_SYMBOLS=on"
-fi
 if [ "$RAVE_PRINT_REPORT" == "1" ]; then #OPT-in
 	args=$args",PRINT_REPORT=on"
 fi
@@ -89,10 +86,10 @@ if [ "$RAVE_REPORT_NAME" != "" ]; then #OPT-in
 	args=$args",PRINT_REPORT=on,REPORT_NAME=$RAVE_REPORT_NAME"
 fi
 if [ "$RAVE_PRINT_PROFILE" == "1" ]; then #OPT-in
-	args=$args",PRINT_PROFILE=on"
+	args=$args",PRINT_PROFILE=on,BINARY_NAME=$1"
 fi
 if [ "$RAVE_PROFILE_NAME" != "" ]; then #OPT-in
-	args=$args",PRINT_PROFILE=on,PROFILE_NAME=$RAVE_PROFILE_NAME"
+	args=$args",PRINT_PROFILE=on,BINARY_NAME=$1,PROFILE_NAME=$RAVE_PROFILE_NAME"
 fi
 if [ "$RAVE_PRINT_CSV" == "1" ] || [ "$RAVE_CSV_NAME" != "" ]; then #OPT-in
 	if [ "$RAVE_CSV_NAME" == "" ]; then
