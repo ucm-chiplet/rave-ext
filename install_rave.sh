@@ -59,9 +59,9 @@ if ! grep -q $plugin_name contrib/plugins/Makefile; then
 	sed	 -i "/^NAMES :=/a NAMES += ${plugin_name}" contrib/plugins/Makefile
 fi
  
-#LDLIBS
 elfutils=${build_dir}/../elfutils/
-make LDLIBS="-L${elfutils}/lib -Wl,-rpath=${elfutils}/lib -lelf -ldw" CFLAGS=-I${elfutils}/include  V=1 -j${NUM_JOBS} plugins &>> ${LOGFILE}
+sed -i "s;\$(CFLAGS);\0 -I${elfutils}/include;g" contrib/plugins/Makefile
+make LDLIBS="-L${elfutils}/lib -Wl,-rpath=${elfutils}/lib -lelf -ldw" V=1 -j${NUM_JOBS} plugins &>> ${LOGFILE}
 if [ $? -ne 0 ]; then
 	echo "Building plugins FAILED! Check $LOGFILE"
 	exit -1
