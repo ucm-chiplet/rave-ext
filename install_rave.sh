@@ -80,8 +80,10 @@ sed -i "s/EXT/${EXT}/g" $install_dir/../bin/rave_gdb
 echo "Building the API...[2/2]"
 
 cd -
-LLVM_DIR=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross
-PATH=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross/bin/:$PATH
-cd interfaces
-make
-cd -
+if [[ "$EXT" == "1_0" ]]; then
+	LLVM_DIR=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross
+	export PATH=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross/bin/:$PATH
+	cd interfaces
+	make
+	cd -
+fi
