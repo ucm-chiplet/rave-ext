@@ -35,8 +35,9 @@ Then, download and install the LLVM-based cross-compiler using the following scr
 
 ### 4. Install the RAVE plugin
 
-Then install RAVE
+Then install ELFUTILS and RAVE
 ```bash
+./install_elfutils.sh
 ./install_rave.sh [0_7 / 1_0]
 ```
 
