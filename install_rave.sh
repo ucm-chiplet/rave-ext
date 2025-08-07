@@ -47,7 +47,7 @@ else
 fi
 cp ${rave_sources_dir}/profiling.h contrib/plugins/.
 cp ${rave_sources_dir}/formatting.h contrib/plugins/.
-cp ${rave_sources_dir}/my_decode.h contrib/plugins/.
+cp ${rave_sources_dir}/07_decode.h contrib/plugins/.
 cp ${rave_sources_dir}/instr_data.h contrib/plugins/.
 cp ${rave_sources_dir}/rave_counters.h contrib/plugins/.
 cp ${rave_sources_dir}/rave_events.h contrib/plugins/.
