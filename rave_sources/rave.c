@@ -267,26 +267,27 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 
 	instr_data * instr = (instr_data*)udata;
 
-
-	//Loop profiling
-	if (cpus_state[cpu_index].next_PC!=-1){
-		if (instr->PC != cpus_state[cpu_index].next_PC){ //Loop not taken
-			update_PC(cpus_state[cpu_index].loop_PC - base);
+	if (PRINT_PROFILE){
+		//Loop profiling
+		if (cpus_state[cpu_index].next_PC!=-1){
+			if (instr->PC != cpus_state[cpu_index].next_PC){ //Loop not taken
+				update_PC(cpus_state[cpu_index].loop_PC - base);
+			}
+			cpus_state[cpu_index].next_PC=-1;
 		}
-		cpus_state[cpu_index].next_PC=-1;
-	}
-	//Detect loop
-	int insn_opcode = instr->instr32;
-	if ((insn_opcode&0x7F) == 0x063){
-		int highest = ((insn_opcode>>31)&0x1);
-		if (highest){ //Is it backwards?
-			//printf("Loop on %lx (base is %lx)\n", cpus_state[cpu_index].loop_PC - base, base);
-			int64_t offset = (((insn_opcode>>31)&0x1)<<12) + (((insn_opcode>>7)&0x1)<<11) + (((insn_opcode>>25)&0x3F)<<5) + (((insn_opcode>>8)&0xF)<<1);
-			//Sign extend the 13 bit number
-			offset <<= (64-13);
-			offset >>= (64-13);
-			cpus_state[cpu_index].loop_PC = instr->PC;
-			cpus_state[cpu_index].next_PC = instr->PC + offset;
+		//Detect loop
+		int insn_opcode = instr->instr32;
+		if ((insn_opcode&0x7F) == 0x063){
+			int highest = ((insn_opcode>>31)&0x1);
+			if (highest){ //Is it backwards?
+				//printf("Loop on %lx (base is %lx)\n", cpus_state[cpu_index].loop_PC - base, base);
+				int64_t offset = (((insn_opcode>>31)&0x1)<<12) + (((insn_opcode>>7)&0x1)<<11) + (((insn_opcode>>25)&0x3F)<<5) + (((insn_opcode>>8)&0xF)<<1);
+				//Sign extend the 13 bit number
+				offset <<= (64-13);
+				offset >>= (64-13);
+				cpus_state[cpu_index].loop_PC = instr->PC;
+				cpus_state[cpu_index].next_PC = instr->PC + offset;
+			}
 		}
 	}
 

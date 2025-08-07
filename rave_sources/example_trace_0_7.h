@@ -509,9 +509,6 @@ fprintf(fd,
 "9   47000015     Instruction\n"
 "VALUES\n"
 
-"1002 vsetvli\n"
-"1001 vsetvl\n"
-	//I Arithmetic instructions
 "1 vadd\n"
 "2 vsub\n"
 "3 vrsub\n"
