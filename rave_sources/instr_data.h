@@ -237,7 +237,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 
 	if (contains_string(instr_fields[0], "vset")){
 		data -> type = T_VSETVL;
-		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]); //Could be simplified
+		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode); 
 	}else if (instr_fields[0][0]=='v'){
 		data -> type = instr_set_type(insn_opcode);
 
@@ -248,7 +248,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 			data -> src3 = data -> dst;
 			data -> dst = 0;
 		}
-		if (PRINT_PRV) data -> paraver_code = instr2prv(instr_fields[0]);
+		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode);
 	}else{
 		data -> type = T_SCALAR;
 		if (PRINT_PRV){

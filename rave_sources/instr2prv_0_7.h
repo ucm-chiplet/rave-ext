@@ -1,590 +1,1734 @@
-char startswith(const char * str, const char * find){
-	for(int i=0; find[i]!='\0'; ++i){
-					if (str[i]=='\0' || find[i]!=str[i]) return 0;
+int instr2prv(unsigned int instr){
+#define OPV 0x57 
+#define LOADFP 0x07
+#define STOREFP 0x27 
+#define AMO 0x30
+	unsigned int rs1 = (instr>>15)&0x1F;
+	unsigned int rs2 = (instr>>20)&0x1F;
+	unsigned int dst = (instr>>7)&0x1F;
+	unsigned int major = (instr)&0x7F;
+	unsigned int masked = ((instr>>25)&0x01)?0:1;
+	unsigned int funct3=(instr>>12)&0x7;
+	unsigned int mop=(instr>>26)&0x7;
+	unsigned int nf;
+	switch(major){
+		case LOADFP:
+			nf=(instr>>29)&0x7;
+			switch(mop){
+				case 0: 
+					switch(funct3){
+						case 0:
+							switch(rs2){
+								case 0:
+									switch(nf){
+										case 0:
+											return 404; //vlbu.v
+										case 1:
+											return 428; //vlseg2bu.v
+										case 2:
+											return 442; //vlseg3bu.v
+										case 3:
+											return 456; //vlseg4bu.v
+										case 4:
+											return 470; //vlseg5bu.v
+										case 5:
+											return 484; //vlseg6bu.v
+										case 6:
+											return 498; //vlseg7bu.v
+										case 7:
+											return 512; //vlseg8bu.v
+									}break;
+								case 16:
+									switch(nf){
+										case 0:
+											return 423; //vlbuff.v
+										case 1:
+											return 429; //vlseg2buff.v
+										case 2:
+											return 443; //vlseg3buff.v
+										case 3:
+											return 457; //vlseg4buff.v
+										case 4:
+											return 471; //vlseg5buff.v
+										case 5:
+											return 485; //vlseg6buff.v
+										case 6:
+											return 499; //vlseg7buff.v
+										case 7:
+											return 513; //vlseg8buff.v
+									}break;
+							}; break;
+						case 5:
+							switch(rs2){
+								case 0:
+									switch(nf){
+										case 0:
+											return 401; //vlhu.v
+										case 1:
+											return 430; //vlseg2hu.v
+										case 2:
+											return 444; //vlseg3hu.v
+										case 3:
+											return 458; //vlseg4hu.v
+										case 4:
+											return 472; //vlseg5hu.v
+										case 5:
+											return 486; //vlseg6hu.v
+										case 6:
+											return 500; //vlseg7hu.v
+										case 7:
+											return 514; //vlseg8hu.v
+									}break;
+								case 16:
+									switch(nf){
+										case 0:
+											return 425; //vlhuff.v
+										case 1:
+											return 431; //vlseg2huff.v
+										case 2:
+											return 445; //vlseg3huff.v
+										case 3:
+											return 459; //vlseg4huff.v
+										case 4:
+											return 473; //vlseg5huff.v
+										case 5:
+											return 487; //vlseg6huff.v
+										case 6:
+											return 501; //vlseg7huff.v
+										case 7:
+											return 515; //vlseg8huff.v
+									}break;
+							}; break;
+						case 6:
+							switch(rs2){
+								case 0:
+									switch(nf){
+										case 0:
+											return 408; //vlwu.v
+										case 1:
+											return 432; //vlseg2wu.v
+										case 2:
+											return 446; //vlseg3wu.v
+										case 3:
+											return 460; //vlseg4wu.v
+										case 4:
+											return 474; //vlseg5wu.v
+										case 5:
+											return 488; //vlseg6wu.v
+										case 6:
+											return 502; //vlseg7wu.v
+										case 7:
+											return 516; //vlseg8wu.v
+									}break;
+								case 16:
+									switch(nf){
+										case 0:
+											return 427; //vlwuff.v
+										case 1:
+											return 433; //vlseg2wuff.v
+										case 2:
+											return 447; //vlseg3wuff.v
+										case 3:
+											return 461; //vlseg4wuff.v
+										case 4:
+											return 475; //vlseg5wuff.v
+										case 5:
+											return 489; //vlseg6wuff.v
+										case 6:
+											return 503; //vlseg7wuff.v
+										case 7:
+											return 517; //vlseg8wuff.v
+									}break;
+							}; break;
+						case 7:
+							switch(rs2){
+								case 0:
+									switch(nf){
+										case 0:
+											return 409; //vle.v
+										case 1:
+											return 434; //vlseg2e.v
+										case 2:
+											return 448; //vlseg3e.v
+										case 3:
+											return 462; //vlseg4e.v
+										case 4:
+											return 476; //vlseg5e.v
+										case 5:
+											return 490; //vlseg6e.v
+										case 6:
+											return 504; //vlseg7e.v
+										case 7:
+											return 518; //vlseg8e.v
+									}break;
+								case 16:
+									switch(nf){
+										case 0:
+											return 421; //vleff.v
+										case 1:
+											return 435; //vlseg2eff.v
+										case 2:
+											return 449; //vlseg3eff.v
+										case 3:
+											return 463; //vlseg4eff.v
+										case 4:
+											return 477; //vlseg5eff.v
+										case 5:
+											return 491; //vlseg6eff.v
+										case 6:
+											return 505; //vlseg7eff.v
+										case 7:
+											return 519; //vlseg8eff.v
+									}break;
+							}; break;
+					} break;
+				case 2: 
+					switch(funct3){
+						case 0:
+							switch(nf){
+								case 0:
+									return 410; //vlsbu.v
+								case 1:
+									return 526; //vlsseg2bu.v
+								case 2:
+									return 533; //vlsseg3bu.v
+								case 3:
+									return 540; //vlsseg4bu.v
+								case 4:
+									return 547; //vlsseg5bu.v
+								case 5:
+									return 554; //vlsseg6bu.v
+								case 6:
+									return 561; //vlsseg7bu.v
+								case 7:
+									return 568; //vlsseg8bu.v
+							}break;
+						case 5:
+							switch(nf){
+								case 0:
+									return 412; //vlshu.v
+								case 1:
+									return 527; //vlsseg2hu.v
+								case 2:
+									return 534; //vlsseg3hu.v
+								case 3:
+									return 541; //vlsseg4hu.v
+								case 4:
+									return 548; //vlsseg5hu.v
+								case 5:
+									return 555; //vlsseg6hu.v
+								case 6:
+									return 562; //vlsseg7hu.v
+								case 7:
+									return 569; //vlsseg8hu.v
+							}break;
+						case 6:
+							switch(nf){
+								case 0:
+									return 414; //vlswu.v
+								case 1:
+									return 528; //vlsseg2wu.v
+								case 2:
+									return 535; //vlsseg3wu.v
+								case 3:
+									return 542; //vlsseg4wu.v
+								case 4:
+									return 549; //vlsseg5wu.v
+								case 5:
+									return 556; //vlsseg6wu.v
+								case 6:
+									return 563; //vlsseg7wu.v
+								case 7:
+									return 570; //vlsseg8wu.v
+							}break;
+						case 7:
+							switch(nf){
+								case 0:
+									return 406; //vlse.v
+								case 1:
+									return 529; //vlsseg2e.v
+								case 2:
+									return 536; //vlsseg3e.v
+								case 3:
+									return 543; //vlsseg4e.v
+								case 4:
+									return 550; //vlsseg5e.v
+								case 5:
+									return 557; //vlsseg6e.v
+								case 6:
+									return 564; //vlsseg7e.v
+								case 7:
+									return 571; //vlsseg8e.v
+							}break;
+					} break;
+				case 3: 
+					switch(funct3){
+						case 0:
+							switch(nf){
+								case 0:
+									return 416; //vlxbu.v
+								case 1:
+									return 575; //vlxseg2bu.v
+								case 2:
+									return 582; //vlxseg3bu.v
+								case 3:
+									return 589; //vlxseg4bu.v
+								case 4:
+									return 596; //vlxseg5bu.v
+								case 5:
+									return 603; //vlxseg6bu.v
+								case 6:
+									return 610; //vlxseg7bu.v
+								case 7:
+									return 617; //vlxseg8bu.v
+							}break;
+						case 5:
+							switch(nf){
+								case 0:
+									return 418; //vlxhu.v
+								case 1:
+									return 576; //vlxseg2hu.v
+								case 2:
+									return 583; //vlxseg3hu.v
+								case 3:
+									return 590; //vlxseg4hu.v
+								case 4:
+									return 597; //vlxseg5hu.v
+								case 5:
+									return 604; //vlxseg6hu.v
+								case 6:
+									return 611; //vlxseg7hu.v
+								case 7:
+									return 618; //vlxseg8hu.v
+							}break;
+						case 6:
+							switch(nf){
+								case 0:
+									return 420; //vlxwu.v
+								case 1:
+									return 577; //vlxseg2wu.v
+								case 2:
+									return 584; //vlxseg3wu.v
+								case 3:
+									return 591; //vlxseg4wu.v
+								case 4:
+									return 598; //vlxseg5wu.v
+								case 5:
+									return 605; //vlxseg6wu.v
+								case 6:
+									return 612; //vlxseg7wu.v
+								case 7:
+									return 619; //vlxseg8wu.v
+							}break;
+						case 7:
+							switch(nf){
+								case 0:
+									return 400; //vlxe.v
+								case 1:
+									return 578; //vlxseg2e.v
+								case 2:
+									return 585; //vlxseg3e.v
+								case 3:
+									return 592; //vlxseg4e.v
+								case 4:
+									return 599; //vlxseg5e.v
+								case 5:
+									return 606; //vlxseg6e.v
+								case 6:
+									return 613; //vlxseg7e.v
+								case 7:
+									return 620; //vlxseg8e.v
+							}break;
+					} break;
+				case 4: 
+					switch(funct3){
+						case 0:
+							switch(rs2){
+								case 0:
+									switch(nf){
+										case 0:
+											return 403; //vlb.v
+										case 1:
+											return 436; //vlseg2b.v
+										case 2:
+											return 450; //vlseg3b.v
+										case 3:
+											return 464; //vlseg4b.v
+										case 4:
+											return 478; //vlseg5b.v
+										case 5:
+											return 492; //vlseg6b.v
+										case 6:
+											return 506; //vlseg7b.v
+										case 7:
+											return 520; //vlseg8b.v
+									}break;
+								case 16:
+									switch(nf){
+										case 0:
+											return 422; //vlbff.v
+										case 1:
+											return 437; //vlseg2bff.v
+										case 2:
+											return 451; //vlseg3bff.v
+										case 3:
+											return 465; //vlseg4bff.v
+										case 4:
+											return 479; //vlseg5bff.v
+										case 5:
+											return 493; //vlseg6bff.v
+										case 6:
+											return 507; //vlseg7bff.v
+										case 7:
+											return 521; //vlseg8bff.v
+									}break;
+							}; break;
+						case 5:
+							switch(rs2){
+								case 0:
+									switch(nf){
+										case 0:
+											return 405; //vlh.v
+										case 1:
+											return 438; //vlseg2h.v
+										case 2:
+											return 452; //vlseg3h.v
+										case 3:
+											return 466; //vlseg4h.v
+										case 4:
+											return 480; //vlseg5h.v
+										case 5:
+											return 494; //vlseg6h.v
+										case 6:
+											return 508; //vlseg7h.v
+										case 7:
+											return 522; //vlseg8h.v
+									}break;
+								case 16:
+									switch(nf){
+										case 0:
+											return 424; //vlhff.v
+										case 1:
+											return 439; //vlseg2hff.v
+										case 2:
+											return 453; //vlseg3hff.v
+										case 3:
+											return 467; //vlseg4hff.v
+										case 4:
+											return 481; //vlseg5hff.v
+										case 5:
+											return 495; //vlseg6hff.v
+										case 6:
+											return 509; //vlseg7hff.v
+										case 7:
+											return 523; //vlseg8hff.v
+									}break;
+							}; break;
+						case 6:
+							switch(rs2){
+								case 0:
+									switch(nf){
+										case 0:
+											return 407; //vlw.v
+										case 1:
+											return 440; //vlseg2w.v
+										case 2:
+											return 454; //vlseg3w.v
+										case 3:
+											return 468; //vlseg4w.v
+										case 4:
+											return 482; //vlseg5w.v
+										case 5:
+											return 496; //vlseg6w.v
+										case 6:
+											return 510; //vlseg7w.v
+										case 7:
+											return 524; //vlseg8w.v
+									}break;
+								case 16:
+									switch(nf){
+										case 0:
+											return 426; //vlwff.v
+										case 1:
+											return 441; //vlseg2wff.v
+										case 2:
+											return 455; //vlseg3wff.v
+										case 3:
+											return 469; //vlseg4wff.v
+										case 4:
+											return 483; //vlseg5wff.v
+										case 5:
+											return 497; //vlseg6wff.v
+										case 6:
+											return 511; //vlseg7wff.v
+										case 7:
+											return 525; //vlseg8wff.v
+									}break;
+							}; break;
+					} break;
+				case 6: 
+					switch(funct3){
+						case 0:
+							switch(nf){
+								case 0:
+									return 402; //vlsb.v
+								case 1:
+									return 530; //vlsseg2b.v
+								case 2:
+									return 537; //vlsseg3b.v
+								case 3:
+									return 544; //vlsseg4b.v
+								case 4:
+									return 551; //vlsseg5b.v
+								case 5:
+									return 558; //vlsseg6b.v
+								case 6:
+									return 565; //vlsseg7b.v
+								case 7:
+									return 572; //vlsseg8b.v
+							}break;
+						case 5:
+							switch(nf){
+								case 0:
+									return 411; //vlsh.v
+								case 1:
+									return 531; //vlsseg2h.v
+								case 2:
+									return 538; //vlsseg3h.v
+								case 3:
+									return 545; //vlsseg4h.v
+								case 4:
+									return 552; //vlsseg5h.v
+								case 5:
+									return 559; //vlsseg6h.v
+								case 6:
+									return 566; //vlsseg7h.v
+								case 7:
+									return 573; //vlsseg8h.v
+							}break;
+						case 6:
+							switch(nf){
+								case 0:
+									return 413; //vlsw.v
+								case 1:
+									return 532; //vlsseg2w.v
+								case 2:
+									return 539; //vlsseg3w.v
+								case 3:
+									return 546; //vlsseg4w.v
+								case 4:
+									return 553; //vlsseg5w.v
+								case 5:
+									return 560; //vlsseg6w.v
+								case 6:
+									return 567; //vlsseg7w.v
+								case 7:
+									return 574; //vlsseg8w.v
+							}break;
+					} break;
+				case 7: 
+					switch(funct3){
+						case 0:
+							switch(nf){
+								case 0:
+									return 415; //vlxb.v
+								case 1:
+									return 579; //vlxseg2b.v
+								case 2:
+									return 586; //vlxseg3b.v
+								case 3:
+									return 593; //vlxseg4b.v
+								case 4:
+									return 600; //vlxseg5b.v
+								case 5:
+									return 607; //vlxseg6b.v
+								case 6:
+									return 614; //vlxseg7b.v
+								case 7:
+									return 621; //vlxseg8b.v
+							}break;
+						case 5:
+							switch(nf){
+								case 0:
+									return 417; //vlxh.v
+								case 1:
+									return 580; //vlxseg2h.v
+								case 2:
+									return 587; //vlxseg3h.v
+								case 3:
+									return 594; //vlxseg4h.v
+								case 4:
+									return 601; //vlxseg5h.v
+								case 5:
+									return 608; //vlxseg6h.v
+								case 6:
+									return 615; //vlxseg7h.v
+								case 7:
+									return 622; //vlxseg8h.v
+							}break;
+						case 6:
+							switch(nf){
+								case 0:
+									return 419; //vlxw.v
+								case 1:
+									return 581; //vlxseg2w.v
+								case 2:
+									return 588; //vlxseg3w.v
+								case 3:
+									return 595; //vlxseg4w.v
+								case 4:
+									return 602; //vlxseg5w.v
+								case 5:
+									return 609; //vlxseg6w.v
+								case 6:
+									return 616; //vlxseg7w.v
+								case 7:
+									return 623; //vlxseg8w.v
+							}break;
+					} break;
+			}
+			break;
+		case STOREFP:
+			nf=(instr>>29)&0x7;
+			switch(mop){
+				case 0: 
+					switch(funct3){
+						case 0:
+							switch(nf){
+								case 0:
+									return 802; //vsb.v
+								case 1:
+									return 816; //vsseg2b.v
+								case 2:
+									return 820; //vsseg3b.v
+								case 3:
+									return 824; //vsseg4b.v
+								case 4:
+									return 828; //vsseg5b.v
+								case 5:
+									return 832; //vsseg6b.v
+								case 6:
+									return 836; //vsseg7b.v
+								case 7:
+									return 840; //vsseg8b.v
+							}break;
+						case 5:
+							switch(nf){
+								case 0:
+									return 805; //vsh.v
+								case 1:
+									return 817; //vsseg2h.v
+								case 2:
+									return 821; //vsseg3h.v
+								case 3:
+									return 825; //vsseg4h.v
+								case 4:
+									return 829; //vsseg5h.v
+								case 5:
+									return 833; //vsseg6h.v
+								case 6:
+									return 837; //vsseg7h.v
+								case 7:
+									return 841; //vsseg8h.v
+							}break;
+						case 6:
+							switch(nf){
+								case 0:
+									return 806; //vsw.v
+								case 1:
+									return 818; //vsseg2w.v
+								case 2:
+									return 822; //vsseg3w.v
+								case 3:
+									return 826; //vsseg4w.v
+								case 4:
+									return 830; //vsseg5w.v
+								case 5:
+									return 834; //vsseg6w.v
+								case 6:
+									return 838; //vsseg7w.v
+								case 7:
+									return 842; //vsseg8w.v
+							}break;
+						case 7:
+							return 813; //vse.v
+							switch(nf){
+								case 0:
+									return 813; //vse.v
+								case 1:
+									return 819; //vsseg2e.v
+								case 2:
+									return 823; //vsseg3e.v
+								case 3:
+									return 827; //vsseg4e.v
+								case 4:
+									return 831; //vsseg5e.v
+								case 5:
+									return 835; //vsseg6e.v
+								case 6:
+									return 839; //vsseg7e.v
+								case 7:
+									return 843; //vsseg8e.v
+							}break;
+					} break;
+
+				case 2: 
+					switch(funct3){
+						case 0:
+							switch(nf){
+								case 0:
+									return 807; //vssb.v
+								case 1:
+									return 844; //vssseg2b.v
+								case 2:
+									return 848; //vssseg3b.v
+								case 3:
+									return 852; //vssseg4b.v
+								case 4:
+									return 856; //vssseg5b.v
+								case 5:
+									return 860; //vssseg6b.v
+								case 6:
+									return 864; //vssseg7b.v
+								case 7:
+									return 868; //vssseg8b.v
+							}break;
+						case 5:
+							switch(nf){
+								case 0:
+									return 803; //vssh.v
+								case 1:
+									return 845; //vssseg2h.v
+								case 2:
+									return 849; //vssseg3h.v
+								case 3:
+									return 853; //vssseg4h.v
+								case 4:
+									return 857; //vssseg5h.v
+								case 5:
+									return 861; //vssseg6h.v
+								case 6:
+									return 865; //vssseg7h.v
+								case 7:
+									return 869; //vssseg8h.v
+							}break;
+						case 6:
+							switch(nf){
+								case 0:
+									return 809; //vssw.v
+								case 1:
+									return 846; //vssseg2w.v
+								case 2:
+									return 850; //vssseg3w.v
+								case 3:
+									return 854; //vssseg4w.v
+								case 4:
+									return 858; //vssseg5w.v
+								case 5:
+									return 862; //vssseg6w.v
+								case 6:
+									return 866; //vssseg7w.v
+								case 7:
+									return 870; //vssseg8w.v
+							}break;
+						case 7:
+							switch(nf){
+								case 0:
+									return 804; //vsse.v
+								case 1:
+									return 847; //vssseg2e.v
+								case 2:
+									return 851; //vssseg3e.v
+								case 3:
+									return 855; //vssseg4e.v
+								case 4:
+									return 859; //vssseg5e.v
+								case 5:
+									return 863; //vssseg6e.v
+								case 6:
+									return 867; //vssseg7e.v
+								case 7:
+									return 871; //vssseg8e.v
+							}break;
+					} break;
+				case 3: 
+					switch(funct3){
+						case 0:
+							switch(nf){
+								case 0:
+									return 810; //vsxb.v
+								case 1:
+									return 872; //vsxseg2b.v
+								case 2:
+									return 876; //vsxseg3b.v
+								case 3:
+									return 880; //vsxseg4b.v
+								case 4:
+									return 884; //vsxseg5b.v
+								case 5:
+									return 888; //vsxseg6b.v
+								case 6:
+									return 892; //vsxseg7b.v
+								case 7:
+									return 896; //vsxseg8b.v
+							}break;
+						case 5:
+							switch(nf){
+								case 0:
+									return 811; //vsxh.v
+								case 1:
+									return 873; //vsxseg2h.v
+								case 2:
+									return 877; //vsxseg3h.v
+								case 3:
+									return 881; //vsxseg4h.v
+								case 4:
+									return 885; //vsxseg5h.v
+								case 5:
+									return 889; //vsxseg6h.v
+								case 6:
+									return 893; //vsxseg7h.v
+								case 7:
+									return 897; //vsxseg8h.v
+							}break;
+						case 6:
+							switch(nf){
+								case 0:
+									return 812; //vsxw.v
+								case 1:
+									return 874; //vsxseg2w.v
+								case 2:
+									return 878; //vsxseg3w.v
+								case 3:
+									return 882; //vsxseg4w.v
+								case 4:
+									return 886; //vsxseg5w.v
+								case 5:
+									return 890; //vsxseg6w.v
+								case 6:
+									return 894; //vsxseg7w.v
+								case 7:
+									return 898; //vsxseg8w.v
+							}break;
+						case 7:
+							switch(nf){
+								case 0:
+									return 808; //vsxe.v
+								case 1:
+									return 875; //vsxseg2e.v
+								case 2:
+									return 879; //vsxseg3e.v
+								case 3:
+									return 883; //vsxseg4e.v
+								case 4:
+									return 887; //vsxseg5e.v
+								case 5:
+									return 891; //vsxseg6e.v
+								case 6:
+									return 895; //vsxseg7e.v
+								case 7:
+									return 899; //vsxseg8e.v
+							}break;
+					} break;
+				case 7: 
+					switch(funct3){
+						case 0:
+							switch(nf){
+								case 0:
+									return 801; //vsuxb.v
+								case 1:
+									return 900; //vsuxseg2b.v
+								case 2:
+									return 904; //vsuxseg3b.v
+								case 3:
+									return 908; //vsuxseg4b.v
+								case 4:
+									return 912; //vsuxseg5b.v
+								case 5:
+									return 916; //vsuxseg6b.v
+								case 6:
+									return 920; //vsuxseg7b.v
+								case 7:
+									return 924; //vsuxseg8b.v
+							}break;
+						case 5:
+							switch(nf){
+								case 0:
+									return 814; //vsuxh.v
+								case 1:
+									return 901; //vsuxseg2h.v
+								case 2:
+									return 905; //vsuxseg3h.v
+								case 3:
+									return 909; //vsuxseg4h.v
+								case 4:
+									return 913; //vsuxseg5h.v
+								case 5:
+									return 917; //vsuxseg6h.v
+								case 6:
+									return 921; //vsuxseg7h.v
+								case 7:
+									return 925; //vsuxseg8h.v
+							}break;
+						case 6:
+							switch(nf){
+								case 0:
+									return 815; //vsuxw.v
+								case 1:
+									return 902; //vsuxseg2w.v
+								case 2:
+									return 906; //vsuxseg3w.v
+								case 3:
+									return 910; //vsuxseg4w.v
+								case 4:
+									return 914; //vsuxseg5w.v
+								case 5:
+									return 918; //vsuxseg6w.v
+								case 6:
+									return 922; //vsuxseg7w.v
+								case 7:
+									return 926; //vsuxseg8w.v
+							}break;
+						case 7:
+							switch(nf){
+								case 0:
+									return 800; //vsuxe.v
+								case 1:
+									return 903; //vsuxseg2e.v
+								case 2:
+									return 907; //vsuxseg3e.v
+								case 3:
+									return 911; //vsuxseg4e.v
+								case 4:
+									return 915; //vsuxseg5e.v
+								case 5:
+									return 919; //vsuxseg6e.v
+								case 6:
+									return 923; //vsuxseg7e.v
+								case 7:
+									return 927; //vsuxseg8e.v
+							}break;
+					} break;
+			}
+			break;
+		case AMO:
+			break;
+		case OPV:
+			if ((((instr>>25) & 0x7F)==64) && (((instr>>12)&0x7)==7)){ //is vsetvl
+				return 1001; //vsetvl
+				break;
+			}else if ((((instr>>31) & 0x1)==0) && (((instr>>12)&0x7)==7)){ //is vsetvli
+				unsigned int sew = 1 << (((instr>>22)&0x7)+3);
+				unsigned int lmul = (((instr>>20)&0x3)+1);
+				return 1002; //vsetvli
+				break;
+			}
+			unsigned int funct6=(instr>>26)&0x3F;
+			switch(funct6){
+				case 0:
+					switch(funct3){
+						case 0: //OPIVV
+							return 1; //vadd.vv
+						case 4: //OPIVX
+							return 1; //vadd.vx
+						case 3: //OPIVI
+							return 1; //vadd.vi
+						case 2: //OPMVV
+							return 25; //vredsum.vs
+						case 1: //OPFVV
+							return 100; //vfadd.vv
+						case 5: //OPFVF
+							return 100; //vfadd.vf
+					} break;
+				case 1:
+					switch(funct3){
+						case 2: //OPMVV
+							return 26; //vredand.vs
+						case 1: //OPFVV
+							return 106; //vfredsum.vs
+					} break;
+				case 2:
+					switch(funct3){
+						case 0: //OPIVV
+							return 2; //vsub.vv
+						case 4: //OPIVX
+							return 2; //vsub.vx
+						case 2: //OPMVV
+							return 27; //vredor.vs
+						case 1: //OPFVV
+							return 107; //vfsub.vv
+						case 5: //OPFVF
+							return 107; //vfsub.vf
+					} break;
+				case 3:
+					switch(funct3){
+						case 4: //OPIVX
+							return 3; //vrsub.vx
+						case 3: //OPIVI
+							return 3; //vrsub.vi
+						case 2: //OPMVV
+							return 28; //vredxor.vs
+						case 1: //OPFVV
+							return 113; //vfredosum.vs
+					} break;
+				case 4:
+					switch(funct3){
+						case 0: //OPIVV
+							return 36; //vminu.vv
+						case 4: //OPIVX
+							return 36; //vminu.vx
+						case 2: //OPMVV
+							return 30; //vredminu.vs
+						case 1: //OPFVV
+							return 114; //vfmin.vv
+						case 5: //OPFVF
+							return 114; //vfmin.vf
+					} break;
+				case 5:
+					switch(funct3){
+						case 0: //OPIVV
+							return 35; //vmin.vv
+						case 4: //OPIVX
+							return 35; //vmin.vx
+						case 2: //OPMVV
+							return 29; //vredmin.vs
+						case 1: //OPFVV
+							return 115; //vfredmin.vs
+					} break;
+				case 6:
+					switch(funct3){
+						case 0: //OPIVV
+							return 38; //vmaxu.vv
+						case 4: //OPIVX
+							return 38; //vmaxu.vx
+						case 2: //OPMVV
+							return 32; //vredmaxu.vs
+						case 1: //OPFVV
+							return 116; //vfmax.vv
+						case 5: //OPFVF
+							return 116; //vfmax.vf
+					} break;
+				case 7:
+					switch(funct3){
+						case 0: //OPIVV
+							return 37; //vmax.vv
+						case 4: //OPIVX
+							return 37; //vmax.vx
+						case 2: //OPMVV
+							return 31; //vredmax.vs
+						case 1: //OPFVV
+							return 117; //vfredmax.vs
+					} break;
+				case 8:
+					switch(funct3){
+						case 1: //OPFVV
+							return 118; //vfsgnj.vv
+						case 5: //OPFVF
+							return 118; //vfsgnj.vf
+					} break;
+				case 9:
+					switch(funct3){
+						case 0: //OPIVV
+							return 17; //vand.vv
+						case 4: //OPIVX
+							return 17; //vand.vx
+						case 3: //OPIVI
+							return 17; //vand.vi
+						case 1: //OPFVV
+							return 110; //vfsgnjn.vv
+						case 5: //OPFVF
+							return 110; //vfsgnjn.vf
+					} break;
+				case 10:
+					switch(funct3){
+						case 0: //OPIVV
+							return 18; //vor.vv
+						case 4: //OPIVX
+							return 18; //vor.vx
+						case 3: //OPIVI
+							return 18; //vor.vi
+						case 1: //OPFVV
+							return 119; //vfsgnjx.vv
+						case 5: //OPFVF
+							return 119; //vfsgnjx.vf
+					} break;
+				case 11:
+					switch(funct3){
+						case 0: //OPIVV
+							return 19; //vxor.vv
+						case 4: //OPIVX
+							return 19; //vxor.vx
+						case 3: //OPIVI
+							return 20; //vnot.v
+							return 19; //vxor.vi
+							break;
+					} break;
+				case 12:
+					switch(funct3){
+						case 0: //OPIVV
+							return 203; //vrgather.vv
+						case 4: //OPIVX
+							return 203; //vrgather.vx
+						case 3: //OPIVI
+							return 203; //vrgather.vi
+						case 2: //OPMVV
+							return 201; //vmv.x.s
+							return 230; //vext.x.v
+							break;
+						case 1: //OPFVV
+							return 202; //vfmv.f.s
+					} break;
+				case 13:
+					switch(funct3){
+						case 6: //OPMVX
+							return 201; //vmv.s.x
+						case 5: //OPFVF
+							return 202; //vfmv.s.f
+					} break;
+				case 14:
+					switch(funct3){
+						case 4: //OPIVX
+							return 222; //vslideup.vx
+						case 3: //OPIVI
+							return 222; //vslideup.vi
+						case 6: //OPMVX
+							return 223; //vslide1up.vx
+					} break;
+				case 15:
+					switch(funct3){
+						case 4: //OPIVX
+							return 220; //vslidedown.vx
+						case 3: //OPIVI
+							return 220; //vslidedown.vi
+						case 6: //OPMVX
+							return 221; //vslide1down.vx
+					} break;
+				case 16:
+					switch(funct3){
+						case 0: //OPIVV
+							return 40; //vadc.vvm
+						case 4: //OPIVX
+							return 40; //vadc.vxm
+						case 3: //OPIVI
+							return 40; //vadc.vim
+					} break;
+				case 17:
+					switch(funct3){
+						case 0: //OPIVV
+							return 41; //vmadc.vvm
+						case 4: //OPIVX
+							return 41; //vmadc.vxm
+						case 3: //OPIVI
+							return 41; //vmadc.vim
+					} break;
+				case 18:
+					switch(funct3){
+						case 0: //OPIVV
+							return 42; //vsbc.vvm
+						case 4: //OPIVX
+							return 42; //vsbc.vxm
+					} break;
+				case 19:
+					switch(funct3){
+						case 0: //OPIVV
+							return 43; //vmsbc.vvm
+						case 4: //OPIVX
+							return 43; //vmsbc.vxm
+					} break;
+				case 20:
+					switch(funct3){
+						case 2: //OPMVV
+							return 231; //vmpopc.m
+					} break;
+				case 21:
+					switch(funct3){
+						case 2: //OPMVV
+							return 232; //vmfirst.m
+					} break;
+				case 22:
+					switch(funct3){
+						case 2: //OPMVV
+							switch(rs1){
+								case 1:
+									return 250; //vmsbf.m
+								case 2:
+									return 251; //vmsof.m
+								case 3:
+									return 252; //vmsif.m
+								case 16:
+									return 253; //viota.m
+								case 17:
+									return 200; //vid.v
+							}break;
+					} break;
+				case 23:
+					switch(funct3){
+						case 0: //OPIVV
+							return 201; //vmv.v.v
+							return 210; //vmerge.vvm
+						case 4: //OPIVX
+							return 201; //vmv.v.x
+							return 210; //vmerge.vxm
+						case 3: //OPIVI
+							return 201; //vmv.v.i
+							return 210; //vmerge.vim
+						case 2: //OPMVV
+							return 233; //vcompress.vm
+						case 5: //OPFVF
+							return 202; //vfmv.v.f
+							return 211; //vfmerge.vfm
+					} break;
+				case 24:
+					switch(funct3){
+						case 0: //OPIVV
+							return 300; //vmseq.vv
+						case 4: //OPIVX
+							return 300; //vmseq.vx
+						case 3: //OPIVI
+							return 300; //vmseq.vi
+						case 2: //OPMVV
+							return 318; //vmandnot.mm
+						case 1: //OPFVV
+							return 310; //vmfeq.vv
+						case 5: //OPFVF
+							return 310; //vmfeq.vf
+					} break;
+				case 25:
+					switch(funct3){
+						case 0: //OPIVV
+							return 301; //vmsne.vv
+						case 4: //OPIVX
+							return 301; //vmsne.vx
+						case 3: //OPIVI
+							return 301; //vmsne.vi
+						case 2: //OPMVV
+							return 326; //vmcpy.m
+							return 317; //vmand.mm
+							break;
+						case 1: //OPFVV
+							return 312; //vmfle.vv
+						case 5: //OPFVF
+							return 312; //vmfle.vf
+					} break;
+				case 26:
+					switch(funct3){
+						case 0: //OPIVV
+							return 304; //vmsltu.vv
+						case 4: //OPIVX
+							return 304; //vmsltu.vx
+						case 2: //OPMVV
+							return 320; //vmor.mm
+						case 1: //OPFVV
+							return 328; //vmford.vv
+						case 5: //OPFVF
+							return 328; //vmford.vf
+					} break;
+				case 27:
+					switch(funct3){
+						case 0: //OPIVV
+							return 303; //vmslt.vv
+						case 4: //OPIVX
+							return 303; //vmslt.vx
+						case 2: //OPMVV
+							return 325; //vmclr.m
+							return 323; //vmxor.mm
+							break;
+						case 1: //OPFVV
+							return 313; //vmflt.vv
+						case 5: //OPFVF
+							return 313; //vmflt.vf
+					} break;
+				case 28:
+					switch(funct3){
+						case 0: //OPIVV
+							return 305; //vmsleu.vv
+						case 4: //OPIVX
+							return 305; //vmsleu.vx
+						case 3: //OPIVI
+							return 305; //vmsleu.vi
+						case 2: //OPMVV
+							return 321; //vmornot.mm
+						case 1: //OPFVV
+							return 311; //vmfne.vv
+						case 5: //OPFVF
+							return 311; //vmfne.vf
+					} break;
+				case 29:
+					switch(funct3){
+						case 0: //OPIVV
+							return 302; //vmsle.vv
+						case 4: //OPIVX
+							return 302; //vmsle.vx
+						case 3: //OPIVI
+							return 302; //vmsle.vi
+						case 2: //OPMVV
+							return 316; //vmnot.m
+							return 319; //vmnand.mm
+							break;
+						case 5: //OPFVF
+							return 314; //vmfgt.vf
+					} break;
+				case 30:
+					switch(funct3){
+						case 4: //OPIVX
+							return 307; //vmsgtu.vx
+						case 3: //OPIVI
+							return 307; //vmsgtu.vi
+						case 2: //OPMVV
+							return 322; //vmnor.mm
+					} break;
+				case 31:
+					switch(funct3){
+						case 4: //OPIVX
+							return 306; //vmsgt.vx
+						case 3: //OPIVI
+							return 306; //vmsgt.vi
+						case 2: //OPMVV
+							return 327; //vmset.m
+							return 324; //vmxnor.mm
+							break;
+						case 5: //OPFVF
+							return 315; //vmfge.vf
+					} break;
+				case 32:
+					switch(funct3){
+						case 0: //OPIVV
+							return 45; //vsaddu.vv
+						case 4: //OPIVX
+							return 45; //vsaddu.vx
+						case 3: //OPIVI
+							return 45; //vsaddu.vi
+						case 2: //OPMVV
+							return 11; //vdivu.vv
+						case 6: //OPMVX
+							return 11; //vdivu.vx
+						case 1: //OPFVV
+							return 112; //vfdiv.vv
+						case 5: //OPFVF
+							return 112; //vfdiv.vf
+					} break;
+				case 33:
+					switch(funct3){
+						case 0: //OPIVV
+							return 44; //vsadd.vv
+						case 4: //OPIVX
+							return 44; //vsadd.vx
+						case 3: //OPIVI
+							return 44; //vsadd.vi
+						case 2: //OPMVV
+							return 10; //vdiv.vv
+						case 6: //OPMVX
+							return 10; //vdiv.vx
+						case 5: //OPFVF
+							return 120; //vfrdiv.vf
+					} break;
+				case 34:
+					switch(funct3){
+						case 0: //OPIVV
+							return 47; //vssubu.vv
+						case 4: //OPIVX
+							return 47; //vssubu.vx
+						case 2: //OPMVV
+							return 13; //vremu.vv
+						case 6: //OPMVX
+							return 13; //vremu.vx
+						case 1: //OPFVV
+							switch(rs1){
+								case 0:
+									return 242; //vfcvt.xu.f.v
+								case 1:
+									return 242; //vfcvt.x.f.v
+								case 2:
+									return 242; //vfcvt.f.xu.v
+								case 3:
+									return 242; //vfcvt.f.x.v
+								case 8:
+									return 243; //vfwcvt.xu.f.v
+								case 9:
+									return 243; //vfwcvt.x.f.v
+								case 10:
+									return 243; //vfwcvt.f.xu.v
+								case 11:
+									return 243; //vfwcvt.f.x.v
+								case 12:
+									return 243; //vfwcvt.f.f.v
+								case 16:
+									return 244; //vfncvt.xu.f.v
+								case 17:
+									return 244; //vfncvt.x.f.v
+								case 18:
+									return 244; //vfncvt.f.xu.v
+								case 19:
+									return 244; //vfncvt.f.x.v
+								case 20:
+									return 244; //vfncvt.f.f.v
+							}break;
+					} break;
+				case 35:
+					switch(funct3){
+						case 0: //OPIVV
+							return 46; //vssub.vv
+						case 4: //OPIVX
+							return 46; //vssub.vx
+						case 2: //OPMVV
+							return 12; //vrem.vv
+						case 6: //OPMVX
+							return 12; //vrem.vx
+						case 1: //OPFVV
+							switch(rs1){
+								case 0:
+									return 109; //vfsqrt.v
+								case 16:
+									return 247; //vfclass.v
+							}break;
+					} break;
+				case 36:
+					switch(funct3){
+						case 0: //OPIVV
+							return 51; //vaadd.vv
+						case 4: //OPIVX
+							return 51; //vaadd.vx
+						case 3: //OPIVI
+							return 51; //vaadd.vi
+						case 2: //OPMVV
+							return 6; //vmulhu.vv
+						case 6: //OPMVX
+							return 6; //vmulhu.vx
+						case 1: //OPFVV
+							return 105; //vfmul.vv
+						case 5: //OPFVF
+							return 105; //vfmul.vf
+					} break;
+				case 37:
+					switch(funct3){
+						case 0: //OPIVV
+							return 14; //vsll.vv
+						case 4: //OPIVX
+							return 14; //vsll.vx
+						case 3: //OPIVI
+							return 14; //vsll.vi
+						case 2: //OPMVV
+							return 4; //vmul.vv
+						case 6: //OPMVX
+							return 4; //vmul.vx
+					} break;
+				case 38:
+					switch(funct3){
+						case 0: //OPIVV
+							return 52; //vasub.vv
+						case 4: //OPIVX
+							return 52; //vasub.vx
+						case 2: //OPMVV
+							return 7; //vmulhsu.vv
+						case 6: //OPMVX
+							return 7; //vmulhsu.vx
+					} break;
+				case 39:
+					switch(funct3){
+						case 0: //OPIVV
+							return 50; //vsmul.vv
+						case 4: //OPIVX
+							return 50; //vsmul.vx
+						case 2: //OPMVV
+							return 5; //vmulh.vv
+						case 6: //OPMVX
+							return 5; //vmulh.vx
+						case 5: //OPFVF
+							return 135; //vfrsub.vf
+					} break;
+				case 40:
+					switch(funct3){
+						case 0: //OPIVV
+							return 16; //vsrl.vv
+						case 4: //OPIVX
+							return 16; //vsrl.vx
+						case 3: //OPIVI
+							return 16; //vsrl.vi
+						case 1: //OPFVV
+							return 101; //vfmadd.vv
+						case 5: //OPFVF
+							return 101; //vfmadd.vf
+					} break;
+				case 41:
+					switch(funct3){
+						case 0: //OPIVV
+							return 15; //vsra.vv
+						case 4: //OPIVX
+							return 15; //vsra.vx
+						case 3: //OPIVI
+							return 15; //vsra.vi
+						case 2: //OPMVV
+							return 8; //vmadd.vv
+						case 6: //OPMVX
+							return 8; //vmadd.vx
+						case 1: //OPFVV
+							return 121; //vfnmadd.vv
+						case 5: //OPFVF
+							return 121; //vfnmadd.vf
+					} break;
+				case 42:
+					switch(funct3){
+						case 0: //OPIVV
+							return 48; //vssrl.vv
+						case 4: //OPIVX
+							return 48; //vssrl.vx
+						case 3: //OPIVI
+							return 48; //vssrl.vi
+						case 1: //OPFVV
+							return 102; //vfmsub.vv
+						case 5: //OPFVF
+							return 102; //vfmsub.vf
+					} break;
+				case 43:
+					switch(funct3){
+						case 0: //OPIVV
+							return 49; //vssra.vv
+						case 4: //OPIVX
+							return 49; //vssra.vx
+						case 3: //OPIVI
+							return 49; //vssra.vi
+						case 2: //OPMVV
+							return 58; //vnmsub.vv
+						case 6: //OPMVX
+							return 58; //vnmsub.vx
+						case 1: //OPFVV
+							return 122; //vfnmsub.vv
+						case 5: //OPFVF
+							return 122; //vfnmsub.vf
+					} break;
+				case 44:
+					switch(funct3){
+						case 0: //OPIVV
+							return 55; //vnsrl.vv
+						case 4: //OPIVX
+							return 55; //vnsrl.vx
+						case 3: //OPIVI
+							return 55; //vnsrl.vi
+						case 1: //OPFVV
+							return 108; //vfmacc.vv
+						case 5: //OPFVF
+							return 108; //vfmacc.vf
+					} break;
+				case 45:
+					switch(funct3){
+						case 0: //OPIVV
+							return 56; //vnsra.vv
+						case 4: //OPIVX
+							return 56; //vnsra.vx
+						case 3: //OPIVI
+							return 56; //vnsra.vi
+						case 2: //OPMVV
+							return 9; //vmacc.vv
+						case 6: //OPMVX
+							return 9; //vmacc.vx
+						case 1: //OPFVV
+							return 123; //vfnmacc.vv
+						case 5: //OPFVF
+							return 123; //vfnmacc.vf
+					} break;
+				case 46:
+					switch(funct3){
+						case 0: //OPIVV
+							return 246; //vnclipu.vv
+						case 4: //OPIVX
+							return 246; //vnclipu.vx
+						case 3: //OPIVI
+							return 246; //vnclipu.vi
+						case 1: //OPFVV
+							return 111; //vfmsac.vv
+						case 5: //OPFVF
+							return 111; //vfmsac.vf
+					} break;
+				case 47:
+					switch(funct3){
+						case 0: //OPIVV
+							return 245; //vnclip.vv
+						case 4: //OPIVX
+							return 245; //vnclip.vx
+						case 3: //OPIVI
+							return 245; //vnclip.vi
+						case 2: //OPMVV
+							return 57; //vnmsac.vv
+						case 6: //OPMVX
+							return 57; //vnmsac.vx
+						case 1: //OPFVV
+							return 124; //vfnmsac.vv
+						case 5: //OPFVF
+							return 124; //vfnmsac.vf
+					} break;
+				case 48:
+					switch(funct3){
+						case 0: //OPIVV
+							return 74; //vwredsumu.vs
+						case 2: //OPMVV
+							return 60; //vwaddu.vv
+						case 6: //OPMVX
+							return 60; //vwaddu.vx
+						case 1: //OPFVV
+							return 125; //vfwadd.vv
+						case 5: //OPFVF
+							return 125; //vfwadd.vf
+					} break;
+				case 49:
+					switch(funct3){
+						case 0: //OPIVV
+							return 75; //vwredsum.vs
+						case 2: //OPMVV
+							return 59; //vwadd.vv
+						case 6: //OPMVX
+							return 59; //vwadd.vx
+						case 1: //OPFVV
+							return 126; //vfwredsum.vs
+					} break;
+				case 50:
+					switch(funct3){
+						case 2: //OPMVV
+							return 62; //vwsubu.vv
+						case 6: //OPMVX
+							return 62; //vwsubu.vx
+						case 1: //OPFVV
+							return 127; //vfwsub.vv
+						case 5: //OPFVF
+							return 127; //vfwsub.vf
+					} break;
+				case 51:
+					switch(funct3){
+						case 2: //OPMVV
+							return 61; //vwsub.vv
+						case 6: //OPMVX
+							return 61; //vwsub.vx
+						case 1: //OPFVV
+							return 128; //vfwredosum.vs
+					} break;
+				case 52:
+					switch(funct3){
+						case 2: //OPMVV
+							return 60; //vwaddu.wv
+						case 6: //OPMVX
+							return 60; //vwaddu.wx
+						case 1: //OPFVV
+							return 125; //vfwadd.wv
+						case 5: //OPFVF
+							return 125; //vfwadd.wf
+					} break;
+				case 53:
+					switch(funct3){
+						case 2: //OPMVV
+							return 59; //vwadd.wv
+						case 6: //OPMVX
+							return 59; //vwadd.wx
+					} break;
+				case 54:
+					switch(funct3){
+						case 2: //OPMVV
+							return 62; //vwsubu.wv
+						case 6: //OPMVX
+							return 62; //vwsubu.wx
+						case 1: //OPFVV
+							return 127; //vfwsub.wv
+						case 5: //OPFVF
+							return 127; //vfwsub.wf
+					} break;
+				case 55:
+					switch(funct3){
+						case 2: //OPMVV
+							return 61; //vwsub.wv
+						case 6: //OPMVX
+							return 61; //vwsub.wx
+					} break;
+				case 56:
+					switch(funct3){
+						case 0: //OPIVV
+							return 23; //vdotu.vv
+						case 2: //OPMVV
+							return 63; //vwmulu.vv
+						case 6: //OPMVX
+							return 63; //vwmulu.vx
+						case 1: //OPFVV
+							return 129; //vfwmul.vv
+						case 5: //OPFVF
+							return 129; //vfwmul.vf
+					} break;
+				case 57:
+					switch(funct3){
+						case 0: //OPIVV
+							return 22; //vdot.vv
+						case 1: //OPFVV
+							return 130; //vfdot.vv
+					} break;
+				case 58:
+					switch(funct3){
+						case 2: //OPMVV
+							return 64; //vwmulsu.vv
+						case 6: //OPMVX
+							return 64; //vwmulsu.vx
+					} break;
+				case 59:
+					switch(funct3){
+						case 2: //OPMVV
+							return 65; //vwmul.vv
+						case 6: //OPMVX
+							return 65; //vwmul.vx
+					} break;
+				case 60:
+					switch(funct3){
+						case 0: //OPIVV
+							return 72; //vwsmaccu.vv
+						case 4: //OPIVX
+							return 72; //vwsmaccu.vx
+						case 2: //OPMVV
+							return 67; //vwmaccu.vv
+						case 6: //OPMVX
+							return 67; //vwmaccu.vx
+						case 1: //OPFVV
+							return 131; //vfwmacc.vv
+						case 5: //OPFVF
+							return 131; //vfwmacc.vf
+					} break;
+				case 61:
+					switch(funct3){
+						case 0: //OPIVV
+							return 73; //vwsmacc.vv
+						case 4: //OPIVX
+							return 73; //vwsmacc.vx
+						case 2: //OPMVV
+							return 66; //vwmacc.vv
+						case 6: //OPMVX
+							return 66; //vwmacc.vx
+						case 1: //OPFVV
+							return 132; //vfwnmacc.vv
+						case 5: //OPFVF
+							return 132; //vfwnmacc.vf
+					} break;
+				case 62:
+					switch(funct3){
+						case 0: //OPIVV
+							return 70; //vwsmaccsu.vv
+						case 4: //OPIVX
+							return 70; //vwsmaccsu.vx
+						case 2: //OPMVV
+							return 68; //vwmaccsu.vv
+						case 6: //OPMVX
+							return 68; //vwmaccsu.vx
+						case 1: //OPFVV
+							return 133; //vfwmsac.vv
+						case 5: //OPFVF
+							return 133; //vfwmsac.vf
+					} break;
+				case 63:
+					switch(funct3){
+						case 4: //OPIVX
+							return 71; //vwsmaccus.vx
+						case 6: //OPMVX
+							return 69; //vwmaccus.vx
+						case 1: //OPFVV
+							return 134; //vfwnmsac.vv
+						case 5: //OPFVF
+							return 134; //vfwnmsac.vf
+					} break;
+					break;
+			}
+			break;
 	}
-	return 1;
-}
-int instr2prv(char * i){
-	//SetVL
-	if (startswith(i, "vsetvli"))			return 1002; 
-	if (startswith(i, "vsetvl"))				return 1001; 
-	//I Arithmetic instructions
-	if (startswith(i, "vadd."))          return 1; 
-	if (startswith(i, "vsub."))          return 2;
-	if (startswith(i, "vrsub."))         return 3; 
-	if (startswith(i, "vmul."))          return 4; 
-	if (startswith(i, "vmulh."))         return 5; 
-	if (startswith(i, "vmulhu."))        return 6; 
-	if (startswith(i, "vmulhsu."))       return 7; 
-	if (startswith(i, "vmadd."))         return 8; 
-	if (startswith(i, "vmacc."))         return 9; 
-	if (startswith(i, "vdiv."))          return 10; 
-	if (startswith(i, "vdivu."))         return 11; 
-	if (startswith(i, "vrem."))          return 12; 
-	if (startswith(i, "vremu."))         return 13; 
-
-	if (startswith(i, "vsll."))          return 14; 
-	if (startswith(i, "vsra."))          return 15; 
-	if (startswith(i, "vsrl."))          return 16;
-
-	if (startswith(i, "vand."))          return 17;
-	if (startswith(i, "vor."))           return 18;
-	if (startswith(i, "vxor."))          return 19;
-	if (startswith(i, "vnot."))          return 20;
-
-	if (startswith(i, "vredsum."))       return 25; 
-	if (startswith(i, "vredand."))       return 26; 
-	if (startswith(i, "vredor."))        return 27; 
-	if (startswith(i, "vredxor."))       return 28; 
-	if (startswith(i, "vredmin."))       return 29; 
-	if (startswith(i, "vredminu."))      return 30; 
-	if (startswith(i, "vredmax."))       return 31; 
-	if (startswith(i, "vredmaxu."))      return 32; 
-
-	if (startswith(i, "vmin."))          return 35; 
-	if (startswith(i, "vminu."))         return 36; 
-	if (startswith(i, "vmax."))          return 37; 
-	if (startswith(i, "vmaxu."))         return 38; 
-
-	if (startswith(i, "vadc."))          return 40; 
-	if (startswith(i, "vmadc."))         return 41; 
-	if (startswith(i, "vsbc."))          return 42; 
-	if (startswith(i, "vmsbc."))         return 43; 
-
-	if (startswith(i, "vsadd."))         return 44; 
-	if (startswith(i, "vsaddu."))        return 45; 
-	if (startswith(i, "vssub."))         return 46; 
-	if (startswith(i, "vssubu."))        return 47; 
-	if (startswith(i, "vssrl."))         return 48; 
-	if (startswith(i, "vssra."))         return 49; 
-	if (startswith(i, "vsmul."))         return 50; 
-	if (startswith(i, "vaadd."))         return 51; 
-	if (startswith(i, "vasub."))         return 52; 
-
-	if (startswith(i, "vnsrl."))         return 55; 
-	if (startswith(i, "vnsra."))         return 56; 
-	if (startswith(i, "vnmsac."))        return 57; 
-	if (startswith(i, "vnmsub."))        return 58; 
-
-	if (startswith(i, "vwadd."))         return 59; 
-	if (startswith(i, "vwaddu."))        return 60; 
-	if (startswith(i, "vwsub."))         return 61; 
-	if (startswith(i, "vwsubu."))        return 62;
-	if (startswith(i, "vwmulu."))        return 63; 
-	if (startswith(i, "vwmulsu."))       return 64; 
-	if (startswith(i, "vwmul."))         return 65; 
-	if (startswith(i, "vwmacc."))        return 66; 
-	if (startswith(i, "vwmaccu."))       return 67; 
-	if (startswith(i, "vwmaccsu."))      return 68; 
-	if (startswith(i, "vwmaccus."))      return 69; 
-	if (startswith(i, "vwsmaccsu."))     return 70; //Only 0.7 
-	if (startswith(i, "vwsmaccus."))     return 71; //Only 0.7
-	if (startswith(i, "vwsmaccu."))      return 72; //Only 0.7
-	if (startswith(i, "vwsmacc."))       return 73; //Only 0.7
-	if (startswith(i, "vwredsumu."))     return 74; 
-	if (startswith(i, "vwredsum."))      return 75; 
-	
-	//Atomic
-	if (startswith(i, "vamoadd"))       return 80; //Only 0.7
-	if (startswith(i, "vamoand"))       return 81; //Only 0.7 
-	if (startswith(i, "vamoor"))        return 82; //Only 0.7 
-	if (startswith(i, "vamoswap"))      return 83; //Only 0.7 
-	if (startswith(i, "vamoxor"))       return 84; //Only 0.7 
-	if (startswith(i, "vamomin"))       return 85; //Only 0.7 
-	if (startswith(i, "vamomax"))       return 86; //Only 0.7 
-	
-	//F Arithmetic
-	if (startswith(i, "vfadd."))         return 100; 
-	if (startswith(i, "vfmadd."))        return 101; 
-	if (startswith(i, "vfmsub."))        return 102; 
-	if (startswith(i, "vfmul."))         return 105; 
-	if (startswith(i, "vfredsum."))      return 106; //Only 0.7 
-		if (startswith(i, "vfredusum."))      return 106;
-
-
-	if (startswith(i, "vfsub."))         return 107; 
-	if (startswith(i, "vfmacc."))        return 108; 
-	if (startswith(i, "vfsqrt."))        return 109; 
-	if (startswith(i, "vfsgnjn."))       return 110; 
-	if (startswith(i, "vfmsac."))        return 111; 
-	if (startswith(i, "vfdiv."))         return 112; 
-	if (startswith(i, "vfredosum."))     return 113; 
-	if (startswith(i, "vfmin."))         return 114; 
-	if (startswith(i, "vfredmin."))      return 115; 
-	if (startswith(i, "vfmax."))         return 116; 
-	if (startswith(i, "vfredmax."))      return 117; 
-	if (startswith(i, "vfsgnj."))        return 118; 
-	if (startswith(i, "vfsgnjx."))       return 119; 
-	if (startswith(i, "vfrdiv."))        return 120; 
-	if (startswith(i, "vfnmadd."))       return 121; 
-	if (startswith(i, "vfnmsub."))       return 122; 
-	if (startswith(i, "vfnmacc."))       return 123; 
-	if (startswith(i, "vfnmsac."))       return 124; 
-	if (startswith(i, "vfwadd."))        return 125; 
-	if (startswith(i, "vfwredsum."))     return 126; 
-	if (startswith(i, "vfwsub."))        return 127; 
-	if (startswith(i, "vfwredosum."))    return 128; //Only 0.7
-	if (startswith(i, "vfwmul."))        return 129; 
-	if (startswith(i, "vfdot."))         return 130; //Only 0.7
-	if (startswith(i, "vfwmacc."))       return 131; 
-	if (startswith(i, "vfwnmacc."))      return 132; 
-	if (startswith(i, "vfwmsac."))       return 133; 
-	if (startswith(i, "vfwnmsac."))      return 134; 
-	if (startswith(i, "vfrsub."))        return 135; 
-
-	//Other
-	if (startswith(i, "vid."))           return 200;
-	if (startswith(i, "vmv."))           return 201; 
-	if (startswith(i, "vfmv."))          return 202; 
-	if (startswith(i, "vrgather."))      return 203; 
-
-	if (startswith(i, "vmerge."))        return 210; 
-	if (startswith(i, "vfmerge."))       return 211; 
-
-	if (startswith(i, "vslidedown."))    return 220; 
-	if (startswith(i, "vslide1down."))   return 221; 
-	if (startswith(i, "vslideup."))      return 222; 
-	if (startswith(i, "vslide1up."))     return 223; 
-
-
-	if (startswith(i, "vext."))          return 230; //Only 0.7 
-	if (startswith(i, "vmpopc."))        return 231; //Only 0.7
-	if (startswith(i, "vmfirst."))       return 232; 
-	if (startswith(i, "vcompress."))     return 233; 
-
-	if (startswith(i, "vwcvt."))         return 240; 
-	if (startswith(i, "vwcvtu."))        return 241; 
-	if (startswith(i, "vfcvt."))         return 242; 
-	if (startswith(i, "vfwcvt."))        return 243; 
-	if (startswith(i, "vfncvt."))        return 244; 
-	if (startswith(i, "vnclip."))        return 245; 
-	if (startswith(i, "vnclipu."))       return 246; 
-	if (startswith(i, "vfclass."))       return 247; 
-
-	if (startswith(i, "vmsbf."))         return 250; 
-	if (startswith(i, "vmsof."))         return 251; 
-	if (startswith(i, "vmsif."))         return 252; 
-	if (startswith(i, "viota."))         return 253; 
-
-	
-
-	//Mask
-	if (startswith(i, "vmseq."))         return 300;
-	if (startswith(i, "vmsne."))         return 301; 
-	if (startswith(i, "vmsle."))         return 302; 
-	if (startswith(i, "vmslt."))         return 303; 
-	if (startswith(i, "vmsltu."))        return 304; 
-	if (startswith(i, "vmsleu."))        return 305; 
-	if (startswith(i, "vmsgt."))         return 306; 
-	if (startswith(i, "vmsgtu."))        return 307; 
-	if (startswith(i, "vmsge."))         return 308; 
-	if (startswith(i, "vmsgeu."))        return 309; 
-	if (startswith(i, "vmfeq."))         return 310; 
-	if (startswith(i, "vmfne."))         return 311; 
-	if (startswith(i, "vmfle."))         return 312; 
-	if (startswith(i, "vmflt."))         return 313; 
-	if (startswith(i, "vmfgt."))         return 314; 
-	if (startswith(i, "vmfge."))         return 315; 
-	if (startswith(i, "vmnot."))         return 316; 
-	if (startswith(i, "vmand."))         return 317; 
-	if (startswith(i, "vmandnot."))      return 318; //Only 0.7 
-	if (startswith(i, "vmnand."))        return 319; 
-	if (startswith(i, "vmor."))          return 320; 
-	if (startswith(i, "vmornot."))       return 321; //Only 0.7
-	if (startswith(i, "vmnor."))         return 322; 
-	if (startswith(i, "vmxor."))         return 323; 
-	if (startswith(i, "vmxnor."))        return 324; 
-	if (startswith(i, "vmclr."))         return 325; 
-	if (startswith(i, "vmcpy."))         return 326; 
-	if (startswith(i, "vmset."))         return 327; 
-	if (startswith(i, "vmford."))        return 328; //Only 0.7
-	
-	//Memory
-	if (startswith(i, "vle."))           return 409;//0.7  //0
-	if (startswith(i, "vlse."))          return 406;//0.7  //1
-	if (startswith(i, "vlxe."))          return 400;//0.7  //2
-
-	if (startswith(i, "vlb."))           return 403;// 0.7
-	if (startswith(i, "vlbu."))          return 404;// 0.7
-	if (startswith(i, "vlh."))           return 405;// 0.7
-	if (startswith(i, "vlhu."))          return 401;// 0.7
-	if (startswith(i, "vlw."))           return 407;// 0.7
-	if (startswith(i, "vlwu."))          return 408;// 0.7
-	if (startswith(i, "vlsb."))          return 402;// 0.7
-	if (startswith(i, "vlsbu."))         return 410;// 0.7
-	if (startswith(i, "vlsh."))          return 411;// 0.7
-	if (startswith(i, "vlshu."))         return 412;// 0.7
-	if (startswith(i, "vlsw."))          return 413;// 0.7
-	if (startswith(i, "vlswu."))         return 414;// 0.7	
-	if (startswith(i, "vlxb."))          return 415;// 0.7
-	if (startswith(i, "vlxbu."))         return 416;// 0.7
-	if (startswith(i, "vlxh."))          return 417;// 0.7
-	if (startswith(i, "vlxhu."))         return 418;// 0.7
-	if (startswith(i, "vlxw."))          return 419;// 0.7
-	if (startswith(i, "vlxwu."))         return 420;// 0.7
-
-	if (startswith(i, "vleff."))         return 421; //0.7 
-	if (startswith(i, "vlbff."))         return 422; //0.7 
-	if (startswith(i, "vlbuff."))        return 423; //0.7 
-	if (startswith(i, "vlhff."))         return 424; //0.7 
-	if (startswith(i, "vlhuff."))        return 425; //0.7 
-	if (startswith(i, "vlwff."))         return 426; //0.7
-	if (startswith(i, "vlwuff."))        return 427; //0.7 
-
-	if (startswith(i, "vlseg1b."))       return 428; 
-	if (startswith(i, "vlseg1bu."))      return 429; 
-	if (startswith(i, "vlseg1e."))       return 430; 
-	if (startswith(i, "vlseg1h."))       return 431; 
-	if (startswith(i, "vlseg1hu."))      return 432; 
-	if (startswith(i, "vlseg1w."))       return 433; 
-	if (startswith(i, "vlseg1wu."))      return 434; 
-	if (startswith(i, "vlseg2b."))       return 435; 
-	if (startswith(i, "vlseg2bu."))      return 436; 
-	if (startswith(i, "vlseg2e."))       return 437; 
-	if (startswith(i, "vlseg2h."))       return 438; 
-	if (startswith(i, "vlseg2hu."))      return 439; 
-	if (startswith(i, "vlseg2w."))       return 440; 
-	if (startswith(i, "vlseg2wu."))      return 441; 
-	if (startswith(i, "vlseg3b."))       return 442; 
-	if (startswith(i, "vlseg3bu."))      return 443; 
-	if (startswith(i, "vlseg3e."))       return 444; 
-	if (startswith(i, "vlseg3h."))       return 445; 
-	if (startswith(i, "vlseg3hu."))      return 446; 
-	if (startswith(i, "vlseg3w."))       return 447; 
-	if (startswith(i, "vlseg3wu."))      return 448; 
-	if (startswith(i, "vlseg4b."))       return 449; 
-	if (startswith(i, "vlseg4bu."))      return 450; 
-	if (startswith(i, "vlseg4e."))       return 451; 
-	if (startswith(i, "vlseg4h."))       return 452; 
-	if (startswith(i, "vlseg4hu."))      return 453; 
-	if (startswith(i, "vlseg4w."))       return 454; 
-	if (startswith(i, "vlseg4wu."))      return 455; 
-	if (startswith(i, "vlseg5b."))       return 456; 
-	if (startswith(i, "vlseg5bu."))      return 457; 
-	if (startswith(i, "vlseg5e."))       return 458; 
-	if (startswith(i, "vlseg5h."))       return 459; 
-	if (startswith(i, "vlseg5hu."))      return 460; 
-	if (startswith(i, "vlseg5w."))       return 461; 
-	if (startswith(i, "vlseg5wu."))      return 462; 
-	if (startswith(i, "vlseg6b."))       return 463; 
-	if (startswith(i, "vlseg6bu."))      return 464; 
-	if (startswith(i, "vlseg6e."))       return 465; 
-	if (startswith(i, "vlseg6h."))       return 466; 
-	if (startswith(i, "vlseg6hu."))      return 467; 
-	if (startswith(i, "vlseg6w."))       return 468; 
-	if (startswith(i, "vlseg6wu."))      return 469; 
-	if (startswith(i, "vlseg7b."))       return 470; 
-	if (startswith(i, "vlseg7bu."))      return 471; 
-	if (startswith(i, "vlseg7e."))       return 472; 
-	if (startswith(i, "vlseg7h."))       return 473; 
-	if (startswith(i, "vlseg7hu."))      return 474; 
-	if (startswith(i, "vlseg7w."))       return 475; 
-	if (startswith(i, "vlseg7wu."))      return 476; 
-	if (startswith(i, "vlseg8b."))       return 477; 
-	if (startswith(i, "vlseg8bu."))      return 478; 
-	if (startswith(i, "vlseg8e."))       return 479; 
-	if (startswith(i, "vlseg8h."))       return 480; 
-	if (startswith(i, "vlseg8hu."))      return 481; 
-	if (startswith(i, "vlseg8w."))       return 482; 
-	if (startswith(i, "vlseg8wu."))      return 483; 
-	if (startswith(i, "vlsseg1b."))      return 484; 
-	if (startswith(i, "vlsseg1bu."))     return 485; 
-	if (startswith(i, "vlsseg1e."))      return 486; 
-	if (startswith(i, "vlsseg1h."))      return 487; 
-	if (startswith(i, "vlsseg1hu."))     return 488; 
-	if (startswith(i, "vlsseg1w."))      return 489; 
-	if (startswith(i, "vlsseg1wu."))     return 490; 
-	if (startswith(i, "vlsseg2b."))      return 491; 
-	if (startswith(i, "vlsseg2bu."))     return 492; 
-	if (startswith(i, "vlsseg2e."))      return 493; 
-	if (startswith(i, "vlsseg2h."))      return 494; 
-	if (startswith(i, "vlsseg2hu."))     return 495; 
-	if (startswith(i, "vlsseg2w."))      return 496; 
-	if (startswith(i, "vlsseg2wu."))     return 497; 
-	if (startswith(i, "vlsseg3b."))      return 498; 
-	if (startswith(i, "vlsseg3bu."))     return 499; 
-	if (startswith(i, "vlsseg3e."))      return 500; 
-	if (startswith(i, "vlsseg3h."))      return 501; 
-	if (startswith(i, "vlsseg3hu."))     return 502; 
-	if (startswith(i, "vlsseg3w."))      return 503; 
-	if (startswith(i, "vlsseg3wu."))     return 504; 
-	if (startswith(i, "vlsseg4b."))      return 505; 
-	if (startswith(i, "vlsseg4bu."))     return 506; 
-	if (startswith(i, "vlsseg4e."))      return 507; 
-	if (startswith(i, "vlsseg4h."))      return 508; 
-	if (startswith(i, "vlsseg4hu."))     return 509; 
-	if (startswith(i, "vlsseg4w."))      return 510; 
-	if (startswith(i, "vlsseg4wu."))     return 511; 
-	if (startswith(i, "vlsseg5b."))      return 512; 
-	if (startswith(i, "vlsseg5bu."))     return 513; 
-	if (startswith(i, "vlsseg5e."))      return 514; 
-	if (startswith(i, "vlsseg5h."))      return 515; 
-	if (startswith(i, "vlsseg5hu."))     return 516; 
-	if (startswith(i, "vlsseg5w."))      return 517; 
-	if (startswith(i, "vlsseg5wu."))     return 518; 
-	if (startswith(i, "vlsseg6b."))      return 519; 
-	if (startswith(i, "vlsseg6bu."))     return 520; 
-	if (startswith(i, "vlsseg6e."))      return 521; 
-	if (startswith(i, "vlsseg6h."))      return 522; 
-	if (startswith(i, "vlsseg6hu."))     return 523; 
-	if (startswith(i, "vlsseg6w."))      return 524; 
-	if (startswith(i, "vlsseg6wu."))     return 525; 
-	if (startswith(i, "vlsseg7b."))      return 526; 
-	if (startswith(i, "vlsseg7bu."))     return 527; 
-	if (startswith(i, "vlsseg7e."))      return 528; 
-	if (startswith(i, "vlsseg7h."))      return 529; 
-	if (startswith(i, "vlsseg7hu."))     return 530; 
-	if (startswith(i, "vlsseg7w."))      return 531; 
-	if (startswith(i, "vlsseg7wu."))     return 532; 
-	if (startswith(i, "vlsseg8b."))      return 533; 
-	if (startswith(i, "vlsseg8bu."))     return 534; 
-	if (startswith(i, "vlsseg8e."))      return 535; 
-	if (startswith(i, "vlsseg8h."))      return 536; 
-	if (startswith(i, "vlsseg8hu."))     return 537; 
-	if (startswith(i, "vlsseg8w."))      return 538; 
-	if (startswith(i, "vlsseg8wu."))     return 539; 
-	if (startswith(i, "vlxseg1b."))      return 540; 
-	if (startswith(i, "vlxseg1bu."))     return 541; 
-	if (startswith(i, "vlxseg1e."))      return 542; 
-	if (startswith(i, "vlxseg1h."))      return 543; 
-	if (startswith(i, "vlxseg1hu."))     return 544; 
-	if (startswith(i, "vlxseg1w."))      return 545; 
-	if (startswith(i, "vlxseg1wu."))     return 546; 
-	if (startswith(i, "vlxseg2b."))      return 547; 
-	if (startswith(i, "vlxseg2bu."))     return 548; 
-	if (startswith(i, "vlxseg2e."))      return 549; 
-	if (startswith(i, "vlxseg2h."))      return 550; 
-	if (startswith(i, "vlxseg2hu."))     return 551; 
-	if (startswith(i, "vlxseg2w."))      return 552; 
-	if (startswith(i, "vlxseg2wu."))     return 553; 
-	if (startswith(i, "vlxseg3b."))      return 554; 
-	if (startswith(i, "vlxseg3bu."))     return 555; 
-	if (startswith(i, "vlxseg3e."))      return 556; 
-	if (startswith(i, "vlxseg3h."))      return 557; 
-	if (startswith(i, "vlxseg3hu."))     return 558; 
-	if (startswith(i, "vlxseg3w."))      return 559; 
-	if (startswith(i, "vlxseg3wu."))     return 560; 
-	if (startswith(i, "vlxseg4b."))      return 561; 
-	if (startswith(i, "vlxseg4bu."))     return 562; 
-	if (startswith(i, "vlxseg4e."))      return 563; 
-	if (startswith(i, "vlxseg4h."))      return 564; 
-	if (startswith(i, "vlxseg4hu."))     return 565; 
-	if (startswith(i, "vlxseg4w."))      return 566; 
-	if (startswith(i, "vlxseg4wu."))     return 567; 
-	if (startswith(i, "vlxseg5b."))      return 568; 
-	if (startswith(i, "vlxseg5bu."))     return 569; 
-	if (startswith(i, "vlxseg5e."))      return 570; 
-	if (startswith(i, "vlxseg5h."))      return 571; 
-	if (startswith(i, "vlxseg5hu."))     return 572; 
-	if (startswith(i, "vlxseg5w."))      return 573; 
-	if (startswith(i, "vlxseg5wu."))     return 574; 
-	if (startswith(i, "vlxseg6b."))      return 575; 
-	if (startswith(i, "vlxseg6bu."))     return 576; 
-	if (startswith(i, "vlxseg6e."))      return 577; 
-	if (startswith(i, "vlxseg6h."))      return 578; 
-	if (startswith(i, "vlxseg6hu."))     return 579; 
-	if (startswith(i, "vlxseg6w."))      return 580; 
-	if (startswith(i, "vlxseg6wu."))     return 581; 
-	if (startswith(i, "vlxseg7b."))      return 582; 
-	if (startswith(i, "vlxseg7bu."))     return 583; 
-	if (startswith(i, "vlxseg7e."))      return 584; 
-	if (startswith(i, "vlxseg7h."))      return 585; 
-	if (startswith(i, "vlxseg7hu."))     return 586; 
-	if (startswith(i, "vlxseg7w."))      return 587; 
-	if (startswith(i, "vlxseg7wu."))     return 588; 
-	if (startswith(i, "vlxseg8b."))      return 589; 
-	if (startswith(i, "vlxseg8bu."))     return 590; 
-	if (startswith(i, "vlxseg8e."))      return 591; 
-	if (startswith(i, "vlxseg8h."))      return 592; 
-	if (startswith(i, "vlxseg8hu."))     return 593; 
-	if (startswith(i, "vlxseg8w."))      return 594; 
-	if (startswith(i, "vlxseg8wu."))     return 595; 
-
-	if (startswith(i, "vse."))           return 813;//0.7 //0
-	if (startswith(i, "vsse."))          return 804;// 0.7 //1
-	if (startswith(i, "vsxe."))          return 808;//0.7 //2
-	if (startswith(i, "vsuxe."))         return 800; //0.7 //3
-
-	if (startswith(i, "vsb."))           return 802;// 0.7
-	if (startswith(i, "vsh."))           return 805;// 0.7
-	if (startswith(i, "vsw."))           return 806;// 0.7
-	if (startswith(i, "vssb."))          return 807;// 0.7
-	if (startswith(i, "vssh."))          return 803;// 0.7
-	if (startswith(i, "vssw."))          return 809;// 0.7
-	if (startswith(i, "vsxb."))          return 810;// 0.7
-	if (startswith(i, "vsxh."))          return 811;// 0.7
-	if (startswith(i, "vsxw."))          return 812;// 0.7
-	if (startswith(i, "vsuxb."))         return 801;// 0.7
-	if (startswith(i, "vsuxh."))         return 814;// 0.7
-	if (startswith(i, "vsuxw."))         return 815;// 0.7
-
-	if (startswith(i, "vsseg1b."))       return 816; 
-	if (startswith(i, "vsseg1bu."))      return 817; 
-	if (startswith(i, "vsseg1e."))       return 818; 
-	if (startswith(i, "vsseg1h."))       return 819; 
-	if (startswith(i, "vsseg1hu."))      return 820; 
-	if (startswith(i, "vsseg1w."))       return 821; 
-	if (startswith(i, "vsseg1wu."))      return 822; 
-	if (startswith(i, "vsseg2b."))       return 823; 
-	if (startswith(i, "vsseg2bu."))      return 824; 
-	if (startswith(i, "vsseg2e."))       return 825; 
-	if (startswith(i, "vsseg2h."))       return 826; 
-	if (startswith(i, "vsseg2hu."))      return 827; 
-	if (startswith(i, "vsseg2w."))       return 828; 
-	if (startswith(i, "vsseg2wu."))      return 829; 
-	if (startswith(i, "vsseg3b."))       return 830; 
-	if (startswith(i, "vsseg3bu."))      return 831; 
-	if (startswith(i, "vsseg3e."))       return 832; 
-	if (startswith(i, "vsseg3h."))       return 833; 
-	if (startswith(i, "vsseg3hu."))      return 834; 
-	if (startswith(i, "vsseg3w."))       return 835; 
-	if (startswith(i, "vsseg3wu."))      return 836; 
-	if (startswith(i, "vsseg4b."))       return 837; 
-	if (startswith(i, "vsseg4bu."))      return 838; 
-	if (startswith(i, "vsseg4e."))       return 839; 
-	if (startswith(i, "vsseg4h."))       return 840; 
-	if (startswith(i, "vsseg4hu."))      return 841; 
-	if (startswith(i, "vsseg4w."))       return 842; 
-	if (startswith(i, "vsseg4wu."))      return 843; 
-	if (startswith(i, "vsseg5b."))       return 844; 
-	if (startswith(i, "vsseg5bu."))      return 845; 
-	if (startswith(i, "vsseg5e."))       return 846; 
-	if (startswith(i, "vsseg5h."))       return 847; 
-	if (startswith(i, "vsseg5hu."))      return 848; 
-	if (startswith(i, "vsseg5w."))       return 849; 
-	if (startswith(i, "vsseg5wu."))      return 850; 
-	if (startswith(i, "vsseg6b."))       return 851; 
-	if (startswith(i, "vsseg6bu."))      return 852; 
-	if (startswith(i, "vsseg6e."))       return 853; 
-	if (startswith(i, "vsseg6h."))       return 854; 
-	if (startswith(i, "vsseg6hu."))      return 855; 
-	if (startswith(i, "vsseg6w."))       return 856; 
-	if (startswith(i, "vsseg6wu."))      return 857; 
-	if (startswith(i, "vsseg7b."))       return 858; 
-	if (startswith(i, "vsseg7bu."))      return 859; 
-	if (startswith(i, "vsseg7e."))       return 860; 
-	if (startswith(i, "vsseg7h."))       return 861; 
-	if (startswith(i, "vsseg7hu."))      return 862; 
-	if (startswith(i, "vsseg7w."))       return 863; 
-	if (startswith(i, "vsseg7wu."))      return 864; 
-	if (startswith(i, "vsseg8b."))       return 865; 
-	if (startswith(i, "vsseg8bu."))      return 866; 
-	if (startswith(i, "vsseg8e."))       return 867; 
-	if (startswith(i, "vsseg8h."))       return 868; 
-	if (startswith(i, "vsseg8hu."))      return 869; 
-	if (startswith(i, "vsseg8w."))       return 870; 
-	if (startswith(i, "vsseg8wu."))      return 871; 
-	if (startswith(i, "vssseg1b."))      return 872; 
-	if (startswith(i, "vssseg1bu."))     return 873; 
-	if (startswith(i, "vssseg1e."))      return 874; 
-	if (startswith(i, "vssseg1h."))      return 875; 
-	if (startswith(i, "vssseg1hu."))     return 876; 
-	if (startswith(i, "vssseg1w."))      return 877; 
-	if (startswith(i, "vssseg1wu."))     return 878; 
-	if (startswith(i, "vssseg2b."))      return 879; 
-	if (startswith(i, "vssseg2bu."))     return 880; 
-	if (startswith(i, "vssseg2e."))      return 881; 
-	if (startswith(i, "vssseg2h."))      return 882; 
-	if (startswith(i, "vssseg2hu."))     return 883; 
-	if (startswith(i, "vssseg2w."))      return 884; 
-	if (startswith(i, "vssseg2wu."))     return 885; 
-	if (startswith(i, "vssseg3b."))      return 886; 
-	if (startswith(i, "vssseg3bu."))     return 887; 
-	if (startswith(i, "vssseg3e."))      return 888; 
-	if (startswith(i, "vssseg3h."))      return 889; 
-	if (startswith(i, "vssseg3hu."))     return 890; 
-	if (startswith(i, "vssseg3w."))      return 891; 
-	if (startswith(i, "vssseg3wu."))     return 892; 
-	if (startswith(i, "vssseg4b."))      return 893; 
-	if (startswith(i, "vssseg4bu."))     return 894; 
-	if (startswith(i, "vssseg4e."))      return 895; 
-	if (startswith(i, "vssseg4h."))      return 896; 
-	if (startswith(i, "vssseg4hu."))     return 897; 
-	if (startswith(i, "vssseg4w."))      return 898; 
-	if (startswith(i, "vssseg4wu."))     return 899; 
-	if (startswith(i, "vssseg5b."))      return 900; 
-	if (startswith(i, "vssseg5bu."))     return 901; 
-	if (startswith(i, "vssseg5e."))      return 902; 
-	if (startswith(i, "vssseg5h."))      return 903; 
-	if (startswith(i, "vssseg5hu."))     return 904; 
-	if (startswith(i, "vssseg5w."))      return 905; 
-	if (startswith(i, "vssseg5wu."))     return 906; 
-	if (startswith(i, "vssseg6b."))      return 907; 
-	if (startswith(i, "vssseg6bu."))     return 908; 
-	if (startswith(i, "vssseg6e."))      return 909; 
-	if (startswith(i, "vssseg6h."))      return 910; 
-	if (startswith(i, "vssseg6hu."))     return 911; 
-	if (startswith(i, "vssseg6w."))      return 912; 
-	if (startswith(i, "vssseg6wu."))     return 913; 
-	if (startswith(i, "vssseg7b."))      return 914; 
-	if (startswith(i, "vssseg7bu."))     return 915; 
-	if (startswith(i, "vssseg7e."))      return 916; 
-	if (startswith(i, "vssseg7h."))      return 917; 
-	if (startswith(i, "vssseg7hu."))     return 918; 
-	if (startswith(i, "vssseg7w."))      return 919; 
-	if (startswith(i, "vssseg7wu."))     return 920; 
-	if (startswith(i, "vssseg8b."))      return 921; 
-	if (startswith(i, "vssseg8bu."))     return 922; 
-	if (startswith(i, "vssseg8e."))      return 923; 
-	if (startswith(i, "vssseg8h."))      return 924; 
-	if (startswith(i, "vssseg8hu."))     return 925; 
-	if (startswith(i, "vssseg8w."))      return 926; 
-	if (startswith(i, "vssseg8wu."))     return 927; 
-	if (startswith(i, "vsxseg1b."))      return 928; 
-	if (startswith(i, "vsxseg1bu."))     return 929; 
-	if (startswith(i, "vsxseg1e."))      return 930; 
-	if (startswith(i, "vsxseg1h."))      return 931; 
-	if (startswith(i, "vsxseg1hu."))     return 932; 
-	if (startswith(i, "vsxseg1w."))      return 933; 
-	if (startswith(i, "vsxseg1wu."))     return 934; 
-	if (startswith(i, "vsxseg2b."))      return 935; 
-	if (startswith(i, "vsxseg2bu."))     return 936; 
-	if (startswith(i, "vsxseg2e."))      return 937; 
-	if (startswith(i, "vsxseg2h."))      return 938; 
-	if (startswith(i, "vsxseg2hu."))     return 939; 
-	if (startswith(i, "vsxseg2w."))      return 940; 
-	if (startswith(i, "vsxseg2wu."))     return 941; 
-	if (startswith(i, "vsxseg3b."))      return 942; 
-	if (startswith(i, "vsxseg3bu."))     return 943; 
-	if (startswith(i, "vsxseg3e."))      return 944; 
-	if (startswith(i, "vsxseg3h."))      return 945; 
-	if (startswith(i, "vsxseg3hu."))     return 946; 
-	if (startswith(i, "vsxseg3w."))      return 947; 
-	if (startswith(i, "vsxseg3wu."))     return 948; 
-	if (startswith(i, "vsxseg4b."))      return 949; 
-	if (startswith(i, "vsxseg4bu."))     return 950; 
-	if (startswith(i, "vsxseg4e."))      return 951; 
-	if (startswith(i, "vsxseg4h."))      return 952; 
-	if (startswith(i, "vsxseg4hu."))     return 953; 
-	if (startswith(i, "vsxseg4w."))      return 954; 
-	if (startswith(i, "vsxseg4wu."))     return 955; 
-	if (startswith(i, "vsxseg5b."))      return 956; 
-	if (startswith(i, "vsxseg5bu."))     return 957; 
-	if (startswith(i, "vsxseg5e."))      return 958; 
-	if (startswith(i, "vsxseg5h."))      return 959; 
-	if (startswith(i, "vsxseg5hu."))     return 960; 
-	if (startswith(i, "vsxseg5w."))      return 961; 
-	if (startswith(i, "vsxseg5wu."))     return 962; 
-	if (startswith(i, "vsxseg6b."))      return 963; 
-	if (startswith(i, "vsxseg6bu."))     return 964; 
-	if (startswith(i, "vsxseg6e."))      return 965; 
-	if (startswith(i, "vsxseg6h."))      return 966; 
-	if (startswith(i, "vsxseg6hu."))     return 967; 
-	if (startswith(i, "vsxseg6w."))      return 968; 
-	if (startswith(i, "vsxseg6wu."))     return 969; 
-	if (startswith(i, "vsxseg7b."))      return 970; 
-	if (startswith(i, "vsxseg7bu."))     return 971; 
-	if (startswith(i, "vsxseg7e."))      return 972; 
-	if (startswith(i, "vsxseg7h."))      return 973; 
-	if (startswith(i, "vsxseg7hu."))     return 974; 
-	if (startswith(i, "vsxseg7w."))      return 975; 
-	if (startswith(i, "vsxseg7wu."))     return 976; 
-	if (startswith(i, "vsxseg8b."))      return 977; 
-	if (startswith(i, "vsxseg8bu."))     return 978; 
-	if (startswith(i, "vsxseg8e."))      return 979; 
-	if (startswith(i, "vsxseg8h."))      return 980; 
-	if (startswith(i, "vsxseg8hu."))     return 981; 
-	if (startswith(i, "vsxseg8w."))      return 982; 
-	if (startswith(i, "vsxseg8wu."))     return 983; 
-	return 999;
+	return 999; //illegal
 }

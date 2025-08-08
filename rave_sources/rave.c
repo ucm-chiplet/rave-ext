@@ -750,7 +750,7 @@ int add_symbol(char * mangled){
  * a callback on each instruction and memory access.
  */
 
-#include "my_decode.h"
+#include "07_decode.h"
 
 static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 {
@@ -788,10 +788,13 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 		char my_disas[64];
 		char is_vector=0;
 		if (is_illegal){ //illegal instruction (vector, if we are on 0.7) 
-			MyDissasembler(my_disas, insn_opcode);
+			#ifdef EPI_07
+			int extra = sprintf(my_disas, "%08x ", insn_opcode);
+			MyDissasembler(&my_disas[extra], insn_opcode);
 			free(insn_disas);
 			insn_disas = my_disas;
 			is_vector=1;
+			#endif
 		}else{
 			#ifdef EPI_07
 			is_vector = contains_string(insn_disas," v");

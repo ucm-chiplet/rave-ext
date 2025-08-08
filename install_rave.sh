@@ -45,7 +45,7 @@ else
 	cp ${rave_sources_dir}/instr2prv_0_7.h contrib/plugins/.
 	cp ${rave_sources_dir}/example_trace_0_7.h contrib/plugins/.
 fi
-cp ${rave_sources_dir}/my_decode.h contrib/plugins/.
+cp ${rave_sources_dir}/07_decode.h contrib/plugins/.
 cp ${rave_sources_dir}/instr_data.h contrib/plugins/.
 cp ${rave_sources_dir}/rave_counters.h contrib/plugins/.
 cp ${rave_sources_dir}/rave2prv.h contrib/plugins/.
