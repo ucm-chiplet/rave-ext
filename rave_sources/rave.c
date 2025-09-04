@@ -955,9 +955,9 @@ static void plugin_exit(qemu_plugin_id_t id, void *p)
 		if(PRINT_REPORT){
 			//Warning:
 			if (track_regions.total_regions<=1){
-				fprintf(FD_REPORT, BOLD_R("----------------- WARNING!\n ---------------"));
+				P_WARNING(FD_REPORT, "%s","----------------- WARNING!\n ---------------");
 				fprintf(FD_REPORT, "You did not define any code regions. Remember that code regions are defined with \"rave_begin/end_region\" now (or trace_\"begin/end\"_region if you are using sdv_trace\n");
-				fprintf(FD_REPORT, BOLD_R("--------------------------------------------"));
+				P_WARNING(FD_REPORT, "%s","--------------------------------------------");
 			}
 			print_region_report(FD_REPORT, ACCUM_REGIONS);
 			//print_events_report(FD_REPORT);

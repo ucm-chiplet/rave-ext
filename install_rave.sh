@@ -61,7 +61,8 @@ fi
  
 elfutils=${build_dir}/../elfutils/
 sed -i "s;\$(CFLAGS);\0 -I${elfutils}/include;g" contrib/plugins/Makefile
-make LDLIBS="-L${elfutils}/lib -Wl,-rpath=${elfutils}/lib -lelf -ldw" V=1 -j${NUM_JOBS} plugins &>> ${LOGFILE}
+#make LDLIBS="-L${elfutils}/lib -Wl,-rpath=${elfutils}/lib -lelf -ldw" V=1 -j${NUM_JOBS} plugins &>> ${LOGFILE}
+make LDLIBS="-L${elfutils}/lib -lelf -ldw" V=1 -j${NUM_JOBS} plugins &>> ${LOGFILE}
 if [ $? -ne 0 ]; then
 	echo "Building plugins FAILED! Check $LOGFILE"
 	exit -1

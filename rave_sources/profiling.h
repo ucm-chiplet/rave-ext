@@ -7,7 +7,7 @@ uint64_t find_binary_base() {
     }
     char line[512];
     uint64_t base_addr = 0;
-#if 1
+#if 0
     while (fgets(line, sizeof(line), fp)){
 			printf("Line is %s\n",line);
 		}
@@ -209,29 +209,11 @@ void print_valid_ranges(Dwfl *dwfl) {
 }
 #endif
 
-void print_samples(){
-	for(int i=0; i<HASH_SIZE; ++i){
-		PC_node * node = &PC_hash[i];
-		if (node->freq > 0){
-			//Print all occurences:
-			while(node != NULL){
-				uint64_t PC = node->PC;
-				char * pc_file, *pc_symbol;
-				int pc_line, pc_column;
-				int ret = resolve_pc_to_source(PC, &pc_file, &pc_symbol, &pc_line, &pc_column);
-				if (!ret) printf("Loop on %lx at %s(%s):%d,%d → Freq %d\n", PC, pc_file, pc_symbol, pc_line, pc_column, node->freq);
-				node = node->next;
-			}
-		}
-	}
-	fflush(stdout);
-}
-
 #if 1
 void print_loop_profile(FILE * fd){
-	fprintf(fd,"-------------------" " PROFILE " "--------------------" "\n");
+	fprintf(fd,"-------------------" " PROFILED LOOPS " "--------------------" "\n");
 
-	fprintf(fd,"Frequency" "\t" "PC" "\t" "Function" "\t" "file:line" "\n");
+	fprintf(fd,"Freq" "\t" "PC" "\t" "Funct" "\t" "file:line" "\n");
 	for(int i=0; i<HASH_SIZE; ++i){
 		PC_node * node = &PC_hash[i];
 		if (node->freq > 0){
@@ -243,7 +225,7 @@ void print_loop_profile(FILE * fd){
 				int pc_line=-1;
 				int pc_column=-1;
 
-				int ret = resolve_pc_to_source(PC, &pc_file, &pc_symbol, &pc_line, &pc_column);
+				int ret = resolve_pc_to_source(PC, &pc_symbol, &pc_file, &pc_line, &pc_column);
 				if (!ret){
 					fprintf(fd,"%d" "\t" "%lx" "\t",node->freq,node->PC);
 				 	fprintf(fd, "%s" "\t" "%s:%d\n", pc_symbol!=NULL?pc_symbol:"Unknown", pc_file!=NULL?pc_file:"Unknown", pc_line); 
@@ -253,7 +235,7 @@ void print_loop_profile(FILE * fd){
 		}
 	}
 
-	fprintf(fd, "------------------------------------------------\n");
+	fprintf(fd, "-------------------------------------------------------\n");
 	fflush(fd);
 }
 #else

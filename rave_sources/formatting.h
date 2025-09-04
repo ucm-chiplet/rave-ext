@@ -4,6 +4,7 @@ char * format_bold_num = "\033[1;34m";
 
 int PLAIN_TEXT=0;
 #define CLEAR_FORMAT "\033[0m"
+#define BOLD_RED "\033[1;31m"
 #define BOLD_BLUE "\033[1;34m"
 #define BOLD_GREEN "\033[1;32m"
 #define BOLD_PINK "\033[1;35m"
@@ -17,20 +18,12 @@ int PLAIN_TEXT=0;
 	if(!PLAIN_TEXT) fprintf(fd,CLEAR_FORMAT);
 
 
+#define P_WARNING(fd,format,name) P_GENERIC(fd,format,name,BOLD_RED)
 #define P_COUNTERS(fd,format,name) P_GENERIC(fd,format,name,BOLD_YELLOW)
 #define P_NAME(fd,format,name) P_GENERIC(fd,format,name,BOLD_CYAN)
 #define P_NUMBER(fd,format,x) P_GENERIC(fd,format,x,BOLD_BLUE)
 #define P_VL(fd,format,x) P_GENERIC(fd,format,x,BOLD_GREEN)
 #define P_PERCENTAGE(fd,format,x) P_GENERIC(fd,format,x,BOLD_PINK)
-
-
-#define BOLD_R(x) "\033[1;31m"x"\033[0m"
-#define BOLD_PER(x) "\033[1;35m"x"\033[0m"
-#define BOLD_NAME(x) "\033[1;36m"x"\033[0m"
-#define BOLD_NUM(x) "\033[1;34m"x"\033[0m"
-#define BOLD_G(x) "\033[1;33m"x"\033[0m"
-#define BOLD_VL(x) "\033[1;32m"x"\033[0m"
-#define BOLD(x) "\033[1m"x"\033[0m"
 
 char sym_pipe[]={"│"};
 char sym_cross[]={"├"};
