@@ -18,7 +18,7 @@ event_info * last_event_info = NULL;
 
 
 
-event_info * find_event(int id){
+static event_info * find_event(int id){
 	event_info * curr = first_event_info;
 	while (curr!=NULL){
 		if (curr->ID == id) return curr;
@@ -27,7 +27,7 @@ event_info * find_event(int id){
 	return NULL;
 }
 
-value_info * find_value(event_info * event, int val){
+static value_info * find_value(event_info * event, int val){
 	value_info * curr = event->values;
 	while (curr!=NULL){
 		if (curr->ID == val) return curr;
@@ -36,7 +36,7 @@ value_info * find_value(event_info * event, int val){
 	return NULL;
 }
 
-value_info *  add_new_value(event_info * event, int val, char * name){
+static value_info *  add_new_value(event_info * event, int val, char * name){
 	value_info * new_values = (value_info*)malloc(sizeof(value_info));
 	new_values -> next = NULL;
 	new_values -> ID = val;
@@ -53,7 +53,7 @@ value_info *  add_new_value(event_info * event, int val, char * name){
 	return new_values;
 }
 
-void add_value_to_event(int id, int val, char * name){
+static void add_value_to_event(int id, int val, char * name){
 	event_info * event = find_event(id);
 	if (event == NULL){
 		//printf("Event %d not found\n",id);
@@ -75,7 +75,8 @@ void add_value_to_event(int id, int val, char * name){
 }
 
 //For symbols
-int add_value_name_to_event(int id, char * name){
+/*
+static int add_value_name_to_event(int id, char * name){
 	event_info * event = find_event(id);
 	if (event == NULL) return -1;
 
@@ -92,8 +93,8 @@ int add_value_name_to_event(int id, char * name){
 	add_new_value(event,val,name);
 	return val;
 }
-
-event_info * add_event(int id, char *name){
+*/
+static event_info * add_event(int id, const char *name){
 
 	event_info * event = find_event(id);
 	if (event != NULL){
@@ -116,7 +117,8 @@ event_info * add_event(int id, char *name){
 	return new_event;
 }
 
-char * get_event_value_name(event_info * event, int val){
+/*
+static const char * get_event_value_name(event_info * event, int val){
 	if (event==NULL) return "Value name not found";
 	value_info * value = event->values; 
 	while(value!=NULL){
@@ -127,3 +129,4 @@ char * get_event_value_name(event_info * event, int val){
 	}
 	return "Value name not found";
 }
+*/

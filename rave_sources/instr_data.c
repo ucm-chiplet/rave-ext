@@ -62,14 +62,11 @@ typedef struct qemu_event qemu_event;
 
 //static instr_data * scalar_empty_struct;
 
-extern char contains_string(char * str, const char * find);
-
-
 #define MAJOR_LOAD 0b0000111
 #define MAJOR_STORE 0b0100111
 #define MAJOR_ARITH 0b1010111
 #define get_bit_field(insn_opcode, high, low) ((insn_opcode >> low) & ((1<<(high-low+1))-1))
-int16_t instr_set_type(uint32_t insn_opcode){
+static int16_t instr_set_type(uint32_t insn_opcode){
 				int16_t type = T_VECTOR; 
 				int16_t subtype = T_OTHER;
 				int16_t subsubtype = T_NOTYPE;
@@ -183,7 +180,9 @@ int16_t instr_set_type(uint32_t insn_opcode){
 }
 
 
-instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
+static char contains_string(char * str, const char * find);
+
+static instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 
 	char * instr_fields[8]; //8 is more than enough
 

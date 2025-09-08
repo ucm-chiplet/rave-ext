@@ -34,13 +34,13 @@
 
 //Alias from 0.7 version
 #ifdef EPI_07
-#include "instr2prv_0_7.h"
+#include "instr2prv_0_7.c"
 #else
-#include "instr2prv_1_0.h"
+#include "instr2prv_1_0.c"
 #endif
 
 
-int reg2prv(char * r){
+static int reg2prv(char * r){
 	if (strcmp(r, "zero")==0) return 102; 
 	if (strcmp(r, "ra")==0)   return 103; 
 	if (strcmp(r, "sp")==0)   return 104; 
@@ -141,7 +141,7 @@ int reg2prv(char * r){
 	return 0;
 }
 
-void open_file(FILE **fd, char * name){
+static void open_file(FILE **fd, char * name){
 	*fd = fopen(name, "w+");
 	if (*fd == NULL){
 		printf("cannot open: %s\n", name);
@@ -150,11 +150,11 @@ void open_file(FILE **fd, char * name){
 }
 
 #ifdef EPI_07
-#include "example_trace_0_7.h"
+#include "example_trace_0_7.c"
 #else
-#include "example_trace_1_0.h"
+#include "example_trace_1_0.c"
 #endif
-void write_prv(FILE * fd, int procs, int * OMPthreads, int pipelines){
+static void write_prv(FILE * fd, int procs, int * OMPthreads, int pipelines){
 	fprintf(fd, "#Paraver (00/00/0000 at 00:00):1_ns:1(1):%d",procs);
 	for(int p=0; p<procs; ++p){
 		fprintf(fd, ":%d(", OMPthreads[p]);
@@ -165,7 +165,7 @@ void write_prv(FILE * fd, int procs, int * OMPthreads, int pipelines){
 	}
 }
 
-void write_row(FILE * fd, int procs, int * OMPthreads, int pipelines){
+static void write_row(FILE * fd, int procs, int * OMPthreads, int pipelines){
 	fprintf(fd, "LEVEL WORKLOAD SIZE 1\n"
 					"Full System\n"
 					"LEVEL APPL SIZE %d\n",procs);
@@ -213,13 +213,13 @@ void setup_paraver_trace(char * name){
 */
 
 #if 1
-void events_and_values_to_pcf(FILE * fd, int event){
+static void events_and_values_to_pcf(FILE * fd, int event){
 	for(int i=1; i<=track_regions.max_nested; ++i){
-		fprintf(fd,"EVENT_TYPE\n9\t%ld\tRegions_nest_%d\n",event+i-1, i);
+		fprintf(fd,"EVENT_TYPE\n9\t%d\tRegions_nest_%d\n",event+i-1, i);
 		region_unique_list_t * curr = first_unique_region;
 		if (curr!=NULL) fprintf(fd,"VALUES\n");
 		while (curr != NULL){
-			if (curr->region->nesting==i) fprintf(fd,"%ld\t%s\n",curr->region_id, curr->region->name);
+			if (curr->region->nesting==i) fprintf(fd,"%d\t%s\n",curr->region_id, curr->region->name);
 			curr = curr->next;
 		}
 	}

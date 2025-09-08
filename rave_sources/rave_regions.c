@@ -39,7 +39,7 @@ typedef struct region_unique_list_t region_unique_list_t;
 region_unique_list_t *first_unique_region;
 region_unique_list_t *last_unique_region; 
 
-int name_to_id(char * name){
+static int name_to_id(const char * name){
 	region_unique_list_t * curr = first_unique_region;
 	while (curr != NULL){
 		if (curr->region != NULL && strcmp(curr->region->name,name)==0){
@@ -51,7 +51,7 @@ int name_to_id(char * name){
 	return -1;
 }
 
-void rave_ini_regions(){
+static void rave_ini_regions(void){
 	track_regions.first_region = NULL;
 	track_regions.last_region = NULL;
 	track_regions.nesting = -1;
@@ -62,7 +62,7 @@ void rave_ini_regions(){
 }
 
 //TODO: This is slow. Add an associative cache!
-region_node_t* dfs_find_recursive(region_node_t* curr, char * name){
+static region_node_t* dfs_find_recursive(region_node_t* curr, const char * name){
 	if (curr==NULL) return NULL;
 	if (strcmp(curr -> region.name,name)==0) return curr;
 //	printf(" ...no..\n");
@@ -77,7 +77,35 @@ region_node_t* dfs_find_recursive(region_node_t* curr, char * name){
 	return NULL;
 }
 
-void rave_begin_region(int cpu_index, char * name, rave_counters * current_counters, int accumulate){
+//TODO: End child regions too?
+static void rave_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate){
+
+	//Find the open region it's closing (if there's no open region, do nothing)
+	//Backtrack parents to find region that it's being close (it cannot be a sibling, since all siblings have its childs completed already)
+	//We can assert that given a name, only up to one region can be open with that name
+	//We can also assert that if accumulate is set to one, only one region with that name will exist
+	region_node_t * curr = track_regions.last_region; 
+	while (curr != NULL){
+		if (strcmp(curr -> region.name,name)==0 && curr->region.closed==0){// && cpu_index == curr->region.opened_by){ 
+			update_counters(&curr->region.delta_counters, current_counters);
+			curr->region.closed = 1;
+			curr->region.executions++; 
+			--track_regions.nesting;
+			++track_regions.total_regions;
+			if (accumulate){
+				//avg_counters(&curr->region.acc_counters, &curr->region.delta_counters, curr->region.executions);
+				add_counters(&curr->region.acc_counters, &curr->region.delta_counters);
+			}
+			track_regions.last_region = curr->parent;
+			return; //Stop searching after first match.
+		}
+		//curr = curr->prev;
+		curr = curr->parent;
+	}
+}
+
+
+static void rave_begin_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate){
 
 	//If region with this name was already open, close it
 	rave_end_region(cpu_index, name, current_counters, accumulate);
@@ -150,34 +178,7 @@ void rave_begin_region(int cpu_index, char * name, rave_counters * current_count
 	}
 }
 
-//TODO: End child regions too?
-void rave_end_region(int cpu_index, char * name, rave_counters * current_counters, int accumulate){
-
-	//Find the open region it's closing (if there's no open region, do nothing)
-	//Backtrack parents to find region that it's being close (it cannot be a sibling, since all siblings have its childs completed already)
-	//We can assert that given a name, only up to one region can be open with that name
-	//We can also assert that if accumulate is set to one, only one region with that name will exist
-	region_node_t * curr = track_regions.last_region; 
-	while (curr != NULL){
-		if (strcmp(curr -> region.name,name)==0 && curr->region.closed==0){// && cpu_index == curr->region.opened_by){ 
-			update_counters(&curr->region.delta_counters, current_counters);
-			curr->region.closed = 1;
-			curr->region.executions++; 
-			--track_regions.nesting;
-			++track_regions.total_regions;
-			if (accumulate){
-				//avg_counters(&curr->region.acc_counters, &curr->region.delta_counters, curr->region.executions);
-				add_counters(&curr->region.acc_counters, &curr->region.delta_counters);
-			}
-			track_regions.last_region = curr->parent;
-			return; //Stop searching after first match.
-		}
-		//curr = curr->prev;
-		curr = curr->parent;
-	}
-}
-
-void dfs_free_recursive(region_node_t* curr){
+static void dfs_free_recursive(region_node_t* curr){
 	if (curr==NULL) return;
 	region_node_t* child = curr->first_child;
 	while(child!=NULL){
@@ -189,7 +190,7 @@ void dfs_free_recursive(region_node_t* curr){
 }
 
 
-void free_regions(){
+static void free_regions(void){
 	//Traverse tree
 	dfs_free_recursive(track_regions.first_region);
 
@@ -202,8 +203,8 @@ void free_regions(){
 }
 
 
-
-void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate, int * nregion){
+extern int mpi_rank;
+static void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate, int * nregion){
 	if (curr==NULL) return;
 
 
@@ -217,9 +218,8 @@ void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate, int * 
 			indent(fd,curr->region.nesting, last);
 
 			//Print header
-			rave_counters * c = accumulate ? &curr->region.acc_counters : &curr->region.delta_counters;
-			double weight = 100.0*get_tot_instr(c)/get_tot_instr(&track_regions.first_region->region.delta_counters);
-			//fprintf(fd,BOLD("Region #%d: ") BOLD_NAME("%s") BOLD(" [Nesting: %d] (Rank: %d, Thread: %d)"),*nregion,curr->region.name,curr->region.nesting, mpi_rank,curr->region.opened_by);
+			//rave_counters * c = accumulate ? &curr->region.acc_counters : &curr->region.delta_counters;
+			//double weight = 100.0*get_tot_instr(c)/get_tot_instr(&track_regions.first_region->region.delta_counters);
 
 			if (!PLAIN_TEXT) fprintf(fd, BOLD_WHITE);	
 
@@ -254,8 +254,8 @@ void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate, int * 
 }
 
 
-extern int mpi_rank;
-void print_region_report(FILE * fd, int accumulate){
+//extern int mpi_rank;
+static void print_region_report(FILE * fd, int accumulate){
 	fprintf(fd,"-------------------" " REPORT " "-------------------" "\n"); 
 	int nregion=0;
 	reset_indent();
@@ -264,7 +264,7 @@ void print_region_report(FILE * fd, int accumulate){
 	fflush(fd);
 }
 
-void dfs_csv_recursive(region_node_t* curr, FILE * fd, int accumulate, int * nregion){
+static void dfs_csv_recursive(region_node_t* curr, FILE * fd, int accumulate, int * nregion){
 	if (curr==NULL) return;
 		if (curr->region.closed){
 			fprintf(fd,"%d,%d,%d,%s,%d,%d",mpi_rank, curr->region.opened_by, *nregion, curr->region.name, curr->region.nesting, curr->region.executions);
@@ -279,7 +279,7 @@ void dfs_csv_recursive(region_node_t* curr, FILE * fd, int accumulate, int * nre
 		child = child->next_sibling;
 	}
 }
-void print_region_csv(FILE * fd, int accumulate){
+static void print_region_csv(FILE * fd, int accumulate){
 	fprintf(fd,"process_id,thread_id,region,name,nesting,executions,");
 	print_csv_header(fd);
 	int nregion=0;

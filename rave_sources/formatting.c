@@ -1,7 +1,3 @@
-
-char * format_end = "\033[0m";
-char * format_bold_num = "\033[1;34m";
-
 int PLAIN_TEXT=0;
 #define CLEAR_FORMAT "\033[0m"
 #define BOLD_RED "\033[1;31m"
@@ -25,15 +21,15 @@ int PLAIN_TEXT=0;
 #define P_VL(fd,format,x) P_GENERIC(fd,format,x,BOLD_GREEN)
 #define P_PERCENTAGE(fd,format,x) P_GENERIC(fd,format,x,BOLD_PINK)
 
-char sym_pipe[]={"│"};
-char sym_cross[]={"├"};
-char sym_line[]={"─"};
-char sym_ele[]={"└"};
+const char sym_pipe[]={"│"};
+const char sym_cross[]={"├"};
+const char sym_line[]={"─"};
+const char sym_ele[]={"└"};
 
 struct indent_control_t{
 	char buffer[1024];
 	int offset;
-	char offsets[128]; //offsets point to where each nest symbol is
+	short offsets[128]; //offsets point to where each nest symbol is
 	int nesting;
 	int clear_previous;
 	int prev_nest;
@@ -42,7 +38,7 @@ struct indent_control_t{
 typedef struct indent_control_t indent_control_t;
 indent_control_t ic = {0};
 
-void reset_indent(){
+static void reset_indent(void){
 	ic.buffer[0]='\0';
 	ic.offset=0;
 	ic.nesting=0;
@@ -51,7 +47,7 @@ void reset_indent(){
 	ic.spaces=0;
 }
 
-char * indent_add(int is_last){
+static char * indent_add(int is_last){
 	//If previous was last, we need to change last segment to spaces:
 	if (ic.nesting>0){
 		if (ic.clear_previous){
@@ -89,7 +85,7 @@ char * indent_add(int is_last){
 	return ic.buffer;
 }
 
-char * indent_sub(int howmany, int is_last){
+static char * indent_sub(int howmany, int is_last){
 	//I don't need to clear previous, as I'm already going back.	
 	ic.clear_previous=0;
 	//Remove nesting:
@@ -109,7 +105,7 @@ char * indent_sub(int howmany, int is_last){
 	return ic.buffer;
 }
 
-char * indent_none(int is_last){
+static char * indent_none(int is_last){
 	//I don't need to clear previous, because previous will never be last (if i'm not indenting...)
 	ic.clear_previous=0;
 	//If is last, change last indent character to an L
@@ -120,7 +116,7 @@ char * indent_none(int is_last){
 	return ic.buffer;
 }
 
-void indent(FILE * fd, int level, int is_last){
+static void indent(FILE * fd, int level, int is_last){
 	int inc = level-(ic.prev_nest);
 	ic.prev_nest=level;
 	if (inc==0) indent_none(is_last);

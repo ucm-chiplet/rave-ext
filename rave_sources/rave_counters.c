@@ -23,13 +23,15 @@ struct rave_counters{
 };
 typedef struct rave_counters rave_counters;
 
-double get_tot_instr(rave_counters * c){
+/*
+static double get_tot_instr(rave_counters * c){
 			double totinstr = c->scalar_instr + c->vsetvl_instr;
 			for(int s=0; s<SEWS; ++s) totinstr += c->vector_instr[s];
 			return totinstr;
 }
+*/
 
-void reset_counters(rave_counters * c){
+static void reset_counters(rave_counters * c){
 	double * ptr = (double *)c;
 	for(int i=0; i<sizeof(rave_counters)/sizeof(double); ++i){
 		ptr[i]=0.0;
@@ -37,7 +39,7 @@ void reset_counters(rave_counters * c){
 }
 
 //c1 = c2
-void copy_counters(rave_counters * c1, rave_counters * c2){
+static void copy_counters(rave_counters * c1, rave_counters * c2){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
 	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
@@ -46,7 +48,7 @@ void copy_counters(rave_counters * c1, rave_counters * c2){
 }
 
 //c1 += c2;
-void add_counters(rave_counters * c1, rave_counters * c2){
+static void add_counters(rave_counters * c1, rave_counters * c2){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
 	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
@@ -56,7 +58,7 @@ void add_counters(rave_counters * c1, rave_counters * c2){
 
 #if 0
 //c1 = moving_avg(c1,c2)
-void avg_counters(rave_counters * c1, rave_counters * c2, int n){
+static void avg_counters(rave_counters * c1, rave_counters * c2, int n){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
 	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
@@ -65,7 +67,7 @@ void avg_counters(rave_counters * c1, rave_counters * c2, int n){
 }
 #endif
 // c1 = c2*mult
-void mul_counters(rave_counters * c1, rave_counters * c2, double mult){
+static void mul_counters(rave_counters * c1, rave_counters * c2, double mult){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
 	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
@@ -74,7 +76,7 @@ void mul_counters(rave_counters * c1, rave_counters * c2, double mult){
 }
 
 //c1 = c2-c1
-void update_counters(rave_counters * c1, rave_counters * c2){
+static void update_counters(rave_counters * c1, rave_counters * c2){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
 	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
@@ -91,7 +93,7 @@ void update_counters(rave_counters * c1, rave_counters * c2){
 	}\
 	fprintf(fd,"%c",fin);
 
-void print_counters_human(FILE * fd, rave_counters * counters){
+static void print_counters_human(FILE * fd, rave_counters * counters){
 	double scalinstr = counters->scalar_instr + counters->vsetvl_instr;
 	double vecinstr = 0;
 	for(int s=0; s<SEWS; ++s) vecinstr += counters->vector_instr[s];
@@ -155,7 +157,7 @@ void print_counters_human(FILE * fd, rave_counters * counters){
 #endif
 }
 
-void print_csv_header(FILE * fd){
+static void print_csv_header(FILE * fd){
 		fprintf(fd,"moved_bytes_s,moved_bytes_v");
 		fprintf(fd,",tot_instr,scalar_instr,vsetvl_instr,vec_instr");
 		for(int s=0; s<SEWS; ++s){
@@ -169,7 +171,7 @@ void print_csv_header(FILE * fd){
 		fprintf(fd,"\n");
 }
 
-void print_counters_csv(FILE * fd, rave_counters * counters){
+static void print_counters_csv(FILE * fd, rave_counters * counters){
 	double totinstr = counters->scalar_instr + counters->vsetvl_instr;
 	double totvec = 0;
 	for(int s=0; s<SEWS; ++s) totvec += counters->vector_instr[s];

@@ -38,29 +38,29 @@ rave_sources_dir=../../rave_sources
 cp ${rave_sources_dir}/$plugin_name.c contrib/plugins/.
 if [[ "$EXT" == "1_0" ]]; then
  sed -i 's/#define\ EPI_07/\/\/#define EPI_07/g' contrib/plugins/${plugin_name}.c
-	cp ${rave_sources_dir}/instr2prv_1_0.h contrib/plugins/.
-	cp ${rave_sources_dir}/example_trace_1_0.h contrib/plugins/.
+	cp ${rave_sources_dir}/instr2prv_1_0.c contrib/plugins/.
+	cp ${rave_sources_dir}/example_trace_1_0.c contrib/plugins/.
 else
  sed -i 's/\/\/#define\ EPI_07/#define EPI_07/g' contrib/plugins/${plugin_name}.c
-	cp ${rave_sources_dir}/instr2prv_0_7.h contrib/plugins/.
-	cp ${rave_sources_dir}/example_trace_0_7.h contrib/plugins/.
+	cp ${rave_sources_dir}/instr2prv_0_7.c contrib/plugins/.
+	cp ${rave_sources_dir}/example_trace_0_7.c contrib/plugins/.
 fi
-cp ${rave_sources_dir}/profiling.h contrib/plugins/.
-cp ${rave_sources_dir}/formatting.h contrib/plugins/.
-cp ${rave_sources_dir}/07_decode.h contrib/plugins/.
-cp ${rave_sources_dir}/instr_data.h contrib/plugins/.
-cp ${rave_sources_dir}/rave_counters.h contrib/plugins/.
-cp ${rave_sources_dir}/rave_events.h contrib/plugins/.
-cp ${rave_sources_dir}/rave_regions.h contrib/plugins/.
-cp ${rave_sources_dir}/rave_regions_legacy.h contrib/plugins/.
-cp ${rave_sources_dir}/rave2prv.h contrib/plugins/.
+cp ${rave_sources_dir}/profiling.c contrib/plugins/.
+cp ${rave_sources_dir}/formatting.c contrib/plugins/.
+cp ${rave_sources_dir}/07_decode.c contrib/plugins/.
+cp ${rave_sources_dir}/instr_data.c contrib/plugins/.
+cp ${rave_sources_dir}/rave_counters.c contrib/plugins/.
+cp ${rave_sources_dir}/rave_events.c contrib/plugins/.
+cp ${rave_sources_dir}/rave_regions.c contrib/plugins/.
+#cp ${rave_sources_dir}/rave_regions_legacy.c contrib/plugins/.
+cp ${rave_sources_dir}/rave2prv.c contrib/plugins/.
 
 if ! grep -q $plugin_name contrib/plugins/Makefile; then
 	sed	 -i "/^NAMES :=/a NAMES += ${plugin_name}" contrib/plugins/Makefile
 fi
  
 elfutils=${build_dir}/../elfutils/
-sed -i "s;\$(CFLAGS);\0 -I${elfutils}/include;g" contrib/plugins/Makefile
+sed -i "s;\$(CFLAGS);\0 -I${elfutils}/include -Wall -Werror;g" contrib/plugins/Makefile
 #make LDLIBS="-L${elfutils}/lib -Wl,-rpath=${elfutils}/lib -lelf -ldw" V=1 -j${NUM_JOBS} plugins &>> ${LOGFILE}
 make LDLIBS="-L${elfutils}/lib -lelf -ldw" V=1 -j${NUM_JOBS} plugins &>> ${LOGFILE}
 if [ $? -ne 0 ]; then
