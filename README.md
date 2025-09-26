@@ -111,6 +111,7 @@ Additionally, you can control RAVE's execution and output using these environmen
  - **RAVE_CSV_NAME**: Sets the name of the generated csv trace (default: qemu_summary.csv). Additionally, automatically sets RAVE_PRINT_CSV to 1. 
  - **RAVE_SYSROOT**: Sets the path to a user-specified RISC-V sysroot."
  - **RAVE_CUSTOM_EXTENSIONS**: Appends RISC-V extensions to the QEMU cpu (e.g. "zicbom=true,zicboz=true,zicbop=true,zicond=true" to emulate the bananapif3 boards). 
+ - **RAVE_MUSA**: If set to \"1\", the paraver trace becomes MUSA-compatible. (default: 0). 
 
 For example, generate a RAVE report like this:
 

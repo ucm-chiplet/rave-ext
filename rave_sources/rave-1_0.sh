@@ -56,6 +56,9 @@ if [ "$RAVE_PRINT_CSV" == "1" ] || [ "$RAVE_CSV_NAME" != "" ]; then #OPT-in
 	fi
 	args=$args",PRINT_CSV=on,CSV_NAME=$RAVE_CSV_NAME"
 fi
+if [ "$RAVE_MUSA" == "1" ]; then
+	args=$args",MUSA=on"
+fi
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 #SYSROOT:

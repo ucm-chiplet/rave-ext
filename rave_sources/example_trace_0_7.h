@@ -1030,7 +1030,7 @@ fprintf(fd,
 "547 v_mem_unit\n"
 "548 v_mem_stride\n"
 "549 v_mem_index\n"
-"560 v_mask\n"
+"576 v_mask\n"
 "768 vsetvl\n"
 
 "EVENT_TYPE\n"
@@ -1060,6 +1060,9 @@ fprintf(fd,
 "1 m2\n"
 "2 m4\n"
 "3 m8\n"
+
+"EVENT_TYPE\n"
+"9   50000000     stride\n"
 
 );
 
