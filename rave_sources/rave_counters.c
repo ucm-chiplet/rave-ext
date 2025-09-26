@@ -10,6 +10,7 @@ struct rave_counters{
 				double vstride_instr[SEWS];
 				double agg_strides[SEWS];
 				double vidx_instr[SEWS];
+				double vspill_instr[SEWS];
 
 				double velem_arith[SEWS];
 				double vfp_instr[SEWS];
@@ -121,7 +122,7 @@ static void print_counters_human(FILE * fd, rave_counters * counters){
 		fprintf(fd,"SEW %d vector instr: ", 1<<(s+3)); P_NUMBER(fd, "%.0f", counters->vector_instr[s]); PERCENTAGE(fd,counters->vector_instr[s], vecinstr, counters->vector_instr[s]>0?' ':'\n');
 		if (counters->vector_instr[s]>0){
 			fprintf(fd, " [avg VL: "); P_VL(fd, "%.2f",counters->velem[s] / counters->vector_instr[s]); fprintf(fd," elements]\n");
-			double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s];
+			double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s] + counters->vspill_instr[s];
 			double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
 			double  totvother	= counters->vector_instr[s] - totvmem - totvarith - counters->vmask_instr[s];
 			indent(fd,++level,0); fprintf(fd,"Arith: "); P_NUMBER(fd,"%.0f",totvarith); PERCENTAGE(fd,totvarith, counters->vector_instr[s],totvarith>0?' ':'\n');
@@ -140,7 +141,8 @@ static void print_counters_human(FILE * fd, rave_counters * counters){
 					indent(fd,++level,1); fprintf(fd,"Avg. Stride (B): "); P_NUMBER(fd,"%.2f\n", counters->agg_strides[s] / counters->vstride_instr[s]);
 					--level;
 				}
-				indent(fd,level,1); fprintf(fd,"indexed: "); P_NUMBER(fd,"%.0f", counters->vidx_instr[s]); PERCENTAGE(fd,counters->vidx_instr[s], totvmem,'\n');
+				indent(fd,level,0); fprintf(fd,"indexed: "); P_NUMBER(fd,"%.0f", counters->vidx_instr[s]); PERCENTAGE(fd,counters->vidx_instr[s], totvmem,'\n');
+				indent(fd,level,1); fprintf(fd,"whole-register: "); P_NUMBER(fd,"%.0f", counters->vspill_instr[s]); PERCENTAGE(fd,counters->vspill_instr[s], totvmem,'\n');
 				--level;
 			}
 			indent(fd,level,0);	fprintf(fd,"Mask: "); P_NUMBER(fd,"%.0f", counters->vmask_instr[s]); PERCENTAGE(fd,counters->vmask_instr[s], counters->vector_instr[s], counters->vmask_instr[s]>0?' ':'\n');
@@ -164,7 +166,7 @@ static void print_csv_header(FILE * fd){
 		 	int sew=1<<(s+3);	
 			fprintf(fd,	",v_e%d_instr,v_e%d_elems", sew,sew);
 			fprintf(fd, ",v_e%d_arith,v_e%d_arith_elems,v_e%d_fp,v_e%d_int",sew,sew,sew,sew);
-			fprintf(fd, ",v_e%d_mem,v_e%d_mem_elems,v_e%d_memunit,v_e%d_memstrided,v_e%d_memidx,v_e%d_avg_stride",sew,sew,sew,sew,sew,sew);
+			fprintf(fd, ",v_e%d_mem,v_e%d_mem_elems,v_e%d_memunit,v_e%d_memstrided,v_e%d_memidx,v_e%d_avg_stride,v_e%d_memspill",sew,sew,sew,sew,sew,sew,sew);
 			fprintf(fd, ",v_e%d_mask,v_e%d_mask_elems",sew,sew);
 			fprintf(fd, ",v_e%d_other,v_e%d_other_elems",sew,sew);
 		}
@@ -183,7 +185,7 @@ static void print_counters_csv(FILE * fd, rave_counters * counters){
 
 	//Print SEW-specific counters (vec)
 	for(int s=0; s<SEWS; ++s){
-		double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s];
+		double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s] + counters->vspill_instr[s];
 		double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
 		double  totvother	= counters->vector_instr[s] - totvmem - totvarith - counters->vmask_instr[s];
 		double strides = (counters->vstride_instr[s] > 0)? counters->agg_strides[s] / counters->vstride_instr[s] : 0;
@@ -191,7 +193,7 @@ static void print_counters_csv(FILE * fd, rave_counters * counters){
 
 		fprintf(fd,",%.0f,%.0f", counters->vector_instr[s], counters->velem[s]);
 		fprintf(fd,",%.0f,%.0f,%.0f,%.0f", totvarith, counters->velem_arith[s], counters->vfp_instr[s], counters->vint_instr[s]);
-		fprintf(fd,",%.0f,%.0f,%.0f,%.0f,%.0f,%.2f", totvmem, counters->velem_mem[s], counters->vunit_instr[s], counters->vidx_instr[s], counters->vstride_instr[s], strides);
+		fprintf(fd,",%.0f,%.0f,%.0f,%.0f,%.0f,%.2f,%.0f", totvmem, counters->velem_mem[s], counters->vunit_instr[s], counters->vidx_instr[s], counters->vstride_instr[s], strides, counters->vspill_instr[s]);
 		fprintf(fd,",%.0f,%.0f", counters->vmask_instr[s], counters->velem_mask[s]); 
 		fprintf(fd,",%.0f,%.0f", totvother, velem_other);
 	}

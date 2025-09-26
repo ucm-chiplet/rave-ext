@@ -118,6 +118,7 @@ Control PRV generation:
  - **RAVE_PRINT_PRV**: If set to \"1\", a paraver trace is generated with all the executed instructions. (default: 0). 
  - **RAVE_PRV_NAME**: Sets the name of the generated paraver trace (default: qemutrace). Additionally, automatically sets RAVE_PRV to 1.
  - **RAVE_REGION_EVENT**: Set paraver event where the first nesting level of regions will be mapped. (default: 1000) 
+ - **RAVE_MUSA**: If set to \"1\", the paraver trace becomes MUSA-compatible. (default: 0). 
 
 Control report / profile / csv generation:
  - **RAVE_PLAIN_TEXT**: Print the report/profile without colours or highlighted text. (default: 0).

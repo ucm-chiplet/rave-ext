@@ -21,6 +21,7 @@
 #define T_UNIT   0x0003
 #define T_STRIDE 0x0004
 #define T_INDEX  0x0005
+#define T_SPILL  0x0006
 
 
 #if 1
@@ -83,7 +84,11 @@ static int16_t instr_set_type(uint32_t insn_opcode){
 												else if (mop == 3 || mop == 7) subsubtype = T_INDEX; 
 #else
 												mop = get_bit_field(insn_opcode,27,26);
-												if (mop == 0) subsubtype = T_UNIT;
+												if (mop == 0){
+													unsigned int rs2 = get_bit_field(insn_opcode,24,20);
+													if (rs2 == 8) subsubtype = T_SPILL;
+													else subsubtype = T_UNIT;
+												}
 												else if (mop == 2) subsubtype = T_STRIDE;
 												else if (mop == 1 || mop == 3) subsubtype = T_INDEX; 
 #endif

@@ -46,16 +46,20 @@ static void rave_name(char * name){
 	rave_name(name);\
 }
 #else
-#define rave_name_event(x,name)\
+#define rave_name_event_len(x,name,len)\
 {\
 	asm volatile("and x0, %0, x0\n" :: "r"(x));\
-	asm volatile("addi x0, %0, 2\n" :: "r"(&name[0]));\
+	asm volatile("sll x0, %0, %1\n" :: "r"(&name[0]), "r"(len));\
 }
-#define rave_name_value(x,y,name)\
+#define rave_name_value_len(x,y,name,len)\
 {\
 	asm volatile("and x0, %0, %1\n" :: "r"(x), "r"(y));\
-	asm volatile("addi x0, %0, 3\n" :: "r"(&name[0]));\
+	asm volatile("srl x0, %0, %1\n" :: "r"(&name[0]), "r"(len));\
 }
+
+#define rave_name_event(x,name) rave_name_event_len(x,name,-1)
+#define rave_name_value(x,y,name) rave_name_value_len(x,y,name,-1)
+
 #endif
 
 #define rave_restart_trace() asm volatile("li x0, -2\n");
@@ -64,5 +68,8 @@ static void rave_name(char * name){
 
 #define rave_event_and_value(x,y) asm volatile("or x0, %0, %1\n"::"r"(x),"r"(y));
 
-#define rave_begin_region(name) asm volatile("addi x0, %0, 1\n" :: "r"(&name[0]))
-#define rave_end_region(name) asm volatile("addi x0, %0, 0\n" :: "r"(&name[0]))
+#define rave_begin_region_len(name,len) asm volatile("add x0, %0, %1\n" :: "r"(&name[0]), "r"(len))
+#define rave_end_region_len(name,len) asm volatile("sub x0, %0, %1\n" :: "r"(&name[0]), "r"(len))
+
+#define rave_begin_region(name) rave_begin_region_len(name,-1)
+#define rave_end_region(name) rave_end_region_len(name,-1) 

@@ -86,10 +86,18 @@ if [ "$RAVE_REPORT_NAME" != "" ]; then #OPT-in
 	args=$args",PRINT_REPORT=on,REPORT_NAME=$RAVE_REPORT_NAME"
 fi
 if [ "$RAVE_PRINT_PROFILE" == "1" ]; then #OPT-in
-	args=$args",PRINT_PROFILE=on,BINARY_NAME=$1"
+	i=1
+	while [[ "${!i}" == "-E"* ]] || [[ "${!i}" == *"="* ]] ; do
+		((i++))
+	done
+	args=$args",PRINT_PROFILE=on,BINARY_NAME=${!i}"
 fi
 if [ "$RAVE_PROFILE_NAME" != "" ]; then #OPT-in
-	args=$args",PRINT_PROFILE=on,BINARY_NAME=$1,PROFILE_NAME=$RAVE_PROFILE_NAME"
+	i=1
+	while [[ "${!i}" == "-E"* ]] || [[ "${!i}" == *"="* ]] ; do
+		((i++))
+	done
+	args=$args",PRINT_PROFILE=on,BINARY_NAME=${!i},PROFILE_NAME=$RAVE_PROFILE_NAME"
 fi
 if [ "$RAVE_PRINT_CSV" == "1" ] || [ "$RAVE_CSV_NAME" != "" ]; then #OPT-in
 	if [ "$RAVE_CSV_NAME" == "" ]; then
@@ -99,6 +107,9 @@ if [ "$RAVE_PRINT_CSV" == "1" ] || [ "$RAVE_CSV_NAME" != "" ]; then #OPT-in
 fi
 if [ "$RAVE_PLAIN_TEXT" == "1" ]; then
 	args=$args",PLAIN_TEXT=on"
+fi
+if [ "$RAVE_MUSA" == "1" ]; then
+	args=$args",MUSA=on"
 fi
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"

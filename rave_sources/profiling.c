@@ -81,10 +81,6 @@ static void update_PC(uint64_t PC, uint64_t weight){
 		node -> weight += (double)weight; 
 	}
 
-	if (node->weight  == 1031.0){
-		printf("Weight %.2f %.2f %.2f\n",node->prev != NULL? node->prev->weight:-1, node->weight, node->next != NULL? node->next->weight:-1);
-	}
-
 	//Relocation forwards
 	while(node->prev != NULL && node->prev->weight < node->weight){
 		PC_node * prev = node->prev;
@@ -154,20 +150,20 @@ static int get_first_module_base(Dwfl_Module *mod, void **userdata,
 static void init_dwfl(const char *binary_path) {
     dwfl = dwfl_begin(&dwfl_callbacks);
     if (!dwfl) {
-        fprintf(stderr, "dwfl_begin failed\n");
+        fprintf(stderr, "Profile: dwfl_begin failed\n");
         return;
     }
 
     int fd = open(binary_path, O_RDONLY);
     if (fd < 0) {
-        fprintf(stderr, "Failed to open %s\n", binary_path);
+        fprintf(stderr, "Profile: Failed to open %s\n", binary_path);
         dwfl_end(dwfl);
         return;
     }
 
     Dwfl_Module *mod = dwfl_report_elf(dwfl, binary_path, binary_path, fd, 0, true);
     if (!mod) {
-        fprintf(stderr, "dwfl_report_elf failed for %s\n", binary_path);
+        fprintf(stderr, "Profile: dwfl_report_elf failed for %s\n", binary_path);
         close(fd);
         dwfl_end(dwfl);
         return;
@@ -176,7 +172,7 @@ static void init_dwfl(const char *binary_path) {
     close(fd);
 
     if (dwfl_report_end(dwfl,NULL,NULL) != 0) {
-        fprintf(stderr, "dwfl_report_end failed\n");
+        fprintf(stderr, "Profile: dwfl_report_end failed\n");
         dwfl_end(dwfl);
         return;
     }
@@ -265,6 +261,8 @@ static void print_loop_profile(FILE * fd){
 	fprintf(fd,"-------------------" " PROFILED LOOPS " "--------------------" "\n");
 
 	fprintf(fd,"Elems" "\t" "Instances" "\t" "PC" "\t" "Funct" "\t" "file:line" "\n");
+	uint64_t totweight=0.0;
+	const double cutoff=0.01;
 		PC_node * node = first_PC_node; 
 		if (node != NULL){
 			//Print all occurences:
@@ -277,6 +275,9 @@ static void print_loop_profile(FILE * fd){
 
 				/*int ret =*/ resolve_pc_to_source(PC, &pc_symbol, &pc_file, &pc_line, &pc_column);
 				if (/*!ret*/ pc_symbol != NULL){
+					totweight += node->weight;
+					//printf("%.2f\n", (double)node->weight / totweight);
+					if ((double)node->weight / totweight < cutoff) break;
 					fprintf(fd,"%.0f" "\t" "%ld" "\t" "\t" "0x%lx" "\t",node->weight,node->freq,node->PC);
 				 	fprintf(fd, "%s" "\t" "%s:%d\n", pc_symbol!=NULL?pc_symbol:"Unknown", pc_file!=NULL?pc_file:"Unknown", pc_line); 
 				}

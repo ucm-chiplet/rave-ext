@@ -80,6 +80,7 @@ static region_node_t* dfs_find_recursive(region_node_t* curr, const char * name)
 //TODO: End child regions too?
 static void rave_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate){
 
+
 	//Find the open region it's closing (if there's no open region, do nothing)
 	//Backtrack parents to find region that it's being close (it cannot be a sibling, since all siblings have its childs completed already)
 	//We can assert that given a name, only up to one region can be open with that name

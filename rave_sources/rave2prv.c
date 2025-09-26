@@ -12,7 +12,7 @@
 #define event_ELEN 47000030
 #define event_sew 47000031
 #define event_lmul 47000032
-#define event_stride 48000000
+#define event_stride 50000000
 
 #else
 #define event_pc "47000001"
