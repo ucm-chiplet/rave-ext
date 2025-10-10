@@ -166,7 +166,7 @@ static void print_csv_header(FILE * fd){
 		 	int sew=1<<(s+3);	
 			fprintf(fd,	",v_e%d_instr,v_e%d_elems", sew,sew);
 			fprintf(fd, ",v_e%d_arith,v_e%d_arith_elems,v_e%d_fp,v_e%d_int",sew,sew,sew,sew);
-			fprintf(fd, ",v_e%d_mem,v_e%d_mem_elems,v_e%d_memunit,v_e%d_memstrided,v_e%d_memidx,v_e%d_avg_stride,v_e%d_memspill",sew,sew,sew,sew,sew,sew,sew);
+			fprintf(fd, ",v_e%d_mem,v_e%d_mem_elems,v_e%d_memunit,v_e%d_memidx,v_e%d_memstrided,v_e%d_avg_stride,v_e%d_memspill",sew,sew,sew,sew,sew,sew,sew);
 			fprintf(fd, ",v_e%d_mask,v_e%d_mask_elems",sew,sew);
 			fprintf(fd, ",v_e%d_other,v_e%d_other_elems",sew,sew);
 		}

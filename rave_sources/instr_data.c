@@ -247,8 +247,8 @@ static instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_o
 			//change it back to "memory" (general)
 			data -> type &= 0x0F0F;
 			data -> type |= T_MEMORY;
-			data -> src3 = data -> dst;
-			data -> dst = 0;
+			//data -> src3 = data -> dst;
+			//data -> dst = 0;
 		}
 		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode);
 	}else{
