@@ -12,20 +12,25 @@ typedef struct region_t region_t;
 
 struct region_node_t{
 	region_t region;
-	struct region_node_t * parent;
 	struct region_node_t * first_child;
 	struct region_node_t * last_child;
 	struct region_node_t * next_sibling;
 };
 typedef struct region_node_t region_node_t;
 
+struct region_stack_t{
+	region_node_t * region_node;
+	struct region_stack_t * prev;
+};
+typedef struct region_stack_t region_stack_t;
+
 struct track_regions_t{
 	region_node_t * first_region;
-	region_node_t * last_region; //TODO: This should be THREAD-independent?
 	int nesting; //TODO: This should be THREAD-independent?
 	int total_regions;
 	int max_nested;
 	int max_name;
+	region_stack_t * stack_top;
 };
 typedef struct track_regions_t track_regions_t;
 track_regions_t track_regions;
@@ -38,6 +43,8 @@ struct region_unique_list_t{
 typedef struct region_unique_list_t region_unique_list_t;
 region_unique_list_t *first_unique_region;
 region_unique_list_t *last_unique_region; 
+
+
 
 static int name_to_id(const char * name){
 	region_unique_list_t * curr = first_unique_region;
@@ -53,12 +60,13 @@ static int name_to_id(const char * name){
 
 static void rave_ini_regions(void){
 	track_regions.first_region = NULL;
-	track_regions.last_region = NULL;
 	track_regions.nesting = -1;
 	track_regions.total_regions = 0;
 
 	first_unique_region = NULL;
 	last_unique_region = NULL;
+
+	track_regions.stack_top = NULL;
 }
 
 //TODO: This is slow. Add an associative cache!
@@ -85,34 +93,39 @@ static void rave_end_region(int cpu_index, const char * name, rave_counters * cu
 	//Backtrack parents to find region that it's being close (it cannot be a sibling, since all siblings have its childs completed already)
 	//We can assert that given a name, only up to one region can be open with that name
 	//We can also assert that if accumulate is set to one, only one region with that name will exist
-	region_node_t * curr = track_regions.last_region; 
-	while (curr != NULL){
-		if (strcmp(curr -> region.name,name)==0 && curr->region.closed==0){// && cpu_index == curr->region.opened_by){ 
-			update_counters(&curr->region.delta_counters, current_counters);
-			curr->region.closed = 1;
-			curr->region.executions++; 
-			--track_regions.nesting;
-			++track_regions.total_regions;
-			if (accumulate){
-				//avg_counters(&curr->region.acc_counters, &curr->region.delta_counters, curr->region.executions);
-				add_counters(&curr->region.acc_counters, &curr->region.delta_counters);
-			}
-			track_regions.last_region = curr->parent;
-			return; //Stop searching after first match.
+	
+	if (track_regions.stack_top != NULL && 
+			track_regions.stack_top->region_node != NULL && 
+			strcmp(track_regions.stack_top -> region_node->region.name,name)==0){
+
+		update_counters(&track_regions.stack_top->region_node->region.delta_counters, current_counters);
+		track_regions.stack_top->region_node->region.closed = 1;
+		track_regions.stack_top->region_node->region.executions++; 
+		--track_regions.nesting;
+		++track_regions.total_regions;
+		if (accumulate){
+			//avg_counters(&curr->region.acc_counters, &curr->region.delta_counters, curr->region.executions);
+			add_counters(&(track_regions.stack_top->region_node->region.acc_counters), &(track_regions.stack_top->region_node->region.delta_counters));
 		}
-		//curr = curr->prev;
-		curr = curr->parent;
+
+		region_stack_t * prev = track_regions.stack_top->prev;
+		free(track_regions.stack_top);
+		track_regions.stack_top = prev;
+	}else{
+		printf("Trying to close region %s, but last region is %s\n",name, track_regions.stack_top != NULL? track_regions.stack_top -> region_node -> region.name:"NULL");
+		exit(-1);
 	}
 }
 
 
 static void rave_begin_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate){
 
-	//If region with this name was already open, close it
-	rave_end_region(cpu_index, name, current_counters, accumulate);
-
 	++track_regions.nesting;
 	if (track_regions.max_nested < track_regions.nesting) track_regions.max_nested = track_regions.nesting;
+
+	region_stack_t * new_top = (region_stack_t *)malloc(sizeof(region_stack_t));
+	new_top -> prev = track_regions.stack_top;
+	track_regions.stack_top = new_top;
 
 #if 1
 	//If I accumulate, check if the region already exists:
@@ -122,7 +135,8 @@ static void rave_begin_region(int cpu_index, const char * name, rave_counters * 
 				update_counters(&curr->region.delta_counters, current_counters);
 				curr -> region.delta_counters = *current_counters;
 				curr -> region.closed = 0;
-				track_regions.last_region = curr;
+				track_regions.stack_top -> region_node = curr; 
+				track_regions.stack_top = new_top;
 				return;
 			}
 	}
@@ -130,20 +144,26 @@ static void rave_begin_region(int cpu_index, const char * name, rave_counters * 
 
 	//New region:
 	region_node_t * new_node = (region_node_t*) malloc(sizeof(region_node_t));
-	new_node -> parent = track_regions.last_region;
+	new_top -> region_node = new_node;
+
 
 	//Become the last sibling of the parent's last child:
-	if (new_node -> parent != NULL){
-		if (new_node -> parent -> last_child != NULL){
-			new_node -> parent -> last_child -> next_sibling = new_node;
+	if (new_top -> prev!= NULL){
+		if (new_top -> prev -> region_node -> last_child != NULL){
+			new_top -> prev -> region_node -> last_child -> next_sibling = new_node;
 		}else{
-			new_node -> parent -> first_child = new_node;
+			new_top -> prev -> region_node -> first_child = new_node;
 		}
-		new_node -> parent -> last_child  = new_node;
+		new_top -> prev -> region_node -> last_child  = new_node;
 	}else{
 		track_regions.first_region = new_node;
 	}
-	track_regions.last_region = new_node;
+
+
+	if(track_regions.first_region==NULL){
+		track_regions.first_region = new_node;
+	}
+
 
 	//New region family:
 	new_node -> first_child = NULL;
@@ -177,6 +197,7 @@ static void rave_begin_region(int cpu_index, const char * name, rave_counters * 
 		}
 		last_unique_region = new_unique;
 	}
+
 }
 
 static void dfs_free_recursive(region_node_t* curr){
@@ -216,7 +237,10 @@ static void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate,
 			int last=0;
 			if (curr->next_sibling == NULL) last = 1;
 
-			indent(fd,curr->region.nesting, last);
+			//If we accumulate, we don't indent
+			if (!accumulate){
+				indent(fd,curr->region.nesting, last);
+			}
 
 			//Print header
 			//rave_counters * c = accumulate ? &curr->region.acc_counters : &curr->region.delta_counters;
@@ -226,7 +250,8 @@ static void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate,
 
 			fprintf(fd,"Region #%d: ", *nregion);
 			P_NAME(fd,"%s",curr->region.name);
-			fprintf(fd," [Nesting: %d] (Rank: %d, Thread: %d)", curr->region.nesting, mpi_rank,curr->region.opened_by);
+			if (!accumulate) fprintf(fd," [Nesting: %d]",curr->region.nesting);
+			fprintf(fd," (Rank: %d, Thread: %d)", mpi_rank,curr->region.opened_by);
 			if (accumulate){
 			 	fprintf(fd,". Executed %d times%s", curr->region.executions,curr->region.executions>1?" (counters are averaged)":"");
 				mul_counters(&curr->region.delta_counters, &curr->region.acc_counters, 1.0/curr->region.executions);
@@ -237,8 +262,9 @@ static void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate,
 
 			//Print counters:
 			last=0;
-			if (curr->first_child == NULL) last = 1;
-			indent(fd,curr->region.nesting+1, last); P_COUNTERS(fd, "%s\n", "Counters:");
+			//If we accumulate, we don't indent, so all childs are single-childs
+			if (accumulate || curr->first_child == NULL) last = 1; 
+			indent(fd, accumulate ? 1 : curr->region.nesting+1, last); P_COUNTERS(fd, "%s\n", "Counters:");
 			ic.spaces = 4;
 
 			print_counters_human(fd, &curr->region.delta_counters);
