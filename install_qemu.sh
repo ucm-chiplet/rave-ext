@@ -88,6 +88,11 @@ sed -i 's/^\#define\ RV_VLEN_MAX\ .*/\#define\ RV_VLEN_MAX\ \(256\*64\)/g' ./tar
 #Hybrid translator loop 
 patch -p 1 < ../../utils/translate_${EXT}.patch
 
+#Expose vector registers to GDB in 0_7
+if [[ "$EXT" == "0_7" ]]; then
+	patch -p 0 < ../../utils/expose_0_7.patch
+fi
+
 echo "Building QEMU... [5/5] (This might take a while)"
 make -j $NUM_JOBS &>> ${LOGFILE}
 if [ $? -ne 0 ]; then
