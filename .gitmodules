@@ -7,3 +7,8 @@
 	path = qemu_sources/qemu-rvv-1_0
 	url = https://gitlab.com/qemu-project/qemu.git
 	branch = stable-9.0
+
+[submodule "qemu_sources/qemu-rvv-1_0-new"]
+	path = qemu_sources/qemu-rvv-1_0-new
+	url = https://gitlab.com/qemu-project/qemu.git
+	branch = stable-10.0

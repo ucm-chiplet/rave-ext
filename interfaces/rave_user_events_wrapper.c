@@ -33,6 +33,18 @@ static PyObject* py_rave_name_value(PyObject* self, PyObject* args) {
 		rave_name_value(e,v,n);
     Py_RETURN_NONE;  // Return None in Python
 }
+static PyObject* py_rave_begin_region(PyObject* self, PyObject* args) {
+		const char * name;
+    if (!PyArg_ParseTuple(args, "s", &name)) return NULL;
+		rave_begin_region(name); //Call the C function
+    Py_RETURN_NONE;  // Return None in Python
+}
+static PyObject* py_rave_end_region(PyObject* self, PyObject* args) {
+		const char * name;
+    if (!PyArg_ParseTuple(args, "s", &name)) return NULL;
+		rave_end_region(name); //Call the C function
+    Py_RETURN_NONE;  // Return None in Python
+}
 
 
 // Define methods in the module
@@ -41,6 +53,8 @@ static PyMethodDef RaveUserEventsMethods[] = {
     {"rave_restart_trace", py_rave_restart_trace, METH_VARARGS, ""},
     {"rave_start_trace", py_rave_start_trace, METH_VARARGS, ""},
     {"rave_stop_trace", py_rave_stop_trace, METH_VARARGS, ""},
+    {"rave_begin_region", py_rave_stop_trace, METH_VARARGS, ""},
+    {"rave_end_region", py_rave_stop_trace, METH_VARARGS, ""},
     {"rave_name_event", py_rave_name_event, METH_VARARGS, ""},
     {"rave_name_value", py_rave_name_value, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}  // Sentinel to indicate the end of the array

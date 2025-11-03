@@ -205,3 +205,8 @@ diff -ruN target/riscv/gdbstub.c ../../../riscv/gdbstub.c
  #if defined(TARGET_RISCV32)
      gdb_register_coprocessor(cs, riscv_gdb_get_virtual, riscv_gdb_set_virtual,
                               1, "riscv-32bit-virtual.xml", 0);
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> origin/new_regions

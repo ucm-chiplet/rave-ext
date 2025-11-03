@@ -1,13 +1,17 @@
 all: example-c example-cpp example-f
 
+LLVM_DIR?=../../build/llvm-cross/llvm-EPI-development-toolchain-cross
+RAVE_INCLUDE?=../../interfaces
+
 CC=${LLVM_DIR}/bin/clang
 CPP=${LLVM_DIR}/bin/clang++
 FC=${LLVM_DIR}/bin/flang
 
+DEBUG=-g #-gdwarf-4 
 VFLAGS=-O3 -ffast-math -mepi -mllvm -combiner-store-merging=0 -Rpass=loop-vectorize -Rpass-analysis=loop-vectorize -mcpu=avispado -mllvm -vectorizer-use-vp-strided-load-store -mllvm -enable-mem-access-versioning=0 -mllvm -disable-loop-idiom-memcpy -mllvm -disable-loop-idiom-memset
 
 example-c: example.c
-	$(CC) $(VFLAGS) -fno-vectorize -I${RAVE_INCLUDE} $^ -o $@.x
+	$(CC) $(VFLAGS) $(DEBUG) -fno-vectorize -I${RAVE_INCLUDE} $^ -o $@.x
 
 example-cpp: example.cpp
 	$(CPP) $(VFLAGS) -fno-vectorize  -I${RAVE_INCLUDE} $^ -o $@.x

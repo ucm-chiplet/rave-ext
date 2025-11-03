@@ -18,39 +18,68 @@ module rave_user_events
     subroutine rave_stop_trace() bind(c, name="rave_stop_trace_f")
        use iso_c_binding
     end subroutine rave_stop_trace
+
+    subroutine rave_begin_region_internal(name,length) &
+                 bind(c, name="rave_begin_region_f")
+       use iso_c_binding
+       type(c_ptr), value :: name
+       integer(c_int), value :: length
+    end subroutine rave_begin_region_internal 
+
+    subroutine rave_end_region_internal(name,length) &
+                 bind(c, name="rave_end_region_f")
+       use iso_c_binding
+       type(c_ptr), value :: name
+       integer(c_int), value :: length
+    end subroutine rave_end_region_internal 
     
-    subroutine rave_name_event_2(event, nam) bind(c, name="rave_name_event_f")
+    subroutine rave_name_event_internal(event, nam, length) bind(c, name="rave_name_event_f")
        use iso_c_binding
        integer(kind=c_int), value :: event
        type(c_ptr), value :: nam
-    end subroutine rave_name_event_2 
+       integer(c_int), value :: length
+    end subroutine rave_name_event_internal
 
-    subroutine rave_name_value_2(event, val, nam) bind(c, name="rave_name_value_f")
+    subroutine rave_name_value_internal(event, val, nam, length) bind(c, name="rave_name_value_f")
        use iso_c_binding
        integer(kind=c_int), value :: event,val
        type(c_ptr), value :: nam
-    end subroutine rave_name_value_2
+       integer(c_int), value :: length
+    end subroutine rave_name_value_internal
 
   end interface
 
 
 contains
+
+  subroutine rave_begin_region(name)
+    character(kind=c_char, len=*), target :: name
+    type(c_ptr) :: e_cstr_ptr
+    e_cstr_ptr = c_loc(name)
+    call rave_begin_region_internal(e_cstr_ptr, len(name))
+  end subroutine rave_begin_region
+
+  subroutine rave_end_region(name)
+    character(kind=c_char, len=*), target :: name
+    type(c_ptr) :: e_cstr_ptr
+    e_cstr_ptr = c_loc(name)
+    call rave_end_region_internal(e_cstr_ptr, len(name))
+  end subroutine rave_end_region
+
   subroutine rave_name_event(event, nam)
     integer(kind=c_int), value :: event
     character(kind=c_char, len=*), target :: nam
     type(c_ptr) :: cstr_ptr
-    nam(len(nam)+1:len(nam)+1)=C_NULL_CHAR
     cstr_ptr = c_loc(nam)
-    call rave_name_event_2(event,cstr_ptr)
+    call rave_name_event_internal(event,cstr_ptr, len(nam))
   end subroutine rave_name_event
 
   subroutine rave_name_value(event,val, nam)
     integer(kind=c_int), value :: event, val
     character(kind=c_char, len=*), target :: nam
     type(c_ptr) :: cstr_ptr
-    nam(len(nam)+1:len(nam)+1)=C_NULL_CHAR
     cstr_ptr = c_loc(nam)
-    call rave_name_value_2(event,val,cstr_ptr)
+    call rave_name_value_internal(event,val,cstr_ptr, len(nam))
   end subroutine rave_name_value
 
 end module rave_user_events

@@ -1,21 +1,22 @@
-int instr2prv(unsigned int instr){
+static int instr2prv(unsigned int instr){
 #define OPV 0x57 
 #define LOADFP 0x07
 #define STOREFP 0x27 
 #define AMO 0x30
 	unsigned int rs1 = (instr>>15)&0x1F;
 	unsigned int rs2 = (instr>>20)&0x1F;
-	unsigned int dst = (instr>>7)&0x1F;
+	//unsigned int dst = (instr>>7)&0x1F;
 	unsigned int major = (instr)&0x7F;
-	unsigned int masked = ((instr>>25)&0x01)?0:1;
+	//unsigned int masked = ((instr>>25)&0x01)?0:1;
 	unsigned int funct3=(instr>>12)&0x7;
-	unsigned int mew,mop;
+	unsigned int mop;
+	//unsigned int mew;
 	unsigned int nf;
 
 	switch(major){
 		case LOADFP: //funct3 is then width
 			mop=(instr>>26)&0x3;
-			mew=(instr>>28)&0x1;
+			//mew=(instr>>28)&0x1;
 			nf=(instr>>29)&0x7;
 			switch(mop){
 				case 0: //Unit stride //rs2 is then lumop
@@ -815,8 +816,8 @@ int instr2prv(unsigned int instr){
 				return 1001; //vsetvl
 				break;
 			}else if ((((instr>>31) & 0x1)==0) && (((instr>>12)&0x7)==7)){ //is vsetvli
-				unsigned int sew = 1 << (((instr>>22)&0x7)+3);
-				unsigned int lmul = (((instr>>20)&0x3)+1);
+				//unsigned int sew = 1 << (((instr>>22)&0x7)+3);
+				//unsigned int lmul = (((instr>>20)&0x3)+1);
 				return 1002; //vsetvli
 				break;
 			}

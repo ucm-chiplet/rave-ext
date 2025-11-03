@@ -21,6 +21,7 @@
 #define T_UNIT   0x0003
 #define T_STRIDE 0x0004
 #define T_INDEX  0x0005
+#define T_SPILL  0x0006
 
 
 #if 1
@@ -33,7 +34,6 @@ struct instr_basic_data{
 	uint16_t type;
 	//enum instr_type type;
 	uint32_t instr32;
-	int symbol_id;
   uint64_t PC;
 };
 typedef struct instr_basic_data instr_basic_data;
@@ -42,7 +42,6 @@ struct instr_data{
 	//enum instr_type type;
 	uint16_t type;
 	uint32_t instr32; //Only for strided...and mem eew.. and scalar mem?
-	int symbol_id;
 
   uint64_t PC;
 	uint32_t paraver_code;
@@ -64,14 +63,11 @@ typedef struct qemu_event qemu_event;
 
 //static instr_data * scalar_empty_struct;
 
-extern char contains_string(char * str, const char * find);
-
-
 #define MAJOR_LOAD 0b0000111
 #define MAJOR_STORE 0b0100111
 #define MAJOR_ARITH 0b1010111
 #define get_bit_field(insn_opcode, high, low) ((insn_opcode >> low) & ((1<<(high-low+1))-1))
-int16_t instr_set_type(uint32_t insn_opcode){
+static int16_t instr_set_type(uint32_t insn_opcode){
 				int16_t type = T_VECTOR; 
 				int16_t subtype = T_OTHER;
 				int16_t subsubtype = T_NOTYPE;
@@ -88,7 +84,11 @@ int16_t instr_set_type(uint32_t insn_opcode){
 												else if (mop == 3 || mop == 7) subsubtype = T_INDEX; 
 #else
 												mop = get_bit_field(insn_opcode,27,26);
-												if (mop == 0) subsubtype = T_UNIT;
+												if (mop == 0){
+													unsigned int rs2 = get_bit_field(insn_opcode,24,20);
+													if (rs2 == 8) subsubtype = T_SPILL;
+													else subsubtype = T_UNIT;
+												}
 												else if (mop == 2) subsubtype = T_STRIDE;
 												else if (mop == 1 || mop == 3) subsubtype = T_INDEX; 
 #endif
@@ -185,7 +185,9 @@ int16_t instr_set_type(uint32_t insn_opcode){
 }
 
 
-instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
+static char contains_string(char * str, const char * find);
+
+static instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 
 	char * instr_fields[8]; //8 is more than enough
 
@@ -237,7 +239,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 
 	if (contains_string(instr_fields[0], "vset")){
 		data -> type = T_VSETVL;
-		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode); 
+		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode);
 	}else if (instr_fields[0][0]=='v'){
 		data -> type = instr_set_type(insn_opcode);
 
@@ -245,8 +247,8 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode){
 			//change it back to "memory" (general)
 			data -> type &= 0x0F0F;
 			data -> type |= T_MEMORY;
-			data -> src3 = data -> dst;
-			data -> dst = 0;
+			//data -> src3 = data -> dst;
+			//data -> dst = 0;
 		}
 		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode);
 	}else{

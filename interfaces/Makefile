@@ -1,4 +1,5 @@
-all: f_module #py_module
+all: clean f_module #py_module
+
 
 f_module:
 	clang rave_fortran_c_func.c -c -o rave_fortran_c_func.o
