@@ -45,12 +45,6 @@ else
 	cp ${rave_sources_dir}/instr2prv_0_7.c contrib/plugins/.
 	cp ${rave_sources_dir}/example_trace_0_7.c contrib/plugins/.
 fi
-<<<<<<< HEAD
-cp ${rave_sources_dir}/07_decode.h contrib/plugins/.
-cp ${rave_sources_dir}/instr_data.h contrib/plugins/.
-cp ${rave_sources_dir}/rave_counters.h contrib/plugins/.
-cp ${rave_sources_dir}/rave2prv.h contrib/plugins/.
-=======
 cp ${rave_sources_dir}/profiling.c contrib/plugins/.
 cp ${rave_sources_dir}/formatting.c contrib/plugins/.
 cp ${rave_sources_dir}/07_decode.c contrib/plugins/.
@@ -60,7 +54,6 @@ cp ${rave_sources_dir}/rave_events.c contrib/plugins/.
 cp ${rave_sources_dir}/rave_regions.c contrib/plugins/.
 #cp ${rave_sources_dir}/rave_regions_legacy.c contrib/plugins/.
 cp ${rave_sources_dir}/rave2prv.c contrib/plugins/.
->>>>>>> origin/new_regions
 
 if ! grep -q $plugin_name contrib/plugins/Makefile; then
 	sed	 -i "/^NAMES :=/a NAMES += ${plugin_name}" contrib/plugins/Makefile
@@ -79,6 +72,7 @@ fi
 
 mkdir -p $install_dir
 cp build/contrib/plugins/librave.so $install_dir/.
+#cp build/contrib/plugins/libcache.so $install_dir/.
 
 mkdir -p $install_dir/../bin
 cp ${rave_sources_dir}/rave-$EXT.sh $install_dir/../bin/rave
@@ -91,7 +85,7 @@ echo "Building the API...[2/2]"
 cd -
 if [[ "$EXT" == "1_0" ]]; then
 	LLVM_DIR=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross
-	export PATH=${LLVM_DIR}/bin/:$PATH
+	export PATH=`pwd`/build/llvm-cross/llvm-EPI-development-toolchain-cross/bin/:$PATH
 	cd interfaces
 	make
 	cd -
