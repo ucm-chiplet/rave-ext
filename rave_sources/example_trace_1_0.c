@@ -800,6 +800,7 @@ fprintf(fd,
 "536 vluxseg3ei64\n"
 "537 vluxseg4ei8\n"
 "538 vluxseg4ei16\n"
+"538 vluxseg5ei16\n"
 "539 vluxseg4ei32\n"
 "540 vluxseg4ei64\n"
 "541 vluxseg5ei8\n"
@@ -911,6 +912,7 @@ fprintf(fd,
 "869 vssseg5e32\n"
 "870 vssseg5e64\n"
 "871 vssseg6e8\n"
+"871 vssseg7e8\n"
 "872 vssseg6e16\n"
 "873 vssseg6e32\n"
 "874 vssseg6e64\n"
@@ -977,7 +979,6 @@ fprintf(fd,
 "936 vsoxseg8ei16\n"
 "937 vsoxseg8ei32\n"
 "938 vsoxseg8ei64\n"
-
 "999 unsupported\n"
 "1000 scalar\n"
 "1001 vsetvl\n"

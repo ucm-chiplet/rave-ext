@@ -384,7 +384,12 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 			if (row_change && !MUSA){ 
 				set_lock(write_lock);
 				trace_row(mpi_rank, cpu_index, cpus_state[cpu_index].last_row, thread_timestamp);
-				clean_event(FD_PRV); 
+				if (row == SCALAR_ROW){
+					clean_event(FD_PRV);
+				}
+				else{
+					clean_event_scalar(FD_PRV);
+				}
 				release_lock(write_lock);
 			}
 			//Scalar instructions should always be printed when: row changed(1), type changed (2), is first scalar in the trace (3)

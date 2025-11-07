@@ -1014,7 +1014,6 @@ fprintf(fd,
 "925 vsuxseg8h\n"
 "926 vsuxseg8w\n"
 "927 vsuxseg8e\n"
-
 "999 unsupported\n"
 "1000 scalar\n"
 "1001 vsetvl\n"
