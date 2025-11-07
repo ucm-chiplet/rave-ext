@@ -1045,6 +1045,9 @@ fprintf(fd,
 "9   47000019     granted-vector-length\n"
 
 "EVENT_TYPE\n"
+"9   47000020     requested-vector-length\n"
+
+"EVENT_TYPE\n"
 "9   47000031     single-element-width\n"
 "VALUES\n"
 "0 e8\n"
