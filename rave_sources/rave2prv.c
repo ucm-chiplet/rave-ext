@@ -8,6 +8,7 @@
 #define event_instruction 47000015
 #define event_class 47000016
 #define event_vl 47000019
+#define event_rvl 47000020
 #define event_VLEN 47000029
 #define event_ELEN 47000030
 #define event_sew 47000031
@@ -27,9 +28,10 @@
 #define event_stride "48000000"
 #endif
 
-#define clean_event(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_pc, event_scalb, event_addr, event_dst, event_src1, event_src2, event_instruction, event_class, event_vl, event_sew, event_lmul, event_stride)
+#define clean_event(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_pc, event_scalb, event_addr, event_dst, event_src1, event_src2, event_instruction, event_class, event_vl, event_rvl, event_sew, event_lmul, event_stride)
 
-#define clean_event_scalar(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_pc, event_dst, event_src1, event_src2, event_instruction, event_class)
+#define clean_event_vector(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_scalb, event_addr, event_dst, event_src1, event_src2, event_vl, event_sew, event_lmul, event_stride)
+#define clean_event_scalar(PRV) fprintf(PRV, ":%d:0", event_rvl)
 
 
 //Added in 1.0

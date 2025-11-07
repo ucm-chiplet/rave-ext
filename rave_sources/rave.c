@@ -304,7 +304,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 	}
 
 	int row = SCALAR_ROW;
-	uint64_t vl=0, vtype, sew=3, lmul=1;
+	uint64_t vl=0, vtype, sew=3, lmul=1, rvl=0;
 	//double lmul_value;
 	uint64_t addr = 0;
 	int stride = 0;
@@ -351,6 +351,10 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 			vl = RAVE_VLMAX / 8; //vl
 #endif
 		}
+	}else if (is_type(instr->type, T_VSETVL)){ 
+				uint8_t *cpu = qemu_get_cpu(cpu_index);
+				int src1 = (instr->instr32>>15)&0x1F;
+				rvl = qemu_get_xreg(cpu,src1);
 	}
 
 
@@ -385,7 +389,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 				set_lock(write_lock);
 				trace_row(mpi_rank, cpu_index, cpus_state[cpu_index].last_row, thread_timestamp);
 				if (row == SCALAR_ROW){
-					clean_event(FD_PRV);
+					clean_event_vector(FD_PRV);
 				}
 				else{
 					clean_event_scalar(FD_PRV);
@@ -428,6 +432,7 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 					trace_event_value(event_dst, instr->dst);
 				}
 				trace_event_value(event_src1, instr->src1);
+				trace_event_value(event_rvl, rvl); 
 				release_lock(write_lock);
 			}else{ //TRACE_SCALAR || (instr!=SCALAR && instr!=VSETVL)
 				set_lock(write_lock);
