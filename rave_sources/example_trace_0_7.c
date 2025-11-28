@@ -1029,6 +1029,7 @@ fprintf(fd,
 "547 v_mem_unit\n"
 "548 v_mem_stride\n"
 "549 v_mem_index\n"
+"550 v_mem_spill\n"
 "576 v_mask\n"
 "768 vsetvl\n"
 

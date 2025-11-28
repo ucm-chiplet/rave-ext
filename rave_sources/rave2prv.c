@@ -223,7 +223,7 @@ static void events_and_values_to_pcf(FILE * fd, int event){
 		region_unique_list_t * curr = first_unique_region;
 		if (curr!=NULL) fprintf(fd,"VALUES\n");
 		while (curr != NULL){
-			if (curr->region->nesting==i) fprintf(fd,"%d\t%s\n",curr->region_id, curr->region->name);
+			/*if (curr->region->nesting==i)*/ fprintf(fd,"%d\t%s\n",curr->region_id, curr->region->name);
 			curr = curr->next;
 		}
 	}

@@ -13,11 +13,11 @@ Control RAVE internals:
  - RAVE_CUSTOM_EXTENSIONS: Appends RISC-V extensions to the QEMU cpu (e.g. \"zicbom=true,zicboz=true,zicbop=true,zicond=true\" to emulate the bananapif3 boards). 
 
 Control logfile generation:
- - RAVE_LOGFILE: If set to \"1\", a logfile is generated with all the executed instructions. (default: 0).
+ - RAVE_PRINT_LOGFILE: If set to \"1\", a logfile is generated with all the executed instructions. (default: 0).
  - RAVE_LOGFILE_NAME: Sets the name of the generated logfile (default: qemulog.log). Additionally, automatically sets RAVE_LOGFILE to 1.
 
 Control PRV generation:
- - RAVE_PRV: If set to \"1\", a paraver trace is generated with all the executed instructions. (default: 0).
+ - RAVE_PRINT_PRV: If set to \"1\", a paraver trace is generated with all the executed instructions. (default: 0).
  - RAVE_PRV_NAME: Sets the name of the generated paraver trace (default: qemutrace). Additionally, automatically sets RAVE_PRV to 1.
  - RAVE_REGION_EVENT: Set paraver event where the first nesting level of regions will be mapped. (default: 1000) 
 
@@ -25,13 +25,13 @@ Control report / profile / csv generation:
  - RAVE_PLAIN_TEXT: Print the report/profile without colours or highlighted text. (default: 0).
  - RAVE_ACCUM_REGIONS: If set to "1", a region that appears twice will be aggregated/accumulated. (default: 0).
 
- - RAVE_REPORT: If set to "1", the tracer will print to stdout a hardware counter summary for each executed code region. (default: 0).
+ - RAVE_PRINT_REPORT: If set to "1", the tracer will print to stdout a hardware counter summary for each executed code region. (default: 0).
  - RAVE_REPORT_NAME: Redirects the report to the provided file name. Additionally, automatically sets RAVE_REPORT to 1. 
 
- - RAVE_PROFILE: If set to "1", the tracer will print to stdout a profiling of the executed loops. (default: 0).
+ - RAVE_PRINT_PROFILE: If set to "1", the tracer will print to stdout a profiling of the executed loops. (default: 0).
  - RAVE_PROFILE_NAME: Redirects the profile to the provided file name. Additionally, automatically sets RAVE_PROFILE to 1. 
 
- - RAVE_CSV: If set to "1", the tracer will print a CSV with the hardware counter summary for each executed code region. (default: 0).
+ - RAVE_PRINT_CSV: If set to "1", the tracer will print a CSV with the hardware counter summary for each executed code region. (default: 0).
  - RAVE_CSV_NAME: Sets the name of the generated csv trace (default: qemu_summary.csv). Additionally, automatically sets RAVE_CSV to 1.
 "
 	exit -1

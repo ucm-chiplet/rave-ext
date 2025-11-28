@@ -39,7 +39,7 @@ contains
     end do
     call rave_end_region("ini_B")
 
-    call rave_stop_trace();
+    call rave_disable();
 
     call rave_begin_region("ini_C")
     !$omp simd
@@ -48,7 +48,7 @@ contains
     end do
     call rave_end_region("ini_C")
 
-    call rave_start_trace();
+    call rave_enable();
 
   end subroutine initialize
 

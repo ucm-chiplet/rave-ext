@@ -195,7 +195,6 @@ static int resolve_pc_to_source(Dwarf_Addr pc, const char ** symbol, const char 
 		 	dwfl_line = dwfl_module_getsrc(mod, pc);
 			*symbol = dwfl_module_addrname(mod, pc);
 		}
-
     if (!dwfl_line) {
         //fprintf(stderr, "dwfl_[module]_getsrc failed @%08lx: %s\n", pc, dwfl_errmsg(-1));
         return -1;

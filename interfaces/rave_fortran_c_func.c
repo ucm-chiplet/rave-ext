@@ -23,9 +23,15 @@ void rave_end_region_f(char * name, int length){
 void rave_restart_trace_f(){
  	rave_restart_trace();
 }
-void rave_start_trace_f(){
-	rave_start_trace();
+void rave_enable_trace_f(){
+	rave_enable_trace();
 }
-void rave_stop_trace_f(){
-	rave_stop_trace();
+void rave_disable_trace_f(){
+	rave_disable_trace();
+}
+void rave_enable_regions_f(){
+	rave_enable_regions();
+}
+void rave_disable_regions_f(){
+	rave_disable_regions();
 }

@@ -6,6 +6,7 @@ struct region_t{
 	rave_counters delta_counters;
 	rave_counters acc_counters;
 	int opened_by;
+	//int enabled;
 };
 typedef struct region_t region_t;
 
@@ -86,7 +87,7 @@ static region_node_t* dfs_find_recursive(region_node_t* curr, const char * name)
 }
 
 //TODO: End child regions too?
-static void rave_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate){
+static void rave_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate/*, int enabled*/){
 
 
 	//Find the open region it's closing (if there's no open region, do nothing)
@@ -95,11 +96,12 @@ static void rave_end_region(int cpu_index, const char * name, rave_counters * cu
 	//We can also assert that if accumulate is set to one, only one region with that name will exist
 	
 	if (track_regions.stack_top != NULL && 
-			track_regions.stack_top->region_node != NULL && 
-			strcmp(track_regions.stack_top -> region_node->region.name,name)==0){
+			track_regions.stack_top->region_node != NULL /*&& 
+			(name[0]=='\0' || strcmp(track_regions.stack_top -> region_node->region.name,name)==0)*/){
 
 		update_counters(&track_regions.stack_top->region_node->region.delta_counters, current_counters);
 		track_regions.stack_top->region_node->region.closed = 1;
+		//track_regions.stack_top->region_node->region.enabled |= enabled;
 		track_regions.stack_top->region_node->region.executions++; 
 		--track_regions.nesting;
 		++track_regions.total_regions;
@@ -118,7 +120,7 @@ static void rave_end_region(int cpu_index, const char * name, rave_counters * cu
 }
 
 
-static void rave_begin_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate){
+static void rave_begin_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate/*, int enabled*/){
 
 	++track_regions.nesting;
 	if (track_regions.max_nested < track_regions.nesting) track_regions.max_nested = track_regions.nesting;
@@ -135,6 +137,7 @@ static void rave_begin_region(int cpu_index, const char * name, rave_counters * 
 				update_counters(&curr->region.delta_counters, current_counters);
 				curr -> region.delta_counters = *current_counters;
 				curr -> region.closed = 0;
+				//curr -> region.enabled |= enabled;
 				track_regions.stack_top -> region_node = curr; 
 				track_regions.stack_top = new_top;
 				return;
@@ -172,6 +175,7 @@ static void rave_begin_region(int cpu_index, const char * name, rave_counters * 
 
 
 	//Initialize region:
+	//new_node -> region.enabled |= enabled;
 	new_node -> region.closed = 0;
 	new_node -> region.executions = 0;
 	new_node -> region.nesting = track_regions.nesting;
@@ -230,7 +234,7 @@ static void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate,
 	if (curr==NULL) return;
 
 
-		if (curr->region.closed){
+		if (curr->region.closed/* && curr->region.enabled*/){
 			//Control nesting of output:
 			ic.spaces = 4;
 			//last = 1 if it has no more siblings
@@ -293,7 +297,7 @@ static void print_region_report(FILE * fd, int accumulate){
 
 static void dfs_csv_recursive(region_node_t* curr, FILE * fd, int accumulate, int * nregion){
 	if (curr==NULL) return;
-		if (curr->region.closed){
+		if (curr->region.closed/* && curr->region.enabled*/){
 			fprintf(fd,"%d,%d,%d,%s,%d,%d",mpi_rank, curr->region.opened_by, *nregion, curr->region.name, curr->region.nesting, curr->region.executions);
 			print_counters_csv(fd, accumulate ? &curr->region.acc_counters : &curr->region.delta_counters);
 			*nregion = *nregion+1;

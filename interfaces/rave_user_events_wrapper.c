@@ -11,12 +11,38 @@ static PyObject* py_rave_restart_trace(PyObject* self, PyObject* args) {
     rave_restart_trace(); // Call the C function
     Py_RETURN_NONE;  // Return None in Python
 }
+//Maintaining old start/stop functions instead of enable/disable
 static PyObject* py_rave_start_trace(PyObject* self, PyObject* args) {
-    rave_start_trace(); // Call the C function
+    rave_enable_trace(); // Call the C function
     Py_RETURN_NONE;  // Return None in Python
 }
 static PyObject* py_rave_stop_trace(PyObject* self, PyObject* args) {
-    rave_stop_trace(); // Call the C function
+    rave_disable_trace(); // Call the C function
+    Py_RETURN_NONE;  // Return None in Python
+}
+//New naming convention:
+static PyObject* py_rave_enable_trace(PyObject* self, PyObject* args) {
+    rave_enable_trace(); // Call the C function
+    Py_RETURN_NONE;  // Return None in Python
+}
+static PyObject* py_rave_disable_trace(PyObject* self, PyObject* args) {
+    rave_disable_trace(); // Call the C function
+    Py_RETURN_NONE;  // Return None in Python
+}
+static PyObject* py_rave_enable_regions(PyObject* self, PyObject* args) {
+    rave_enable_regions(); // Call the C function
+    Py_RETURN_NONE;  // Return None in Python
+}
+static PyObject* py_rave_disable_regions(PyObject* self, PyObject* args) {
+    rave_disable_regions(); // Call the C function
+    Py_RETURN_NONE;  // Return None in Python
+}
+static PyObject* py_rave_enable(PyObject* self, PyObject* args) {
+    rave_enable()
+    Py_RETURN_NONE;  // Return None in Python
+}
+static PyObject* py_rave_disable(PyObject* self, PyObject* args) {
+    rave_disable()
     Py_RETURN_NONE;  // Return None in Python
 }
 static PyObject* py_rave_name_event(PyObject* self, PyObject* args) {

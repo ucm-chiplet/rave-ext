@@ -11,13 +11,19 @@ module rave_user_events
        use iso_c_binding
     end subroutine rave_restart_trace
 
-    subroutine rave_start_trace() bind(c, name="rave_start_trace_f")
+    subroutine rave_enable_trace() bind(c, name="rave_enable_trace_f")
        use iso_c_binding
-    end subroutine rave_start_trace
+    end subroutine rave_enable_trace
+    subroutine rave_disable_trace() bind(c, name="rave_disable_trace_f")
+       use iso_c_binding
+    end subroutine rave_disable_trace
 
-    subroutine rave_stop_trace() bind(c, name="rave_stop_trace_f")
+    subroutine rave_enable_regions() bind(c, name="rave_enable_regions_f")
        use iso_c_binding
-    end subroutine rave_stop_trace
+    end subroutine rave_enable_regions
+    subroutine rave_disable_regions() bind(c, name="rave_disable_regions_f")
+       use iso_c_binding
+    end subroutine rave_disable_regions
 
     subroutine rave_begin_region_internal(name,length) &
                  bind(c, name="rave_begin_region_f")
@@ -51,6 +57,24 @@ module rave_user_events
 
 
 contains
+
+  !Maintaining old start/stop functions instead of enable/disable
+  subroutine rave_start_trace()
+    call rave_enable_trace()
+  end subroutine rave_start_trace
+  subroutine rave_stop_trace()
+    call rave_disable_trace()
+  end subroutine rave_stop_trace
+
+  subroutine rave_enable()
+    call rave_enable_trace()
+    call rave_enable_regions()
+  end subroutine rave_enable
+
+  subroutine rave_disable()
+    call rave_disable_trace()
+    call rave_disable_regions()
+  end subroutine rave_disable
 
   subroutine rave_begin_region(name)
     character(kind=c_char, len=*), target :: name

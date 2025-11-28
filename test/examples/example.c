@@ -15,7 +15,8 @@ void initialize(int N, double *A, double *B, double *C){
 	}
 	rave_end_region("ini_B");
 
-	rave_stop_trace();
+	//rave_disable();
+	rave_disable_trace();
 
 	rave_begin_region("ini_C");
 	#pragma clang loop vectorize(enable)
@@ -24,7 +25,10 @@ void initialize(int N, double *A, double *B, double *C){
 	}
 	rave_end_region("ini_C");
 
-	rave_start_trace();
+	//rave_enable();
+	rave_enable_trace();
+
+
 }
 
 __attribute__ ((noinline))
