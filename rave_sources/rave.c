@@ -45,6 +45,7 @@ char TRACE_SCALAR = 0;
 char TRACE_ADDR = 0;
 char PRINT_PRV = 0;
 char PRINT_REPORT = 0;
+char STREAM_REPORT = 0;
 char PRINT_PROFILE = 0;
 char PRINT_CSV = 0;
 char TRACE_ENABLED = 1; //Enabled by default 
@@ -608,7 +609,7 @@ static void vcpu_rave_end_region(unsigned int cpu_index, void * insn_opcode_void
 	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
 	char data[128];
 	rave_read_string(cpu_index, insn_opcode, data, 128);
-	rave_end_region(cpu_index, data, &cpus_state[cpu_index].accum_counters, ACCUM_REGIONS);
+	rave_end_region(cpu_index, data, &cpus_state[cpu_index].accum_counters, ACCUM_REGIONS, STREAM_REPORT?FD_REPORT:NULL);
 	region_trace(cpu_index, REGION_EVENT+track_regions.nesting, 0);
 	if (PRINT_LOGFILE){
 		char * string = g_strdup_printf("End region %s\n", data);
@@ -1029,11 +1030,11 @@ static void newthread_cb(void){
 			}
 		}
 
-		rave_end_region(-1, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS);
+		rave_end_region(-1, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS, NULL);
 
 		//print_samples();
 		//rave_eventandcounters(-1, 0, -1, &global_counters); //End Global event
-		if(PRINT_REPORT){
+		if(PRINT_REPORT && !STREAM_REPORT){
 			//Warning:
 			if (track_regions.total_regions<=1){
 				P_WARNING(FD_REPORT, "%s\n","----------------- WARNING! ---------------");
@@ -1244,6 +1245,7 @@ static void newthread_cb(void){
 			else if (contains_string(argv[i], "PRINT_PRV")) PRINT_PRV = 1;
 			else if (contains_string(argv[i], "PRINT_LOGFILE")) PRINT_LOGFILE = 1;
 			else if (contains_string(argv[i], "PRINT_REPORT")) PRINT_REPORT = 1;
+			else if (contains_string(argv[i], "STREAM_REPORT")) STREAM_REPORT = 1;
 			else if (contains_string(argv[i], "PRINT_CSV")) PRINT_CSV = 1;
 			else if (contains_string(argv[i], "PRINT_PROFILE")) PRINT_PROFILE = 1;
 			else if (contains_string(argv[i], "ACCUM_REGIONS")) ACCUM_REGIONS = 1;

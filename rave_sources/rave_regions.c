@@ -86,8 +86,9 @@ static region_node_t* dfs_find_recursive(region_node_t* curr, const char * name)
 	return NULL;
 }
 
-//TODO: End child regions too?
-static void rave_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate/*, int enabled*/){
+static void print_region_human(FILE * fd, int n, region_t * region, int accumulate, int indent_region, int last_child, int no_childs);
+
+static void rave_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate, FILE * fd){
 
 
 	//Find the open region it's closing (if there's no open region, do nothing)
@@ -108,6 +109,10 @@ static void rave_end_region(int cpu_index, const char * name, rave_counters * cu
 		if (accumulate){
 			//avg_counters(&curr->region.acc_counters, &curr->region.delta_counters, curr->region.executions);
 			add_counters(&(track_regions.stack_top->region_node->region.acc_counters), &(track_regions.stack_top->region_node->region.delta_counters));
+		}
+
+		if (fd!=NULL){ //Streaming mode
+			print_region_human(fd, track_regions.total_regions-1, &track_regions.stack_top->region_node->region, 0, 0, 1, 1);
 		}
 
 		region_stack_t * prev = track_regions.stack_top->prev;
@@ -228,53 +233,50 @@ static void free_regions(void){
 	}
 }
 
-
 extern int mpi_rank;
-static void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate, int * nregion){
-	if (curr==NULL) return;
-
-
-		if (curr->region.closed/* && curr->region.enabled*/){
+static void print_region_human(FILE * fd, int n, region_t * region, int accumulate, int indent_region, int last_child, int no_childs){
 			//Control nesting of output:
 			ic.spaces = 4;
-			//last = 1 if it has no more siblings
-			int last=0;
-			if (curr->next_sibling == NULL) last = 1;
 
 			//If we accumulate, we don't indent
-			if (!accumulate){
-				indent(fd,curr->region.nesting, last);
+			if (indent_region){
+				indent(fd,region->nesting, last_child);
 			}
 
 			//Print header
-			//rave_counters * c = accumulate ? &curr->region.acc_counters : &curr->region.delta_counters;
-			//double weight = 100.0*get_tot_instr(c)/get_tot_instr(&track_regions.first_region->region.delta_counters);
-
 			if (!PLAIN_TEXT) fprintf(fd, BOLD_WHITE);	
 
-			fprintf(fd,"Region #%d: ", *nregion);
-			P_NAME(fd,"%s",curr->region.name);
-			if (!accumulate) fprintf(fd," [Nesting: %d]",curr->region.nesting);
-			fprintf(fd," (Rank: %d, Thread: %d)", mpi_rank,curr->region.opened_by);
+			fprintf(fd,"Region #%d: ", n);
+			P_NAME(fd,"%s",region->name);
+			if (!accumulate) fprintf(fd," [Nesting: %d]",region->nesting);
+			fprintf(fd," (Rank: %d, Thread: %d)", mpi_rank,region->opened_by);
 			if (accumulate){
-			 	fprintf(fd,". Executed %d times%s", curr->region.executions,curr->region.executions>1?" (counters are averaged)":"");
-				mul_counters(&curr->region.delta_counters, &curr->region.acc_counters, 1.0/curr->region.executions);
+			 	fprintf(fd,". Executed %d times%s", region->executions,region->executions>1?" (counters are averaged)":"");
+				mul_counters(&region->delta_counters, &region->acc_counters, 1.0/region->executions);
 			}
 			fprintf(fd,"\n");
 
 			if (!PLAIN_TEXT) fprintf(fd, CLEAR_FORMAT);	
 
 			//Print counters:
-			last=0;
-			//If we accumulate, we don't indent, so all childs are single-childs
-			if (accumulate || curr->first_child == NULL) last = 1; 
-			indent(fd, accumulate ? 1 : curr->region.nesting+1, last); P_COUNTERS(fd, "%s\n", "Counters:");
+			indent(fd, accumulate ? 1 : region->nesting+1, accumulate || no_childs); P_COUNTERS(fd, "%s\n", "Counters:");
 			ic.spaces = 4;
 
-			print_counters_human(fd, &curr->region.delta_counters);
+			print_counters_human(fd, &region->delta_counters);
+}
+
+static void dfs_report_recursive(region_node_t* curr, FILE * fd, int accumulate, int * nregion){
+	if (curr==NULL) return;
+
+		if (curr->region.closed/* && curr->region.enabled*/){
+			//last = 1 if it has no more siblings
+			//If we accumulate, we don't indent, so all childs are single-childs
+//			int last = (accumulate || curr->next_sibling == NULL || curr->first_child == NULL);
+			int last_child = curr->next_sibling == NULL;
+			int no_childs = curr->first_child == NULL;
+			print_region_human(fd, *nregion, &curr->region, accumulate, !accumulate, last_child, no_childs); 
 			*nregion = *nregion+1;
 		}
-
 
 	region_node_t* child = curr->first_child;
 	if (child==NULL) return;

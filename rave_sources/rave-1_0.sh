@@ -25,8 +25,10 @@ Control report / profile / csv generation:
  - RAVE_PLAIN_TEXT: Print the report/profile without colours or highlighted text. (default: 0).
  - RAVE_ACCUM_REGIONS: If set to "1", a region that appears twice will be aggregated/accumulated. (default: 0).
 
- - RAVE_PRINT_REPORT: If set to "1", the tracer will print to stdout a hardware counter summary for each executed code region. (default: 0).
+ - RAVE_PRINT_REPORT: If set to "1", the tracer will print to stdout a vector counter summary for each executed code region. (default: 0).
  - RAVE_REPORT_NAME: Redirects the report to the provided file name. Additionally, automatically sets RAVE_REPORT to 1. 
+ - RAVE_STREAM_REPORT: If set to "1", the report of each region is printed immediately when that region is closed (default: 0). automatically sets RAVE_PRINT_REPORT to 1.
+
 
  - RAVE_PRINT_PROFILE: If set to "1", the tracer will print to stdout a profiling of the executed loops. (default: 0).
  - RAVE_PROFILE_NAME: Redirects the profile to the provided file name. Additionally, automatically sets RAVE_PROFILE to 1. 
@@ -76,6 +78,10 @@ fi
 if [ "$RAVE_PRINT_REPORT" == "1" ]; then #OPT-in
 	args=$args",PRINT_REPORT=on"
 fi
+if [ "$RAVE_STREAM_REPORT" == "1" ]; then #OPT-in
+	args=$args",STREAM_REPORT=on"
+fi
+
 if [ "$RAVE_ACCUM_REGIONS" == "1" ]; then #OPT-in
 	args=$args",ACCUM_REGIONS=on"
 fi
