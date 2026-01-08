@@ -148,6 +148,11 @@ You can instrument your code using the RAVE API. Althought you can use RAVE with
 |---------------|--------------|
 | **rave_begin_region(char \* name)** | Starts a region with the given name. If another region was open, increases the nesting level. |
 | **rave_end_region(char \* name)** | Ends a region with that given name. |
+
+You can also enable and disable the tracing mechanisms with these calls:
+
+| Rave API call | Description  |
+|---------------|--------------|
 | **rave_restart_trace()** | Erase all traced metrics and counters up to this point, and start tracing again. |
 | **rave_enable_trace()** | After this call, vector instructions are included in the paraver trace. |
 | **rave_disable_trace()** | After this call, vector instructions are **not** included in the paraver trace. |
@@ -157,10 +162,13 @@ You can instrument your code using the RAVE API. Althought you can use RAVE with
 | **rave_disable()** | Calls both **rave_disable_regions()** and **rave_disable_regions()** | 
 
 
-You can also add event and value tupples to your paraver traces using these calls:
- - **rave_name_event(int x, char \* name)**: Assigns `name` to event `x`.
- - **rave_name_value(int x, int y, char \* name)**: Assigns `name` to value `y` of event `x`.
- - **rave_event_and_value(x,y)**: Add a tuple of event=`x` and value=`y` to the trace, used to separate code regions
+Finally, you can also add event and value tupples to your paraver traces using these calls:
+
+| Rave API call | Description  |
+|---------------|--------------|
+| **rave_name_event(int x, char \* name)** | Assigns `name` to event `x`. |
+| **rave_name_value(int x, int y, char \* name)** | Assigns `name` to value `y` of event `x`. |
+| **rave_event_and_value(x,y)** | Add a tuple of event=`x` and value=`y` to the trace, used to separate code regions. |
 
 You can then use this API in your code and compilations.  
 
