@@ -158,8 +158,8 @@ You can also enable and disable the tracing mechanisms with these calls:
 | **rave_disable_trace()** | After this call, vector instructions are **not** included in the paraver trace. |
 | **rave_enable_regions()** | After this call, instrumented code regions are counted and included in the reports (enabled by default) |
 | **rave_disable_regions()** | After this call, instrumented code regions are ignored and excluded in the reports |
-| **rave_enable()** | Calls both **rave_enable_regions()** and **rave_disable_regions()** | 
-| **rave_disable()** | Calls both **rave_disable_regions()** and **rave_disable_regions()** | 
+| **rave_enable()** | Calls both **rave_enable_regions()** and **rave_enable_trace()** | 
+| **rave_disable()** | Calls both **rave_disable_regions()** and **rave_disable_trace()** | 
 
 
 Finally, you can also add event and value tupples to your paraver traces using these calls:
