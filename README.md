@@ -254,7 +254,6 @@ def main():
 ```
 
 ### Examples of reports and profiles
->>>>>>> origin/new_regions
 
 For example, generate a RAVE report like this:
 
