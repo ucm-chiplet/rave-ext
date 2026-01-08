@@ -144,11 +144,18 @@ Control report / profile / csv generation:
 
 You can instrument your code using the RAVE API. Althought you can use RAVE without instrumentation, we recommend taking a look on the API's functions defined in the `interfaces/rave_user_events.h` header. You can instrument the code into regions using:
 
- - **rave_begin_region(char \* name)**: Starts a region with the given name. If another region was open, increases the nesting level.
- - **rave_end_region(char \* name)**: Ends a region with that given name.
- - **rave_restart_trace()**: Erase all traced metrics and counters up to this point, and start tracing again.
- - **rave_start_trace()**: After this call, record metrics, regions, and generate trace files.
- - **rave_stop_trace()**: After this call, do not record metrics, regions, or generate trace files.
+| Rave API call | Description  |
+|---------------|--------------|
+| **rave_begin_region(char \* name)** | Starts a region with the given name. If another region was open, increases the nesting level. |
+| **rave_end_region(char \* name)** | Ends a region with that given name. |
+| **rave_restart_trace()** | Erase all traced metrics and counters up to this point, and start tracing again. |
+| **rave_enable_trace()** | After this call, vector instructions are included in the paraver trace. |
+| **rave_disable_trace()** | After this call, vector instructions are **not** included in the paraver trace. |
+| **rave_enable_regions()** | After this call, instrumented code regions are counted and included in the reports |
+| **rave_disable_regions()** | After this call, instrumented code regions are ignored and excluded in the reports |
+| **rave_enable()** | Calls both **rave_enable_regions()** and **rave_disable_regions()** | 
+| **rave_disable()** | Calls both **rave_disable_regions()** and **rave_disable_regions()** | 
+
 
 You can also add event and value tupples to your paraver traces using these calls:
  - **rave_name_event(int x, char \* name)**: Assigns `name` to event `x`.
@@ -170,9 +177,9 @@ int main(){
 
 	rave_restart_trace();
 
-	rave_stop_trace()
+	rave_disable_trace()
 	/* ... Non-traced code ... */
-	rave_start_trace()
+	rave_enable_trace()
 
 	rave_begin_region("ini_A") 
 	for(int i=0; i<N; ++i)	A[i] = i;
@@ -199,9 +206,9 @@ program example
 
 
 	call rave_restart_trace()
-	call rave_stop_trace()
+	call rave_disable_trace()
 	! ... Non-traced code ... 
-	call rave_start_trace()
+	call rave_enable_trace()
 
   call rave_begin_region("ini_A")
   do i = 1, N
@@ -224,9 +231,9 @@ import rave_user_events
 def main():
 
     rave_user_events.rave_restart_trace()
-		rave_user_events.rave_stop_trace()
+		rave_user_events.rave_disable_trace()
 		# ... Non-traced code ... 
-		rave_user_events.rave_start_trace()
+		rave_user_events.rave_enable_trace()
 
     N = 256*10 + 13
     A = [0]*N
