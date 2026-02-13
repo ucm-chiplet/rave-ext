@@ -43,6 +43,20 @@
 #include "instr2prv_1_0.c"
 #endif
 
+#define PRV_SCALAR 1000
+int N_PIPELINES = 2;
+int MUSA = 0;
+
+static void trace_row(int process, int cpu, int pipeline, uint64_t timestamp){
+	pipeline=pipeline % N_PIPELINES; //For MUSA: pipeline will always be 0
+	fprintf(FD_PRV, "\n2:1:%d:%d:%d:%lu", process+1, cpu+1, pipeline+1, timestamp);
+}
+static void trace_event_value(int event, uint64_t value){
+	fprintf(FD_PRV, ":%d:%lu", event,value);
+}
+#define SCALAR_ROW 0
+#define VECTOR_ROW 1
+
 
 static int reg2prv(char * r){
 	if (strcmp(r, "zero")==0) return 102; 

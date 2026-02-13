@@ -45,15 +45,11 @@ else
 	cp ${rave_sources_dir}/instr2prv_0_7.c contrib/plugins/.
 	cp ${rave_sources_dir}/example_trace_0_7.c contrib/plugins/.
 fi
-cp ${rave_sources_dir}/profiling.c contrib/plugins/.
-cp ${rave_sources_dir}/formatting.c contrib/plugins/.
-cp ${rave_sources_dir}/07_decode.c contrib/plugins/.
-cp ${rave_sources_dir}/instr_data.c contrib/plugins/.
-cp ${rave_sources_dir}/rave_counters.c contrib/plugins/.
-cp ${rave_sources_dir}/rave_events.c contrib/plugins/.
-cp ${rave_sources_dir}/rave_regions.c contrib/plugins/.
-#cp ${rave_sources_dir}/rave_regions_legacy.c contrib/plugins/.
-cp ${rave_sources_dir}/rave2prv.c contrib/plugins/.
+
+for file in profiling.c formatting.c 07_decode.c instr_data.c rave_counters.c rave_events.c rave_regions.c rave2prv.c rave_threading.c rave_utils.c rave_init_exit.c rave_callbacks.c
+do
+	cp ${rave_sources_dir}/$file contrib/plugins/.
+done
 
 if ! grep -q $plugin_name contrib/plugins/Makefile; then
 	sed	 -i "/^NAMES :=/a NAMES += ${plugin_name}" contrib/plugins/Makefile
