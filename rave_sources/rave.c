@@ -480,11 +480,11 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 	}
 
 	// Counters //
-
-
 	if (is_type(instr->type, T_SCALAR)) {
 		cpus_state[cpu_index].scalar_instr_since_vector++;
 		++cpus_state[cpu_index].accum_counters.scalar_instr;
+		if (is_subsubsubtype(instr->type, T_FUSED)) cpus_state[cpu_index].accum_counters.scalarflops += 2;
+		else if (is_subsubsubtype(instr->type, T_SINGLE)) cpus_state[cpu_index].accum_counters.scalarflops += 1;
 
 		int opcode = (instr->instr32 & 0x3F);
 		if (opcode == 0b0000011 || opcode == 0b0100011 || opcode == 0b0000111 || opcode == 0b0100111){ 
@@ -502,12 +502,23 @@ static void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 		cpus_state[cpu_index].scalar_instr_since_vector=0;
 		++cpus_state[cpu_index].accum_counters.vector_instr[sew];
 		cpus_state[cpu_index].accum_counters.velem[sew] += vl;
-		if (is_subsubtype(instr->type, T_FP)){
-			++cpus_state[cpu_index].accum_counters.vfp_instr[sew];
-			cpus_state[cpu_index].accum_counters.velem_arith[sew] += vl; 
-		}else if (is_subsubtype(instr->type, T_INT)){
-			++cpus_state[cpu_index].accum_counters.vint_instr[sew];
-			cpus_state[cpu_index].accum_counters.velem_arith[sew] += vl; 
+		if (is_subtype(instr->type, T_ARITH)){
+			if (is_subsubtype(instr->type, T_FP)){
+				++cpus_state[cpu_index].accum_counters.vfp_instr[sew];
+				cpus_state[cpu_index].accum_counters.velem_arith[sew] += vl; 
+				if (is_subsubsubtype(instr->type, T_FUSED)) cpus_state[cpu_index].accum_counters.vectorflops += 2*vl; 
+				else cpus_state[cpu_index].accum_counters.vectorflops += vl;
+			}else if (is_subsubtype(instr->type, T_INT)){
+				++cpus_state[cpu_index].accum_counters.vint_instr[sew];
+				cpus_state[cpu_index].accum_counters.velem_arith[sew] += vl; 
+			}
+		}else if (is_subtype(instr->type, T_REDUCTION)){
+			cpus_state[cpu_index].accum_counters.velem_reductions[sew] += vl;
+			if (is_subsubtype(instr->type, T_FP)){
+				++cpus_state[cpu_index].accum_counters.vfp_reductions[sew];
+			}else if (is_subsubtype(instr->type, T_INT)){
+				++cpus_state[cpu_index].accum_counters.vint_reductions[sew];
+			}
 		}else if (is_subtype(instr->type, T_MASK)){
 			++cpus_state[cpu_index].accum_counters.vmask_instr[sew];
 			cpus_state[cpu_index].accum_counters.velem_mask[sew] += vl; 
@@ -916,7 +927,6 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 		init_dwfl(BINARY_NAME);
 	}
 
-
 	for (size_t i = 0; i < n; i++) {
 		/*
 		 * `insn` is shared between translations in QEMU, copy needed data here.
@@ -972,8 +982,6 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 #endif
 
 
-//		printf("Instr: %s\n",insn_disas);
-
 		if (is_vector){ //This includes vsetvl
 			instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode);
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
@@ -984,6 +992,8 @@ static void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 			}else{ 
 				instr_basic_data * insn_struct = (instr_basic_data *)malloc(sizeof(instr_basic_data));
 				insn_struct->type = T_SCALAR; insn_struct->instr32  = insn_opcode; insn_struct->PC = insn_vaddr; 
+				if ((insn_opcode&0x7F) == 0b1010011) insn_struct->type |= T_SINGLE;
+				else if ((insn_opcode&0x7F) == 0b1000011) insn_struct->type |= T_FUSED;
 				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
 			}
 		}

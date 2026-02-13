@@ -5,29 +5,33 @@
 /* [xxxx][tttt][MMMM][mmmm] */
 #define T_NOTYPE 0x0000
 
-#define T_SCALAR 0x0100
-#define T_VECTOR 0x0200
-#define T_VSETVL 0x0300
+#define T_SCALAR 0x1000
+#define T_VECTOR 0x2000
+#define T_VSETVL 0x3000
 
 #define T_OTHER  0x0000
-#define T_ARITH  0x0010
-#define T_LOAD   0x0020
-#define T_STORE  0x0030
-#define T_MASK   0x0040
-#define T_MEMORY T_LOAD //Until we report ld/st separately
+#define T_ARITH  0x0100
+#define T_REDUCTION 0x0500
+	#define T_FP     0x0010
+	#define T_INT    0x0020
+		#define T_SINGLE 0x0001
+		#define T_FUSED	 0x0002
 
-#define T_FP     0x0001
-#define T_INT    0x0002
-#define T_UNIT   0x0003
-#define T_STRIDE 0x0004
-#define T_INDEX  0x0005
-#define T_SPILL  0x0006
+#define T_LOAD   0x0200
+#define T_STORE  0x0300
+#define T_MASK   0x0400
+#define T_MEMORY T_LOAD //Until we report ld/st separately
+	#define T_UNIT   0x0010
+	#define T_STRIDE 0x0020
+	#define T_INDEX  0x0030
+	#define T_SPILL  0x0040
 
 
 #if 1
-#define is_type(x,y) (((x^y)&0x0F00)==0)
-#define is_subtype(x,y) (((x^y)&0x00F0)==0)
-#define is_subsubtype(x,y) (((x^y)&0x000F)==0)
+#define is_type(x,y) (((x^y)&0xF000)==0)
+#define is_subtype(x,y) (((x^y)&0x0F00)==0)
+#define is_subsubtype(x,y) (((x^y)&0x00F0)==0)
+#define is_subsubsubtype(x,y) (((x^y)&0x000F)==0)
 #endif
 
 struct instr_basic_data{
@@ -71,6 +75,8 @@ static int16_t instr_set_type(uint32_t insn_opcode){
 				int16_t type = T_VECTOR; 
 				int16_t subtype = T_OTHER;
 				int16_t subsubtype = T_NOTYPE;
+				int16_t subsubsubtype = T_NOTYPE;
+
 
 				int opcode = get_bit_field(insn_opcode,6,0); 
 				int funct6,funct3,mop,vs1;
@@ -127,7 +133,13 @@ static int16_t instr_set_type(uint32_t insn_opcode){
 																					funct6 != 0b010111 && //vfmerge, vfmv
 																					(funct6 != 0b010011 || get_bit_field(insn_opcode,19,15)!=0b10000)){ //fclass
 #endif
-																				subtype = T_ARITH;
+																				if (funct6 == 1 || funct6 ==3 || funct6 == 5 || funct6 == 7 || funct6 == 49 || funct6 == 51){
+																					subtype = T_REDUCTION;
+																				}else{
+																					subtype = T_ARITH;
+																					subsubsubtype = (funct6 >= 40 && funct6 <= 48) ? T_FUSED : T_SINGLE;
+																				}
+
 																				subsubtype = T_FP;
 																}
 												}else if (funct3 == 0 || funct3 == 3 || funct3 == 4){ //OPIVV, OPIVI, OPIVX
@@ -138,9 +150,14 @@ static int16_t instr_set_type(uint32_t insn_opcode){
 																					funct6 != 0b001111 && //slidedown
 																					funct6 != 0b101110 && //vnclipu
 																					funct6 != 0b101111 && //vnclip
-																					funct6 != 0b010111){ //vmerge/vmv
+																					funct6 != 0b010111 //vmerge/vmv
+#ifndef EPI_07																																
+																					&& (funct6 != 0b100111 || funct3 != 3) //vmv1r
+#endif																																							
+																					){ 
 																				subtype = T_ARITH;
 																				subsubtype = T_INT;
+																				subsubsubtype = T_SINGLE;
 																}
 												}else if (funct3 == 2 || funct3 == 6){ //OPMVV, OPMVX,
 #ifdef EPI_07
@@ -173,7 +190,12 @@ static int16_t instr_set_type(uint32_t insn_opcode){
 																					funct6 != 0b010010 && //vzext
 																					funct6 != 0b010111){ //vmcompress
 #endif
-																				subtype = T_ARITH;
+																				if ((funct6 >= 0 && funct6 <= 7) || (funct6 == 48 || funct6 == 49)){
+																					subtype = T_REDUCTION;
+																				}else{
+																					subtype = T_ARITH;
+																					subsubsubtype = (funct6 == 41 || funct6 == 43 || funct6 == 45 || funct6 == 47) ? T_FUSED : T_SINGLE;
+																				}
 																				subsubtype = T_INT;
 																}
 												}
@@ -181,7 +203,7 @@ static int16_t instr_set_type(uint32_t insn_opcode){
 								default:
 												break;
 				}
-				return (type | subtype | subsubtype);
+				return (type | subtype | subsubtype | subsubsubtype);
 }
 
 
