@@ -126,7 +126,7 @@ fi
 
 RAVE_PLUGIN=${SCRIPT_DIR}/../lib 
 QEMU_PATH=${SCRIPT_DIR}/../qemu/bin
-QEMU_CPU=rv64,v=true,vext_spec=v1.0,vlen=$RAVE_VLEN
+QEMU_CPU=rv64,v=true,vext_spec=v1.0,vlen=$RAVE_VLEN,rvv_ta_all_1s=true,rvv_ma_all_1s=true
 if [ "$RAVE_CUSTOM_EXTENSIONS" != "" ]; then 
 	QEMU_CPU=${QEMU_CPU},${RAVE_CUSTOM_EXTENSIONS}
 fi
