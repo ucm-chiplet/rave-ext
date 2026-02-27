@@ -267,7 +267,7 @@ static instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_o
 
 		if (is_subtype(data->type, T_STORE)){
 			//change it back to "memory" (general)
-			data -> type &= 0x0F0F;
+			data -> type &= ~T_STORE; 
 			data -> type |= T_MEMORY;
 			//data -> src3 = data -> dst;
 			//data -> dst = 0;
