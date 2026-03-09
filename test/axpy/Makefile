@@ -1,7 +1,16 @@
 all: axpy axpy-omp axpy-mpi axpy-hybrid 
 
-LLVM_DIR?=../../build/llvm-cross/llvm-EPI-development-toolchain-cross
-RAVE_INCLUDE?=../../interfaces
+ifndef RVV
+  $(error Need to define RVV variable to 0_7_1 or 1_0)
+endif
+
+ifeq ($(RVV),0_7_1)
+  LLVM_DIR?=../../build/llvm-cross/llvm-EPI-0.7-development-toolchain-cross
+else
+  LLVM_DIR?=../../build/llvm-cross/llvm-EPI-development-toolchain-cross
+endif
+
+RAVE_INCLUDE?=../../build/interfaces
 
 CC=${LLVM_DIR}/bin/clang
 
