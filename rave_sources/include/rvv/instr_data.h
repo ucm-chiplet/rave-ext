@@ -16,6 +16,7 @@
 #define T_NOTYPE 0x0000
 
 #define T_SCALAR 0x1000
+		#define T_BRANCH 0x0100
 #define T_VECTOR 0x2000
 #define T_VSETVL 0x3000
 
@@ -42,20 +43,12 @@
 #define is_subsubtype(x,y) (((x^y)&0x00F0)==0)
 #define is_subsubsubtype(x,y) (((x^y)&0x000F)==0)
 
-struct instr_basic_data{
-	uint16_t type;
-	//enum instr_type type;
-	uint32_t instr32;
-  uint64_t PC;
-};
-typedef struct instr_basic_data instr_basic_data;
-
 struct instr_data{
 	//enum instr_type type;
 	uint16_t type;
 	uint32_t instr32; //Only for strided...and mem eew.. and scalar mem?
-
   uint64_t PC;
+
 	uint32_t paraver_code;
 	char * asm_string;
 	short src1;
@@ -79,8 +72,9 @@ typedef struct qemu_event qemu_event;
 #define MAJOR_STORE 0b0100111
 #define MAJOR_ARITH 0b1010111
 #define get_bit_field(insn_opcode, high, low) ((insn_opcode >> low) & ((1<<(high-low+1))-1))
-int16_t instr_set_type(uint32_t insn_opcode);
 instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, int PRINT_PRV);
+uint16_t instr_set_scalar_type(uint32_t insn_opcode);
+int64_t get_loop_offset(uint32_t insn_opcode);
 
 
 

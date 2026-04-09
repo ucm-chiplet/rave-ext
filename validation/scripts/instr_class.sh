@@ -197,6 +197,10 @@ do
 	nline=$((nline+1))
 done < ${RAVE_CSV_NAME}
 
+read_lines=$nline
+min_lines=3
+assert read_lines -ge min_lines
+
 echo $green [TEST OK] Instruction class $nc
 rm -f ${RAVE_CSV_NAME}
 exit 0

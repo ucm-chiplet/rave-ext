@@ -7,7 +7,11 @@
 /*********************************************************/
 
 #include "state.h"
+#include "threading.h"
+#include "rave2prv.h"
 #include <stdio.h>
+#include "counters_generic.h"
+#include "utils.h"
 
 uint64_t timestamp;
 //QEMU_PLUGIN_EXPORT int qemu_plugin_version;
@@ -45,13 +49,57 @@ FILE * FD_PROFILE;
 
 thread_state_t * cpus_state;
 
-#ifndef RVV_07
-int idx_xregs;
-int idx_vl;
-int idx_vtype;
-#endif
+void restart_trace(){
+	//restart prv
+	if (PRINT_PRV){
+		FD_PRV = freopen(NULL, "w+", FD_PRV);
+		if (N_THREADS > expected_threads) expected_threads = N_THREADS;
+		write_prv(FD_PRV, 1, &expected_threads, N_PIPELINES); 
+		trace_row(FD_PRV,0, 0, SCALAR_ROW, 0);
+		trace_event_value(FD_PRV,event_VLEN,RAVE_VLMAX);
+		trace_event_value(FD_PRV,event_ELEN,RAVE_ELEN);
 
-void reset_thread(thread_state_t * state){
+	}
+	//restart global region
+	//global_region -> closed = 0;
+	//reset_counters(&global_region->counters);
+	timestamp=0;
+	for(int i=0; i<N_THREADS; ++i){
+		reset_thread(i);
+	}
+	TRACE_ENABLED=1;
+}
+
+void enable_regions(){
+	REGIONS_ENABLED=1;
+}
+void disable_regions(){
+	REGIONS_ENABLED=0;
+}
+
+void enable_trace(){
+	for(int i=0; i<N_THREADS; ++i){
+		cpus_state[i].print_first_scalar = 1;
+	}
+	TRACE_ENABLED=1;
+}
+
+void disable_trace(int cpu_index){
+	TRACE_ENABLED=0;
+	disabled_once=1;
+	if (PRINT_PRV){
+		trace_row(FD_PRV,mpi_rank, cpu_index, SCALAR_ROW, timestamp);
+		clean_event(FD_PRV); 
+		if (!MUSA){
+			trace_row(FD_PRV,mpi_rank, cpu_index, VECTOR_ROW, timestamp);
+			clean_event(FD_PRV); 
+		}
+	}
+}
+
+void reset_thread(int cpu_index){
+	thread_state_t * state = &cpus_state[cpu_index];
+	state -> cpu_index = cpu_index;
 	state -> last_row = 0;
 	state -> reset_stride = 0;
 	state -> last_was_vsetvl = 0;
@@ -61,9 +109,7 @@ void reset_thread(thread_state_t * state){
 	state -> timestamp = 0;
 
 	//Loop control:
-	state -> loop_PC = -1;
-	state -> next_PC = -1;
-	state -> loop_weight = 0;
+	reset_profile(&state->loop_profile);
 
 	state -> rave_event_number=-1;
 	state -> rave_value_number=-1;
@@ -71,19 +117,8 @@ void reset_thread(thread_state_t * state){
 	
 	//Musa:
 	state -> prev_dst = 0;
+	
+	setup_regs(cpu_index);
 
-	#ifndef RVV_07
-	//Registers:
-	idx_xregs=idx_vl=idx_vtype=-1;
-
-	state -> regs = qemu_plugin_get_registers();
-	for (int i = 0; i < state->regs->len; i++) {
-		qemu_plugin_reg_descriptor *desc = &g_array_index(state->regs, qemu_plugin_reg_descriptor, i);
-		//printf("%d %s\n",i,desc->name);
-		if (idx_xregs < 0 && (g_strcmp0(desc->name, "zero")==0)) idx_xregs=i;
-		if (idx_vtype < 0 && (g_strcmp0(desc->name, "vtype")==0)) idx_vtype=i;
-		if (idx_vl < 0 && (g_strcmp0(desc->name, "vl")==0)) idx_vl=i;
-	}
-	#endif
 }
 

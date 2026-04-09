@@ -8,14 +8,96 @@
 
 #include "tb_hook.h"
 #include "callbacks.h"
+#include "regions.h"
+#include "events.h"
+#include "threading.h"
 #include "instr_data.h"
 #include "utils.h"
 #include "profiling.h"
 #ifdef RVV_07
 #include "07_decode.h"
 #endif
+#include "scalar_blocks.h"
+#include "init_exit.h"
 
-#include "state.h"
+void vcpu_scalar_block_exec(unsigned int cpu_index, void *udata){
+	scalar_block_data_t * data = (scalar_block_data_t *)udata;
+	scalar_block_exec(&cpus_state[cpu_index], data);
+}
+
+void vcpu_insn_exec(unsigned int cpu_index, void *udata){
+	instr_data * instr = (instr_data*)udata;
+	insn_exec(&cpus_state[cpu_index], instr);
+}
+void vcpu_rave_event_string(unsigned int cpu_index, void * insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
+	rave_event_string(insn_opcode, &cpus_state[cpu_index]);
+}
+void vcpu_rave_value_string(unsigned int cpu_index, void * insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
+	rave_value_string(insn_opcode, &cpus_state[cpu_index]);
+}
+void vcpu_rave_event_and_value(unsigned int cpu_index, void * insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
+	rave_event_and_value(insn_opcode, &cpus_state[cpu_index]);
+}
+void vcpu_rave_name_event_value(unsigned int cpu_index, void* insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
+	rave_name_event_value(insn_opcode, &cpus_state[cpu_index]);
+}
+void vcpu_rave_begin_region(unsigned int cpu_index, void * insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
+	rave_begin_region(insn_opcode, &cpus_state[cpu_index]);
+}
+void vcpu_rave_end_region(unsigned int cpu_index, void * insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
+	rave_end_region(insn_opcode, &cpus_state[cpu_index]);
+}
+void vcpu_parallel_end(unsigned int cpu_index, void * udata){
+	parallel_end(cpu_index);
+}
+void vcpu_parallel_begin(unsigned int cpu_index, void* insn_opcode_void){
+	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
+	parallel_begin(cpu_index, insn_opcode);
+}
+void vcpu_parallel_barrier(unsigned int cpu_index, void * udata){
+	parallel_barrier(cpu_index);
+}
+void vcpu_restart_trace(unsigned int cpu_index, void *udata){
+	restart_trace();
+}
+void vcpu_enable_regions(unsigned int cpu_index, void *udata){
+	enable_regions();
+}
+void vcpu_disable_regions(unsigned int cpu_index, void *udata){
+	disable_regions();
+}
+void vcpu_enable_trace(unsigned int cpu_index, void *udata){
+	enable_trace();
+}
+void vcpu_disable_trace(unsigned int cpu_index, void *udata){
+	disable_trace(cpu_index);
+}
+
+
+QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
+void plugin_exit(qemu_plugin_id_t id, void *p)
+{
+	rave_exit();
+}
+QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
+		const qemu_info_t *info, int argc,
+		char **argv)
+{
+
+		rave_init(argc,argv);
+		qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb_trans);
+		qemu_plugin_register_atexit_cb(id, plugin_exit, NULL);
+
+		qemu_plugin_register_vcpu_init_cb(id, (void (*))newthread_cb);
+
+		return 0;
+}
 
 char is_rave_api(uint32_t insn_opcode, struct qemu_plugin_insn * insn){
 	unsigned int dst = (insn_opcode>>7)&0x1F;
@@ -90,7 +172,6 @@ void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 #endif
 
 	struct qemu_plugin_insn *insn;
-	uint64_t insn_vaddr;
 	uint32_t insn_opcode;
 	char *insn_disas;
 
@@ -104,58 +185,62 @@ void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 		init_dwfl(BINARY_NAME);
 	}
 
-	for (size_t i = 0; i < n; i++) {
-		/*
-		 * `insn` is shared between translations in QEMU, copy needed data here.
-		 * `output` is never freed as it might be used multiple times during
-		 * the emulation lifetime.
-		 * We only consider the first 32 bits of the instruction, this may be
-		 * a limitation for CISC architectures.
-		 */
+	scalar_block_data_t * scalar_block_data = NULL;
+	int scalar_block_start = 0;
+	for (int i = 0; i < n; i++) {
 		insn = qemu_plugin_tb_get_insn(tb, i);
-		insn_vaddr = qemu_plugin_insn_vaddr(insn);
-		#ifdef RVV_07
-		insn_opcode = *((uint32_t *)qemu_plugin_insn_data(insn));
-		#else
-		qemu_plugin_insn_data(insn, &insn_opcode, sizeof(insn_opcode));
-		#endif
 		insn_disas = qemu_plugin_insn_disas(insn);
-
-
-		char is_illegal = contains_string(insn_disas,"ill");
-
-		//Dissassembly
-		char is_vector=0;
+		uint64_t insn_vaddr = qemu_plugin_insn_vaddr(insn);
+		int is_vector=0;
 #ifdef RVV_07
 		char my_disas[64];
-		if (is_illegal){ //illegal instruction (vector, if we are on 0.7) 
+		insn_opcode = *((uint32_t *)qemu_plugin_insn_data(insn));
+		if (contains_string(insn_disas,"ill")){ //illegal instruction (vector, if we are on 0.7) 
 			int extra = sprintf(my_disas, "%08x ", insn_opcode);
 			MyDissasembler(&my_disas[extra], insn_opcode);
 			free(insn_disas);
 			insn_disas = my_disas;
 			is_vector=1;
-		}else{
-			is_vector = contains_string(insn_disas," v");
 		}
 #else
-		if (!is_illegal) is_vector = insn_disas[0] == 'v';
-#endif
-
-		if (is_vector){ //This includes vsetvl
+		qemu_plugin_insn_data(insn, &insn_opcode, sizeof(insn_opcode));
+		if (insn_disas[0] == 'v') is_vector=1;
+#endif		
+		if (is_vector){
+			//Register scalar block
+			if (scalar_block_start != i){
+				qemu_plugin_register_vcpu_insn_exec_cb(qemu_plugin_tb_get_insn(tb,scalar_block_start), vcpu_scalar_block_exec, QEMU_PLUGIN_CB_NO_REGS, scalar_block_data);
+			}
+			//Register vector instruction
 			instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode, PRINT_PRV);
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
-		}else if (!is_rave_api(insn_opcode, insn)){
-			if (TRACE_SCALAR){
-				instr_data * insn_struct = fill_instr_struct(insn_vaddr, insn_disas, insn_opcode, PRINT_PRV);
-				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
-			}else{ 
-				instr_basic_data * insn_struct = (instr_basic_data *)malloc(sizeof(instr_basic_data));
-				insn_struct->type = T_SCALAR; insn_struct->instr32  = insn_opcode; insn_struct->PC = insn_vaddr; 
-				if ((insn_opcode&0x7F) == 0b1010011) insn_struct->type |= T_SINGLE;
-				else if ((insn_opcode&0x7F) == 0b1000011) insn_struct->type |= T_FUSED;
-				qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_insn_exec, QEMU_PLUGIN_CB_R_REGS, insn_struct);
-			}
+			//Prepare next scalar block
+			scalar_block_start = i+1;
 		}
+		else if (is_rave_api(insn_opcode, insn)){
+			//Register scalar block
+			if (scalar_block_start != i){
+				qemu_plugin_register_vcpu_insn_exec_cb(qemu_plugin_tb_get_insn(tb,scalar_block_start), vcpu_scalar_block_exec, QEMU_PLUGIN_CB_NO_REGS, scalar_block_data);
+			}
+			//Prepare next scalar block
+			scalar_block_start = i+1;
+		}else{ //Scalar
+			if (scalar_block_start == i){
+				int save_pcs = (PRINT_PROFILE) ? (n-i) : 1 ;
+				scalar_block_data = alloc_scalar_block(save_pcs); 
+				if (TRACE_SCALAR){
+					scalar_block_data->strings = (char**)malloc(sizeof(char*)*(n-i));
+				}
+			}
+			if (scalar_block_start == i || PRINT_PROFILE)scalar_block_data->PCs[i-scalar_block_start] = insn_vaddr; 
+			if (TRACE_SCALAR){
+				my_strcpy(scalar_block_data->strings[i-scalar_block_start], insn_disas); 
+			}
+			rolling_scalar_block(insn_opcode, insn_vaddr, scalar_block_data);
+		}
+	}
+	if (scalar_block_start != n){ //Unfinished scalar block
+		qemu_plugin_register_vcpu_insn_exec_cb(qemu_plugin_tb_get_insn(tb,scalar_block_start), vcpu_scalar_block_exec, QEMU_PLUGIN_CB_NO_REGS, scalar_block_data);
 	}
 #ifdef TIMEDEBUG
 	uint64_t time2 = getmicros();
@@ -163,3 +248,4 @@ void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 	num_trans++;
 #endif
 }
+

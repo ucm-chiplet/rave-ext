@@ -15,8 +15,8 @@ SRCDIR=validation/src
 BINDIR=validation/bin
 SCRIPTDIR=validation/scripts
 
-TESTS = test_spec test_multipage test_lmul_sew_vl
-.PHONY: $(TESTS) 
+TESTS := test_spec test_multi_page test_lmul_sew_vl test_counters test_profiling 
+#.PHONY: $(TESTS) 
 all: $(TESTS) 
 
 $(BINDIR): ;
@@ -25,20 +25,15 @@ $(BINDIR): ;
 $(BINDIR)/rvv_spec_$(RVV).x: $(SRCDIR)/rvv_spec_$(RVV).c | $(BINDIR)
 	$(CC) -O3 -mepi -fno-vectorize ${RAVE_INCLUDE} $^ -o $@
 
-$(BINDIR)/multipage_$(RVV).x: $(SRCDIR)/multi_page.c | $(BINDIR)
-	$(CC) -DRVV$(RVV) -O3 -mepi -fno-vectorize ${RAVE_INCLUDE} $^ -o $@
-
-$(BINDIR)/lmul_sew_vl_$(RVV).x: $(SRCDIR)/lmul_sew_vl.c | $(BINDIR)
-	$(CC) -DRVV$(RVV) -O3 -mepi -fno-vectorize ${RAVE_INCLUDE} $^ -o $@
-
 test_spec: $(BINDIR)/rvv_spec_$(RVV).x
 	${SCRIPTDIR}/instr_class.sh $(BUILD_DIR)/qemu-rave/RVV-$(RVV)/bin/rave $^
 
-test_multipage: $(BINDIR)/multipage_$(RVV).x
-	${SCRIPTDIR}/multipage.sh $(BUILD_DIR)/qemu-rave/RVV-$(RVV)/bin/rave $^
+$(BINDIR)/%_$(RVV).x: $(SRCDIR)/%.c | $(BINDIR)
+	$(CC) -DRVV$(RVV) -O3 -g -mepi -fno-vectorize ${RAVE_INCLUDE} $^ -o $@
 
-test_lmul_sew_vl: $(BINDIR)/lmul_sew_vl_$(RVV).x
-	${SCRIPTDIR}/lmul_sew_vl.sh $(BUILD_DIR)/qemu-rave/RVV-$(RVV)/bin/rave $^
+test_%: $(BINDIR)/%_$(RVV).x
+	${SCRIPTDIR}/$*.sh $(BUILD_DIR)/qemu-rave/RVV-$(RVV)/bin/rave $^
+
 
 clean:
 	rm -f ${BINDIR}/*

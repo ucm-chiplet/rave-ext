@@ -8,6 +8,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "state.h"
 
 struct value_info{
 	struct value_info * next;
@@ -34,3 +35,7 @@ value_info *  add_new_value(event_info * event, int val, char * name);
 void add_value_to_event(int id, int val, char * name);
 event_info * add_event(int id, const char *name);
 
+void rave_event_and_value(uint32_t insn_opcode, thread_state_t * state);
+void rave_name_event_value(uint32_t insn_opcode, thread_state_t * state);
+void rave_event_string(uint32_t insn_opcode, thread_state_t * state);
+void rave_value_string(uint32_t insn_opcode, thread_state_t * state);

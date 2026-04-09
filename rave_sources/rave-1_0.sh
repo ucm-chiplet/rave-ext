@@ -34,7 +34,7 @@ Control report / profile / csv generation:
  - RAVE_PROFILE_NAME: Redirects the profile to the provided file name. Additionally, automatically sets RAVE_PROFILE to 1. 
 
  - RAVE_PRINT_CSV: If set to "1", the tracer will print a CSV with the hardware counter summary for each executed code region. (default: 0).
- - RAVE_CSV_NAME: Sets the name of the generated csv trace (default: qemu_summary.csv). Additionally, automatically sets RAVE_CSV to 1.
+ - RAVE_CSV_NAME: Sets the name of the generated csv trace (default: rave_summary.csv). Additionally, automatically sets RAVE_CSV to 1.
 "
 	exit -1
 fi
@@ -107,7 +107,7 @@ if [ "$RAVE_PROFILE_NAME" != "" ]; then #OPT-in
 fi
 if [ "$RAVE_PRINT_CSV" == "1" ] || [ "$RAVE_CSV_NAME" != "" ]; then #OPT-in
 	if [ "$RAVE_CSV_NAME" == "" ]; then
-		RAVE_CSV_NAME=qemu_summary.csv
+		RAVE_CSV_NAME=rave_summary.csv
 	fi
 	args=$args",PRINT_CSV=on,CSV_NAME=$RAVE_CSV_NAME"
 fi

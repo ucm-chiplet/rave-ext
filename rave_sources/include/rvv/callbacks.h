@@ -6,10 +6,11 @@
 // * Email:  pablo.vizcaino@bsc.es
 /*********************************************************/
 #pragma once
-#include <qemu-plugin.h>
+#include "state.h"
+#include "instr_data.h"
+#include "scalar_blocks.h"
+void insn_exec(thread_state_t * state, instr_data * instr);
 
-void plugin_exit(qemu_plugin_id_t id, void *p);
+void rolling_scalar_block(uint32_t opcode, uint64_t PC, scalar_block_data_t * data);
 
-QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
-		const qemu_info_t *info, int argc,
-		char **argv);
+void scalar_block_exec(thread_state_t * state, scalar_block_data_t * data);

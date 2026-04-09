@@ -11,7 +11,23 @@
 #include "rave2prv.h"
 #include "instr2prv.h"
 
-int16_t instr_set_type(uint32_t insn_opcode){
+int64_t get_loop_offset(uint32_t insn_opcode){
+	int64_t offset;
+	if ((insn_opcode&0x3)!=0x3){ //Compressed
+		offset = (((insn_opcode>>3)&0x3)<<1) + (((insn_opcode>>10)&0x3)<<3) + (((insn_opcode>>2)&0x1)<<5) + (((insn_opcode>>5)&0x3)<<6) + (((insn_opcode>>12)&0x1)<<8);
+		//Sign extend the 9 bit number
+		offset <<= (64-9);
+		offset >>= (64-9);
+	}else{
+		offset = (((insn_opcode>>31)&0x1)<<12) + (((insn_opcode>>7)&0x1)<<11) + (((insn_opcode>>25)&0x3F)<<5) + (((insn_opcode>>8)&0xF)<<1);
+		//Sign extend the 13 bit number
+		offset <<= (64-13);
+		offset >>= (64-13);
+	}
+	return offset;
+}
+
+int16_t instr_set_vector_type(uint32_t insn_opcode){
 				int16_t type = T_VECTOR; 
 				int16_t subtype = T_OTHER;
 				int16_t subsubtype = T_NOTYPE;
@@ -153,6 +169,36 @@ int16_t instr_set_type(uint32_t insn_opcode){
 				return (type | subtype | subsubtype | subsubsubtype);
 }
 
+uint16_t instr_set_scalar_type(uint32_t insn_opcode){
+
+	uint16_t type = T_SCALAR;
+	int f7 = (insn_opcode & 0x7F);
+	int quadrant = (insn_opcode&0x3);
+	if (quadrant!=0x3){ //Compressed
+		int f3 = (insn_opcode>>13)&0x7;
+
+		if  (quadrant==1 && f3 >= 6){
+			type |= T_BRANCH;
+		}
+		else if (quadrant==0 && f3!=0){
+			type |= T_MEMORY;
+		}
+		else if (quadrant==2 && ((f3>=1 && f3 <=3) || (f3>=5))){
+			type |= T_MEMORY;
+		}
+	}else{ //Not Compressed
+		if (f7 == 0x063){
+		 	type |= T_BRANCH;
+		}
+		else if (f7 == 0b0000011 || f7 == 0b0100011 || f7 == 0b0000111 || f7 == 0b0100111){ 
+		 	type |= T_MEMORY;
+		}
+		else if (f7 == 0b1010011) type |= T_SINGLE;
+		else if (f7 == 0b1000011) type |= T_FUSED;
+	}
+
+	return type;
+}
 
 instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, int PRINT_PRV){
 
@@ -209,7 +255,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, 
 		data -> type = T_VSETVL;
 		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode);
 	}else if (instr_fields[0][0]=='v'){
-		data -> type = instr_set_type(insn_opcode);
+		data -> type = instr_set_vector_type(insn_opcode);
 
 		if (is_subtype(data->type, T_STORE)){
 			//change it back to "memory" (general)
@@ -220,7 +266,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, 
 		}
 		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode);
 	}else{
-		data -> type = T_SCALAR;
+		data -> type = instr_set_scalar_type(insn_opcode); 
 		if (PRINT_PRV){
 			int opcode = get_bit_field(insn_opcode,6,0);
 			int funct3 = get_bit_field(insn_opcode,14,12);

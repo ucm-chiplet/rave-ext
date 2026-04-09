@@ -10,7 +10,7 @@
 #include "threading.h"
 #include "state.h"
 #include "tb_hook.h"
-#include "counters.h"
+#include "counters_generic.h"
 #include "rave2prv.h"
 #include "regions.h"
 #include "formatting.h"
@@ -24,9 +24,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
-QEMU_PLUGIN_EXPORT int qemu_plugin_version = QEMU_PLUGIN_VERSION;
-
-void plugin_exit(qemu_plugin_id_t id, void *p)
+void rave_exit()
 {
 	rave_counters global_counters;
 	reset_counters(&global_counters);
@@ -38,7 +36,7 @@ void plugin_exit(qemu_plugin_id_t id, void *p)
 		}
 	}
 
-	rave_end_region(-1, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS, NULL);
+	internal_end_region(-1, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS, NULL);
 
 	//print_samples();
 	//rave_eventandcounters(-1, 0, -1, &global_counters); //End Global event
@@ -57,7 +55,11 @@ void plugin_exit(qemu_plugin_id_t id, void *p)
 		//print_events_csv(FD_CSV);
 	}
 	if (PRINT_PROFILE){
-		print_loop_profile(FD_PROFILE);
+		for(int i=0; i<N_THREADS; ++i){
+			fprintf(FD_PROFILE,"-------------------" " PROFILED LOOPS (thread %d) " "--------------------" "\n", i);
+			print_loop_profile(FD_PROFILE, &cpus_state[i].loop_profile);
+			fprintf(FD_PROFILE, "--------------------------------------------------------------------------\n");
+		}
 		//print_region_profile(FD_PROFILE, ACCUM_REGIONS);
 	}
 
@@ -221,15 +223,7 @@ void plugin_exit(qemu_plugin_id_t id, void *p)
 }
 
 
-
-/**
- * Install the plugin
- */
-QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
-		const qemu_info_t *info, int argc,
-		char **argv)
-{
-
+void rave_init(int argc, char **argv){
 
 	//Initialize:
 	mpi_rank = 0;
@@ -372,14 +366,8 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 		rave_counters global_counters;
 		reset_counters(&global_counters);
 		//rave_eventandcounters(-1, 1, -1, &global_counters); //Start global event
-		rave_begin_region(0, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS);
+		internal_begin_region(0, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS);
 
 		/* Register translation block and exit callbacks */
-		qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb_trans);
-		qemu_plugin_register_atexit_cb(id, plugin_exit, NULL);
-
-		qemu_plugin_register_vcpu_init_cb(id, (void (*))newthread_cb);
-
-		return 0;
 	}
 

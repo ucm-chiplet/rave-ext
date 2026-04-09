@@ -1,5 +1,5 @@
 /*********************************************************/
-// Copyright (C) 2026 Barcelona Supercomputing Center-Centro Nacional de Supercomputación
+// Copyright (C) 2025 Barcelona Supercomputing Center-Centro Nacional de Supercomputación
 // SPDX-License-Identifier: BSD-3-Clause
 /*********************************************************/
 // * Author: Pablo Vizcaino
@@ -7,8 +7,5 @@
 /*********************************************************/
 #pragma once
 
-#include <stdint.h>
-#include <qemu-plugin.h>
-
-char is_rave_api(uint32_t insn_opcode, struct qemu_plugin_insn * insn);
-void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb);
+void rave_exit();
+void rave_init(int argc, char **argv);

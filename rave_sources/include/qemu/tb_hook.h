@@ -1,11 +1,15 @@
 /*********************************************************/
-// Copyright (C) 2025 Barcelona Supercomputing Center-Centro Nacional de Supercomputación
+// Copyright (C) 2026 Barcelona Supercomputing Center-Centro Nacional de Supercomputación
 // SPDX-License-Identifier: BSD-3-Clause
 /*********************************************************/
 // * Author: Pablo Vizcaino
 // * Email:  pablo.vizcaino@bsc.es
 /*********************************************************/
 #pragma once
+
+#include <stdint.h>
+#include <qemu-plugin.h>
+
 
 void vcpu_insn_exec(unsigned int cpu_index, void *udata);
 
@@ -30,3 +34,12 @@ void vcpu_disable_regions(unsigned int cpu_index, void *udata);
 
 void vcpu_enable_trace(unsigned int cpu_index, void *udata);
 void vcpu_disable_trace(unsigned int cpu_index, void *udata);
+
+void plugin_exit(qemu_plugin_id_t id, void *p);
+
+QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
+		const qemu_info_t *info, int argc,
+		char **argv);
+
+char is_rave_api(uint32_t insn_opcode, struct qemu_plugin_insn * insn);
+void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb);

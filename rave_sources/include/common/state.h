@@ -7,6 +7,7 @@
 /*********************************************************/
 #pragma once
 
+#include "profiling.h"
 #include "counters.h"
 #include <qemu-plugin.h>
 #include <stdint.h>
@@ -42,14 +43,10 @@ extern FILE * FD_ROW;
 extern FILE * FD_CSV;
 extern FILE * FD_COMM;
 extern FILE * FD_PROFILE;
-#ifndef RVV_07
-extern int idx_xregs;
-extern int idx_vl;
-extern int idx_vtype;
-#endif
 	
 //Per-thread info
 struct thread_state_t{
+	int cpu_index;
 	int last_row;
 	int reset_stride;
 	int last_was_vsetvl;
@@ -60,9 +57,7 @@ struct thread_state_t{
 	rave_counters accum_counters;
 
 	//For loop detection:
-	uint64_t loop_PC;
-	uint64_t next_PC;
-	uint64_t loop_weight;
+	profile_t loop_profile;
 
 	//For events
 	int rave_event_number;
@@ -71,13 +66,16 @@ struct thread_state_t{
 	//For MUSA:
 	int prev_dst;
 
-	#ifndef RVV_07
-	//Register handles
-	GArray *regs;
-	#endif
+	void * regs;
 };
 typedef struct thread_state_t thread_state_t;
 
 extern thread_state_t * cpus_state;
 
-void reset_thread(thread_state_t * state);
+void restart_trace();
+void enable_regions();
+void disable_regions();
+void enable_trace();
+void disable_trace();
+
+void reset_thread(int cpu_index);

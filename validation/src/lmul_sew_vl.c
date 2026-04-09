@@ -30,11 +30,10 @@
 
 #include <stdio.h>
 
-#define TEST(mult, lmul, sew){\
+#define TEST(lmul, sew){\
 	vlmax = vsetvlmax(lmul, sew);\
 	float avgvl = (3.0*vlmax + 2.0*(vlmax/2))/5.0;\
-	avgvl *= mult;\
-	sprintf(region_name, #lmul "_" #sew "_%.2f\n", avgvl );\
+	sprintf(region_name, #lmul "_" #sew "_%.2f", avgvl );\
 	rave_begin_region(region_name);\
 	gvl = vsetvl(lmul, sew, vlmax);\
 	asm volatile("vor.vv v0, v0, v0\n");\
@@ -55,22 +54,22 @@ int main(){
 
 	int seed = 0xBEEFCAFE;
 
-	TEST(1.0, m1, e64);
-	TEST(1.0, m1, e32);
-	TEST(1.0, m1, e16);
-	TEST(1.0, m1, e8);
-	TEST(2.0, m2, e64);
-	TEST(2.0, m2, e32);
-	TEST(2.0, m2, e16);
-	TEST(2.0, m2, e8);
-	TEST(4.0, m4, e64);
-	TEST(4.0, m4, e32);
-	TEST(4.0, m4, e16);
-	TEST(4.0, m4, e8);
-	TEST(8.0, m8, e64);
-	TEST(8.0, m8, e32);
-	TEST(8.0, m8, e16);
-	TEST(8.0, m8, e8);
+	TEST(m1, e64);
+	TEST(m1, e32);
+	TEST(m1, e16);
+	TEST(m1, e8);
+	TEST(m2, e64);
+	TEST(m2, e32);
+	TEST(m2, e16);
+	TEST(m2, e8);
+	TEST(m4, e64);
+	TEST(m4, e32);
+	TEST(m4, e16);
+	TEST(m4, e8);
+	TEST(m8, e64);
+	TEST(m8, e32);
+	TEST(m8, e16);
+	TEST(m8, e8);
 
 	return 0;
 }

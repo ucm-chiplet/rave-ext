@@ -1,30 +1,31 @@
 ifndef BUILD_DIR
-	$(error Need to define variable BUILD_DIR)
+  $(error Need to define variable BUILD_DIR)
 endif
 ifndef RVV
-	$(error Need to define variable RVV)
+  $(error Need to define variable RVV)
 endif
 ifndef LLVM_DIR
   $(error Need to provide variable LLVM_DIR)
 endif
 
-OBJ= \
+COMMON_OBJ=\
+counters_generic.o \
+events.o \
 formatting.o \
-instr_data.o \
+init_exit.o \
 profiling.o \
 rave2prv.o \
-callbacks.o \
-counters.o \
-events.o \
-init_exit.o \
 regions.o \
-threading.o \
-utils.o \
 state.o \
+threading.o \
+scalar_blocks.o
+
+QEMU_OBJ=\
+utils.o \
 tb_hook.o 
 
 CC=gcc
-CFLAGS=-O3 -Wall -Werror -fPIC
+CFLAGS=-O3 -Wall -Werror -fPIC -g
 CFLAGS+= `pkg-config --cflags glib-2.0`
 
 LIBDIR=$(BUILD_DIR)/qemu-rave/RVV-$(RVV)/lib
@@ -32,21 +33,37 @@ BINDIR=$(BUILD_DIR)/qemu-rave/RVV-$(RVV)/bin
 RAVE_DIR=rave_sources
 
 ifeq ($(RVV),0_7_1) 
-OBJ += 07_decode.o instr2prv_0_7.o write_pcf_0_7.o
+ISA_OBJ = \
+callbacks.o \
+07_decode.o \
+counters.o \
+instr2prv_0_7.o \
+instr_data.o \
+write_pcf_0_7.o
+
 QEMU_DIR = ./downloads/qemu-rvv-0_7_1
 CFLAGS += -DRVV_07
 OBJDIR=$(RAVE_DIR)/obj/rvv07
 else
-OBJ += instr2prv_1_0.o write_pcf_1_0.o
+ISA_OBJ = \
+callbacks.o \
+counters.o \
+instr2prv_1_0.o \
+instr_data.o \
+write_pcf_1_0.o
+
 QEMU_DIR=./downloads/qemu-rvv-1_0
 OBJDIR=$(RAVE_DIR)/obj/rvv10
 #CFLAGS += -DQEMU_PLUGIN_VERSION=4
 endif
 
-OBJ:=$(addprefix $(OBJDIR)/, $(OBJ))
+ISA=rvv
+SIM=qemu
+
+OBJ:=$(addprefix $(OBJDIR)/common/, $(COMMON_OBJ)) $(addprefix $(OBJDIR)/$(SIM)/, $(QEMU_OBJ)) $(addprefix $(OBJDIR)/$(ISA)/, $(ISA_OBJ)) 
 
 ELFUTILS_DIR=./build/elfutils
-IFLAGS=-I$(RAVE_DIR)/include -I$(QEMU_DIR)/include/qemu -I$(ELFUTILS_DIR)/include
+IFLAGS=-I$(RAVE_DIR)/include/common -I$(RAVE_DIR)/include/$(ISA) -I$(RAVE_DIR)/include/$(SIM) -I$(QEMU_DIR)/include/qemu -I$(ELFUTILS_DIR)/include
 
 LDFLAGS=-L${ELFUTILS_DIR}/lib -lelf -ldw
 
@@ -56,12 +73,16 @@ all: $(LIBDIR)/librave.so wrappers interfaces
 
 #### LIBRAVE
 
-$(OBJDIR): ;
+$(OBJDIR)/common: ;
+	mkdir -p $@
+$(OBJDIR)/$(ISA): ;
+	mkdir -p $@
+$(OBJDIR)/$(SIM): ;
 	mkdir -p $@
 $(LIBDIR): ;
 	mkdir -p $@
 
-$(OBJDIR)/%.o: $(RAVE_DIR)/src/%.c | $(OBJDIR)
+$(OBJDIR)/%.o: $(RAVE_DIR)/src/%.c | $(OBJDIR)/common $(OBJDIR)/$(ISA) $(OBJDIR)/$(SIM)
 	$(CC) $^ $(CFLAGS) $(IFLAGS) -c -o $@
 
 $(LIBDIR)/librave.so: $(OBJ) | $(LIBDIR)

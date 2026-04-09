@@ -9,6 +9,8 @@
 #include "regions.h"
 #include "formatting.h"
 #include "utils.h"
+#include "counters_generic.h"
+#include "rave2prv.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -58,7 +60,7 @@ region_node_t* dfs_find_recursive(region_node_t* curr, const char * name){
 	return NULL;
 }
 
-void rave_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate, FILE * fd){
+void internal_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate, FILE * fd){
 
 
 	//Find the open region it's closing (if there's no open region, do nothing)
@@ -95,7 +97,7 @@ void rave_end_region(int cpu_index, const char * name, rave_counters * current_c
 }
 
 
-void rave_begin_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate/*, int enabled*/){
+void internal_begin_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate/*, int enabled*/){
 
 	++track_regions.nesting;
 	if (track_regions.max_nested < track_regions.nesting) track_regions.max_nested = track_regions.nesting;
@@ -288,3 +290,53 @@ void print_region_csv(FILE * fd, int accumulate){
 	fflush(fd);
 }
 
+
+void region_trace(unsigned int cpu_index, int event, int value){
+	set_lock(write_lock);
+	if (PRINT_PRV){
+		uint64_t thread_timestamp = cpus_state[cpu_index].timestamp;
+		trace_row(FD_PRV,mpi_rank, cpu_index, SCALAR_ROW, thread_timestamp);
+		trace_event_value(FD_PRV,event,value);
+		if (!TRACE_SCALAR) trace_event_value(FD_PRV,event_instruction, PRV_SCALAR*!MUSA);
+		trace_row(FD_PRV,mpi_rank, cpu_index, VECTOR_ROW, thread_timestamp);
+		trace_event_value(FD_PRV,event, value);
+	}
+	release_lock(write_lock);
+}
+
+void rave_begin_region(uint32_t insn_opcode, thread_state_t * state){
+	if (!REGIONS_ENABLED) return;
+	char data[128];
+	rave_read_string(state->cpu_index, insn_opcode, data, 128);
+	internal_begin_region(state->cpu_index, data, &state->accum_counters, ACCUM_REGIONS);
+	region_trace(state->cpu_index, REGION_EVENT+track_regions.nesting-1, name_to_id(data));
+	if (PRINT_LOGFILE){
+		char * string;
+	 	if (-1 == asprintf(&string, "Begin region %s\n", data)){
+			printf("Error allocating string buffer\n");
+			exit(-1);
+		}
+		set_lock(write_lock);
+		qemu_plugin_outs(string);
+		release_lock(write_lock);
+		free(string);
+	}
+}
+void rave_end_region(uint32_t insn_opcode, thread_state_t * state){
+	if (!REGIONS_ENABLED) return;
+	char data[128];
+	rave_read_string(state->cpu_index, insn_opcode, data, 128);
+	internal_end_region(state->cpu_index, data, &state->accum_counters, ACCUM_REGIONS, STREAM_REPORT?FD_REPORT:NULL);
+	region_trace(state->cpu_index, REGION_EVENT+track_regions.nesting, 0);
+	if (PRINT_LOGFILE){
+		char * string;
+	 	if (-1 == asprintf(&string, "End region %s\n", data)){
+			printf("Error allocating string buffer\n");
+			exit(-1);
+		}
+		set_lock(write_lock);
+		qemu_plugin_outs(string);
+		release_lock(write_lock);
+		free(string);
+	}
+}

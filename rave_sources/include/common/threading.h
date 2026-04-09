@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include "counters.h"
+#include <sched.h>
 
 #define set_lock(lock) if(N_THREADS>1){ while (! __sync_bool_compare_and_swap(&lock, 0, 1)){sched_yield();}}//Wait until lock is 0, then put it to 1
 #define release_lock(lock) if (N_THREADS>1) { __sync_val_compare_and_swap(&lock, 1, 0);} //Unlock 
@@ -38,3 +39,6 @@ extern parallel_region_t parallel_region;
 extern volatile int write_lock;
 
 void newthread_cb(void);
+void parallel_end(unsigned int cpu_index);
+void parallel_begin(unsigned int cpu_index, uint32_t insn_opcode);
+void parallel_barrier(unsigned int cpu_index);

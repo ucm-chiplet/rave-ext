@@ -8,6 +8,8 @@
 
 #include "events.h"
 #include "utils.h"
+#include "threading.h"
+#include "rave2prv.h"
 #include <stdlib.h>
 
 event_info * first_event_info = NULL;
@@ -90,4 +92,57 @@ event_info * add_event(int id, const char *name){
 	last_event_info = new_event;
 
 	return new_event;
+}
+
+void rave_event_and_value(uint32_t insn_opcode, thread_state_t * state){
+	if (!TRACE_ENABLED) return;
+
+	int src1 = (insn_opcode>>15)&0x1F;
+	int src2 = (insn_opcode>>20)&0x1F;
+
+
+	int qemu_trace_event = qemu_get_xreg(state,src1);
+	int qemu_trace_value = qemu_get_xreg(state,src2);
+
+	set_lock(write_lock);
+	//rave_eventandcounters(qemu_trace_event, qemu_trace_value, cpu_index, &cpus_state[cpu_index].accum_counters);
+	if (PRINT_PRV){
+		/*
+			 if (parallel_region.master_thread == -1){ //Not in a parallel region -> Propagate event to all threads
+			 for(int cpu_id = 0; cpu_id < alloc_threads; ++cpu_id){
+			 trace_row(FD_PRV,mpi_rank, cpu_id, SCALAR_ROW, timestamp);
+			 trace_event_value(FD_PRV,qemu_trace_event,qemu_trace_value);
+			 if (!TRACE_SCALAR) trace_event_value(FD_PRV,event_instruction, 1000);
+			 trace_row(FD_PRV,mpi_rank, cpu_id, VECTOR_ROW, timestamp);
+			 trace_event_value(FD_PRV,qemu_trace_event,qemu_trace_value);
+			 }
+			 }else{ //In a parallel region -> Event is local to this thread
+			 */
+		uint64_t thread_timestamp = state->timestamp;
+		trace_row(FD_PRV,mpi_rank, state->cpu_index, SCALAR_ROW, thread_timestamp);
+		trace_event_value(FD_PRV,qemu_trace_event,qemu_trace_value);
+		if (!TRACE_SCALAR) trace_event_value(FD_PRV,event_instruction, PRV_SCALAR*!MUSA);
+		trace_row(FD_PRV,mpi_rank, state->cpu_index, VECTOR_ROW, thread_timestamp);
+		trace_event_value(FD_PRV,qemu_trace_event,qemu_trace_value);
+		//}
+	}
+	release_lock(write_lock);
+}
+
+void rave_name_event_value(uint32_t insn_opcode, thread_state_t * state){
+	int src1 = (insn_opcode>>15)&0x1F;
+	int src2 = (insn_opcode>>20)&0x1F;
+	state->rave_event_number = qemu_get_xreg(state,src1);
+	state->rave_value_number = qemu_get_xreg(state,src2);
+}
+
+void rave_event_string(uint32_t insn_opcode, thread_state_t * state){
+	char data[128];
+	rave_read_string(state->cpu_index, insn_opcode, data, 128);
+	add_event(state->rave_event_number,data); 
+}
+void rave_value_string(uint32_t insn_opcode, thread_state_t * state){
+	char data[128];
+	rave_read_string(state->cpu_index, insn_opcode, data, 128);
+	add_value_to_event(state->rave_event_number,state->rave_value_number,data); 
 }

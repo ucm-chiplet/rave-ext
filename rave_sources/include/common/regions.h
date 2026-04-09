@@ -8,6 +8,8 @@
 #pragma once
 
 #include "counters.h"
+#include "stdint.h"
+#include "state.h"
 
 struct region_t{
 	char closed;
@@ -68,9 +70,12 @@ void dfs_free_recursive(region_node_t* curr);
 void free_regions(void);
 
 void rave_ini_regions(void);
-void rave_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate, FILE * fd);
-void rave_begin_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate/*, int enabled*/);
+void internal_end_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate, FILE * fd);
+void internal_begin_region(int cpu_index, const char * name, rave_counters * current_counters, int accumulate/*, int enabled*/);
 
 void print_region_human(FILE * fd, int n, region_t * region, int accumulate, int indent_region, int last_child, int no_childs);
 void print_region_report(FILE * fd, int accumulate);
 void print_region_csv(FILE * fd, int accumulate);
+
+void rave_begin_region(uint32_t insn_opcode, thread_state_t * state);
+void rave_end_region(uint32_t insn_opcode, thread_state_t * state);
