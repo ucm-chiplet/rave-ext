@@ -34,27 +34,6 @@ void reset_profile(profile_t * loop_profile){
 	
 }
 
-Dwfl *dwfl;
-
-const Dwfl_Callbacks dwfl_callbacks = {
-    .find_elf = dwfl_build_id_find_elf,
-    .find_debuginfo = dwfl_standard_find_debuginfo,
-};
-
-
-uint64_t find_binary_base(void) {
-    FILE *fp = fopen("/proc/self/maps", "r");
-    if (!fp) {
-        perror("fopen /proc/self/maps");
-        return 0;
-    }
-    char line[512];
-    uint64_t base_addr = 0;
-    char * ret = fgets(line, sizeof(line), fp);
-    sscanf(ret, "%" SCNx64 "-", &base_addr);
-    fclose(fp);
-    return base_addr;
-}
 
 /*
 #define max_sample_freq 512
@@ -225,13 +204,35 @@ void sample(uint64_t PC){
 }
 */
 
+
+#if 0
 extern uint64_t base /*= -1*/;
 int get_first_module_base(Dwfl_Module *mod, void **userdata,
                           const char *name, Dwarf_Addr _base, void *arg) {
 				base = _base;
         return 1; 
 }
+Dwfl *dwfl;
 
+const Dwfl_Callbacks dwfl_callbacks = {
+    .find_elf = dwfl_build_id_find_elf,
+    .find_debuginfo = dwfl_standard_find_debuginfo,
+};
+
+
+uint64_t find_binary_base(void) {
+    FILE *fp = fopen("/proc/self/maps", "r");
+    if (!fp) {
+        perror("fopen /proc/self/maps");
+        return 0;
+    }
+    char line[512];
+    uint64_t base_addr = 0;
+    char * ret = fgets(line, sizeof(line), fp);
+    sscanf(ret, "%" SCNx64 "-", &base_addr);
+    fclose(fp);
+    return base_addr;
+}
 void init_dwfl(const char *binary_path) {
     dwfl = dwfl_begin(&dwfl_callbacks);
     if (!dwfl) {
@@ -268,8 +269,6 @@ void init_dwfl(const char *binary_path) {
 		if (base == 0) base = find_binary_base();
 		else base = 0;
 }
-
-
 int resolve_pc_to_source(Dwarf_Addr pc, const char ** symbol, const char **filename, int *line, int *column) {
 
     Dwfl_Module *mod = dwfl_addrmodule(dwfl, pc);
@@ -296,6 +295,209 @@ int resolve_pc_to_source(Dwarf_Addr pc, const char ** symbol, const char **filen
 		*filename = &file_str[i+1];
 		return 0;
 }
+#else
+
+static const Dwfl_Callbacks dwfl_callbacks = {
+    .find_elf = dwfl_linux_proc_find_elf,
+    .find_debuginfo = dwfl_standard_find_debuginfo,
+    .section_address = dwfl_offline_section_address,
+};
+
+static Dwfl *dwfl = NULL;
+extern uint64_t base /*= -1*/;
+
+void init_dwfl(const char *binary_path) {
+    // Initialize dwfl with callbacks that support dynamic libraries
+    dwfl = dwfl_begin(&dwfl_callbacks);
+    if (!dwfl) {
+        fprintf(stderr, "Profile: dwfl_begin failed: %s\n", dwfl_errmsg(-1));
+        return;
+    }
+
+    // Report the main binary
+    int fd = open(binary_path, O_RDONLY);
+    if (fd < 0) {
+        fprintf(stderr, "Profile: Failed to open %s: %s\n", binary_path,"a");
+        dwfl_end(dwfl);
+        dwfl = NULL;
+        return;
+    }
+
+    Dwfl_Module *mod = dwfl_report_elf(dwfl, binary_path, binary_path, fd, 0, true);
+    if (!mod) {
+        fprintf(stderr, "Profile: dwfl_report_elf failed for %s: %s\n", 
+                binary_path, dwfl_errmsg(-1));
+        close(fd);
+        dwfl_end(dwfl);
+        dwfl = NULL;
+        return;
+    }
+    close(fd);
+
+    // Now report all loaded dynamic libraries for the current process
+    // This is the key addition for resolving symbols in .so files
+    pid_t pid = getpid();
+    if (dwfl_linux_proc_report(dwfl, pid) != 0) {
+        fprintf(stderr, "Profile: dwfl_linux_proc_report failed: %s\n", 
+                dwfl_errmsg(-1));
+        dwfl_end(dwfl);
+        dwfl = NULL;
+        return;
+    }
+
+    // Finalize the reporting
+    if (dwfl_report_end(dwfl, NULL, NULL) != 0) {
+        fprintf(stderr, "Profile: dwfl_report_end failed: %s\n", 
+                dwfl_errmsg(-1));
+        dwfl_end(dwfl);
+        dwfl = NULL;
+        return;
+    }
+
+    // Calculate the base address for relocation
+    base = find_binary_base();
+    
+    // Debug: Print all modules to verify they're loaded
+    // print_all_modules(dwfl);
+}
+
+// Helper to find the base address of the main binary
+Dwarf_Addr find_binary_base(void) {
+    // Read /proc/self/maps to find the base address of the main executable
+    FILE *maps = fopen("/proc/self/maps", "r");
+    if (!maps) {
+        fprintf(stderr, "Failed to open /proc/self/maps\n");
+        return 0;
+    }
+
+    char line[512];
+    Dwarf_Addr base_addr = 0;
+    
+    while (fgets(line, sizeof(line), maps)) {
+        Dwarf_Addr start, end;
+        char perms[5], path[256] = {0};
+        
+        // Parse the maps line
+        if (sscanf(line, "%lx-%lx %4s %*s %*s %*s %255s", 
+                   &start, &end, perms, path) >= 3) {
+            // Look for the main executable (usually has execute permission and is first)
+            if (strstr(perms, "x") && path[0] == '/' && !strstr(path, ".so")) {
+                base_addr = start;
+                break;
+            }
+        }
+    }
+    
+    fclose(maps);
+    return base_addr;
+}
+
+// Debug function to verify all modules are properly loaded
+/*
+static void print_all_modules(Dwfl *dwfl) {
+    if (!dwfl) return;
+    
+    fprintf(stderr, "Loaded modules:\n");
+    
+    // Iterate through all modules
+    int mod_index = 0;
+    Dwfl_Module *mod = NULL;
+    while ((mod = dwfl_getmodules(dwfl, mod_index++)) != NULL) {
+        const char *name = dwfl_module_info(mod, NULL, NULL, NULL, 
+                                           NULL, NULL, NULL, NULL);
+        Dwarf_Addr low_addr, high_addr;
+        dwfl_module_info(mod, NULL, &low_addr, &high_addr, 
+                        NULL, NULL, NULL, NULL);
+        
+        fprintf(stderr, "  [%d] %s (0x%lx - 0x%lx)\n", 
+                mod_index - 1, name ? name : "<unknown>", 
+                low_addr, high_addr);
+    }
+}
+*/
+
+// Improved resolve function that handles dynamic libraries properly
+int resolve_pc_to_source(Dwarf_Addr pc, const char **symbol, 
+                         const char **filename, int *line, int *column) {
+    if (!dwfl) {
+        fprintf(stderr, "dwfl not initialized\n");
+        return -1;
+    }
+
+    // Adjust PC if we're dealing with offset-based addresses
+    Dwarf_Addr adjusted_pc = pc;
+    if (base > 0) {
+        // If pc is an offset, add the base address
+        adjusted_pc = pc + base;
+    }
+
+    // Get the module containing this address
+    Dwfl_Module *mod = dwfl_addrmodule(dwfl, adjusted_pc);
+    if (!mod) {
+//        fprintf(stderr, "dwfl_addrmodule failed for pc=%#lx (adjusted=%#lx): %s\n", pc, adjusted_pc, dwfl_errmsg(-1));
+        return -1;
+    }
+
+    // Try to get detailed symbol information first
+    if (symbol) {
+        // Use dwfl_module_addrinfo for better symbol resolution,
+        // including for dynamic libraries
+        GElf_Sym sym;
+        GElf_Off off;
+        const char *sym_name = dwfl_module_addrinfo(mod, adjusted_pc, &off, &sym,
+                                                    NULL, NULL, NULL);
+        if (sym_name) {
+            // Check if we need to demangle C++ symbols
+            // You might want to add demangling here if needed
+            *symbol = sym_name;
+        } else {
+            // Fallback to dwfl_module_addrname
+            *symbol = dwfl_module_addrname(mod, adjusted_pc);
+						/*
+            if (!*symbol) {
+                *symbol = "??";
+            }
+						*/
+        }
+    }
+
+    // Get source line information
+    Dwfl_Line *dwfl_line = dwfl_module_getsrc(mod, adjusted_pc);
+    if (!dwfl_line) {
+ //       fprintf(stderr, "dwfl_module_getsrc failed for pc=%#lx: %s\n", pc, dwfl_errmsg(-1));
+        return -1;
+    }
+
+    // Extract line and file information
+    Dwarf_Addr addr;
+    const char *file_str = dwfl_lineinfo(dwfl_line, &addr, line, column, 
+                                        NULL, NULL);
+    if (!file_str) {
+//        fprintf(stderr, "dwfl_lineinfo failed: %s\n", dwfl_errmsg(-1));
+        return -1;
+    }
+
+    // Extract just the filename from the full path
+    if (filename) {
+        const char *last_slash = strrchr(file_str, '/');
+        if (last_slash) {
+            *filename = last_slash + 1;
+        } else {
+            *filename = file_str;
+        }
+    }
+
+    return 0;
+}
+
+// Cleanup function
+void cleanup_dwfl(void) {
+    if (dwfl) {
+        dwfl_end(dwfl);
+        dwfl = NULL;
+    }
+}
+#endif
 
 void print_loop_profile(FILE * fd, profile_t * loop_profile){
 	fprintf(fd,"Elems" "\t" "avg_instr" "\t" "avg_vreg_use" "\t" "Instances" "\t" "PC" "\t" "Funct" "\t" "file:line" "\n");
@@ -310,6 +512,7 @@ void print_loop_profile(FILE * fd, profile_t * loop_profile){
 			int pc_column=-1;
 
 			/*int ret =*/ resolve_pc_to_source(PC, &pc_symbol, &pc_file, &pc_line, &pc_column);
+#if 0
 			if (/*!ret*/ pc_symbol != NULL){
 				totweight += node->weight;
 				if ((double)node->weight / totweight < cutoff) break;
@@ -317,7 +520,19 @@ void print_loop_profile(FILE * fd, profile_t * loop_profile){
 				double avg_usage = node->register_usage / node->freq;
 				fprintf(fd,"%.0f" "\t" "%.1f" "\t" "%.3f" "\t" "%ld" "\t" "\t" "0x%lx" "\t",node->weight, avg_instr, avg_usage, node->freq, PC);
 				fprintf(fd, "%s" "\t" "%s:%d\n", pc_symbol!=NULL?pc_symbol:"Unknown", pc_file!=NULL?pc_file:"Unknown", pc_line); 
+			}else{
+				printf("Unresolved PC: %lx, symmbol is %s\n", PC, pc_symbol!=NULL?pc_symbol:"NULL");
 			}
+#else
+			double avg_instr =  node->avg_instr / node->freq;
+			double avg_usage = node->register_usage / node->freq;
+			if (/*!ret*/ pc_symbol != NULL){
+				totweight += node->weight;
+			}
+			if ((double)node->weight / totweight < cutoff) break;
+			fprintf(fd,"%.0f" "\t" "%.1f" "\t" "%.3f" "\t" "%ld" "\t" "\t" "0x%lx" "\t",node->weight, avg_instr, avg_usage, node->freq, PC);
+			fprintf(fd, "%s" "\t" "%s:%d\n", pc_symbol!=NULL?pc_symbol:"Unknown", pc_file!=NULL?pc_file:"Unknown", pc_line); 
+#endif
 			node = node->next;
 		}
 	fflush(fd);

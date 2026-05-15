@@ -181,9 +181,11 @@ void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 		return;
 	}
 
+	/*
 	if (PRINT_PROFILE && BINARY_NAME != NULL && base==-1){
 		init_dwfl(BINARY_NAME);
 	}
+	*/
 
 	scalar_block_data_t * scalar_block_data = NULL;
 	int scalar_block_start = 0;

@@ -23,8 +23,8 @@ QEMU_BUILD_OPTIONS+=--disable-werror
 #else
 #QEMU_BUILD_OPTIONS+=--python=python3.12
 endif
-QEMU_MAXVLEN=256*64
-
+QEMU_MAXVLEN=256*64*1 #16384
+QEMU_SIMD_BITS=8+3 #2^bits is max VL at sew64.  +3 is for LMUL 8. 2^(8+3)=2048 (256*8)
 
 .PHONY: clean_qemu 
 
@@ -43,7 +43,9 @@ $(QEMU_SOURCE_DIR)/.configured: | $(QEMU_SOURCE_DIR) $(QEMU_BUILD_DIR)
 	touch $@
 
 $(QEMU_SOURCE_DIR)/.patched: $(QEMU_SOURCE_DIR)/.configured
-	cd $(QEMU_SOURCE_DIR) && sed -i "s/^\#define\ RV_VLEN_MAX\ .*/\#define\ RV_VLEN_MAX\ \($(QEMU_MAXVLEN)\)/g" ./target/riscv/cpu.h  && \
+	cd $(QEMU_SOURCE_DIR) && \
+	sed -i "s/^\#define\ RV_VLEN_MAX\ .*/\#define\ RV_VLEN_MAX\ \($(QEMU_MAXVLEN)\)/g" ./target/riscv/cpu.h  && \
+	sed -i "s/^\#define\ SIMD_MAXSZ_BITS\ .*/\#define\ SIMD_MAXSZ_BITS\ \($(QEMU_SIMD_BITS)\)/g" ./include/tcg/tcg-gvec-desc.h && \
 	patch -p 1 < ../../utils/translate_$(RVV).patch && \
 	patch -p 0 < ../../utils/multipage_$(RVV).patch && \
 	if [ "$(RVV)" = "0_7_1" ]; then \

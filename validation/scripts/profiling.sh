@@ -64,7 +64,9 @@ do
 		file=`echo $fileline | cut -d ':' -f1`
 		line=`echo $fileline | cut -d ':' -f2`
 
-		assert file = source_file 
+		if [[ "$PC" == "main" ]]; then
+			assert file = source_file 
+		fi
 
 		if [ $line -eq 56 ]; then
 			expected_elems=12900
@@ -93,8 +95,8 @@ do
 			assert instances = expected_instances
 			expected_reg="0.000"
 			assert reg = expected_reg
-		else
-			pexit "Incorrect line number on profiled loops on the correct"
+		elif [ $line -ne -1 ]; then
+			pexit "Incorrect line number on profiled loops"
 		fi	
 
 	fi

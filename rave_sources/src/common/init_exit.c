@@ -38,6 +38,7 @@ void rave_exit()
 
 	internal_end_region(-1, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS, NULL);
 
+
 	//print_samples();
 	//rave_eventandcounters(-1, 0, -1, &global_counters); //End Global event
 	if(PRINT_REPORT && !STREAM_REPORT){
@@ -55,6 +56,7 @@ void rave_exit()
 		//print_events_csv(FD_CSV);
 	}
 	if (PRINT_PROFILE){
+		init_dwfl(BINARY_NAME);
 		for(int i=0; i<N_THREADS; ++i){
 			fprintf(FD_PROFILE,"-------------------" " PROFILED LOOPS (thread %d) " "--------------------" "\n", i);
 			print_loop_profile(FD_PROFILE, &cpus_state[i].loop_profile);
