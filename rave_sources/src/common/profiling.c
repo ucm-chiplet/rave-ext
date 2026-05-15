@@ -205,98 +205,6 @@ void sample(uint64_t PC){
 */
 
 
-#if 0
-extern uint64_t base /*= -1*/;
-int get_first_module_base(Dwfl_Module *mod, void **userdata,
-                          const char *name, Dwarf_Addr _base, void *arg) {
-				base = _base;
-        return 1; 
-}
-Dwfl *dwfl;
-
-const Dwfl_Callbacks dwfl_callbacks = {
-    .find_elf = dwfl_build_id_find_elf,
-    .find_debuginfo = dwfl_standard_find_debuginfo,
-};
-
-
-uint64_t find_binary_base(void) {
-    FILE *fp = fopen("/proc/self/maps", "r");
-    if (!fp) {
-        perror("fopen /proc/self/maps");
-        return 0;
-    }
-    char line[512];
-    uint64_t base_addr = 0;
-    char * ret = fgets(line, sizeof(line), fp);
-    sscanf(ret, "%" SCNx64 "-", &base_addr);
-    fclose(fp);
-    return base_addr;
-}
-void init_dwfl(const char *binary_path) {
-    dwfl = dwfl_begin(&dwfl_callbacks);
-    if (!dwfl) {
-        fprintf(stderr, "Profile: dwfl_begin failed\n");
-        return;
-    }
-
-    int fd = open(binary_path, O_RDONLY);
-    if (fd < 0) {
-        fprintf(stderr, "Profile: Failed to open %s\n", binary_path);
-        dwfl_end(dwfl);
-        return;
-    }
-
-    Dwfl_Module *mod = dwfl_report_elf(dwfl, binary_path, binary_path, fd, 0, true);
-    if (!mod) {
-        fprintf(stderr, "Profile: dwfl_report_elf failed for %s\n", binary_path);
-        close(fd);
-        dwfl_end(dwfl);
-        return;
-    }
-
-    close(fd);
-
-    if (dwfl_report_end(dwfl,NULL,NULL) != 0) {
-        fprintf(stderr, "Profile: dwfl_report_end failed\n");
-        dwfl_end(dwfl);
-        return;
-    }
-
-    //print_valid_ranges(dwfl);
-		dwfl_getmodules(dwfl, get_first_module_base, NULL, 0);
-		//Only need to substract when base is eq to 0
-		if (base == 0) base = find_binary_base();
-		else base = 0;
-}
-int resolve_pc_to_source(Dwarf_Addr pc, const char ** symbol, const char **filename, int *line, int *column) {
-
-    Dwfl_Module *mod = dwfl_addrmodule(dwfl, pc);
-		Dwfl_Line * dwfl_line;
-    if (!mod) {
-				dwfl_line = dwfl_getsrc(dwfl, pc);
-		}else{
-		 	dwfl_line = dwfl_module_getsrc(mod, pc);
-			*symbol = dwfl_module_addrname(mod, pc);
-		}
-    if (!dwfl_line) {
-        //fprintf(stderr, "dwfl_[module]_getsrc failed @%08lx: %s\n", pc, dwfl_errmsg(-1));
-        return -1;
-		}
-		//const char *funcname = dwfl_module_addrname(mod, pc);
-    Dwarf_Addr addr;
-    const char *file_str = dwfl_lineinfo(dwfl_line, &addr, line, column, NULL, NULL);
-    if (!*file_str) {
-        //fprintf(stderr, "dwfl_lineinfo failed: %s\n", dwfl_errmsg(-1));
-        return -1;
-    }
-		int i=strlen(file_str)-1;
-		while(file_str[--i] != '/');
-		*filename = &file_str[i+1];
-		return 0;
-}
-#else
-
 static const Dwfl_Callbacks dwfl_callbacks = {
     .find_elf = dwfl_linux_proc_find_elf,
     .find_debuginfo = dwfl_standard_find_debuginfo,
@@ -497,7 +405,6 @@ void cleanup_dwfl(void) {
         dwfl = NULL;
     }
 }
-#endif
 
 void print_loop_profile(FILE * fd, profile_t * loop_profile){
 	fprintf(fd,"Elems" "\t" "avg_instr" "\t" "avg_vreg_use" "\t" "Instances" "\t" "PC" "\t" "Funct" "\t" "file:line" "\n");
