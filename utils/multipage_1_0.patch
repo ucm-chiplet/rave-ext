@@ -1,0 +1,22 @@
+--- target/riscv/vector_helper.bkp	2026-03-04 15:51:30.295677384 +0100
++++ target/riscv/vector_helper.c	2026-03-04 15:52:05.429629614 +0100
+@@ -332,8 +332,17 @@
+     MMUAccessType access_type = is_load ? MMU_DATA_LOAD : MMU_DATA_STORE;
+ 
+     /* Check page permission/pmp/watchpoint/etc. */
+-    flags = probe_access_flags(env, adjust_addr(env, addr), size, access_type,
+-                               mmu_index, true, &host, ra);
++    target_ulong adjusted_addr = adjust_addr(env, addr);
++    target_ulong page_offset = adjusted_addr & ~TARGET_PAGE_MASK;
++    bool fits_in_page = (size <= TARGET_PAGE_SIZE - page_offset);
++
++    if (fits_in_page) {
++        flags = probe_access_flags(env, adjusted_addr, size, access_type,
++                                   mmu_index, true, &host, ra);
++    } else {
++        /* Region crosses a page – skip probe and go straight to TLB path */
++        flags = -1;
++    }
+ 
+     if (flags == 0) {
+         if (nf == 1) {

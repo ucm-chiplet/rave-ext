@@ -2,81 +2,127 @@
 
 # RAVE
 
-The RISC-V Analyzer of Vector Executions (RAVE) is a QEMU plugin that simulates the EPAC VEC tile, allowing users to run on binaries compiled for the rvv1.0 and rvv0.7 RISC-V extensions.
+The RISC-V Analyzer of Vector Executions (RAVE) is a QEMU plugin that simulates and analyzes on an x86 host the execution of RISC-V binaries compiled for the rvv1.0 and rvv0.7 RISC-V extensions.
+
+## Repository structure
 
 
 ## Installation
 
-We strongly encourage to follow the following installation steps in the specific order they appear
-
-### 1. Clone repo
-
-First, clone the repo (recommended **without** recursing subumodules, as they can be quite heavy):
+First, clone this repository:
 
 ```bash
 git clone https://repo.hca.bsc.es/gitlab/pvizcaino/rave.git
 ```
 
-### 2. Install QEMU
+### One-liner installation
 
-Then, install the QEMU emulator with either the `0_7` or `1_0` flag to select the RVV specification (installations go to separate folders):
-
-```bash
-./install_qemu.sh [0_7 / 1_0]
-```
-
-### 3. Install LLVM-based RISC-V cross-compiler (x86)
-
-Then, download and install the LLVM-based cross-compiler using the following script:
+You can install RAVE and all its dependencies running the following command:
 
 ```bash
-./install_compiler.sh [0_7 / 1_0]
+make all
 ```
 
-### 4. Install the RAVE plugin
+You can control the behavior of this build using three environment variables:
 
-Then install ELFUTILS and RAVE
+ 1. `BUILD_DIR` → Selects the folder where will RAVE+QEMU be builded. (default: `./build`)
+ 2. `RVV` → Can be either `0_7_1` or `1_0`. (default: `1_0`)
+ 3. `LLVM_DIR` → Points to the directory with an LLVM-based RISC-V cross-compiler (If it's not defined, the build system will install it on `./build/llvm-cross/llvm-EPI-development-toolchain-cross`)
+
+### Individual steps:
+
+The `make all` command will take the following steps under the hood:
+
+#### 1. Build QEMU
+
+The first step is building QEMU.
+For RVV 0_7_1, we use the branch stable-6.1, and for RVV 1_0 we use stable-10.0 (both with minimal patches to enable long vectors).
+
+You can manually build this step by doing:
 ```bash
-./install_elfutils.sh
-./install_rave.sh [0_7 / 1_0]
+make QEMU 
 ```
 
-### 5. Install a RISC-V sysroot for emulated binaries
+(using the same environment variables as before)
 
-Donwload and install it with the following script:
+#### 2. Build ELFUTILS
+
+RAVE uses ELFUTILS to extract debug information of the emulated binaries, particularly `libdw.so`. You can install this step manually doing:
 
 ```bash
-./install_sysroot.sh 
+make ELFUTILS
 ```
 
-### 6. Install the Parallel support for RAVE (OMP and MPI)
+#### 3. Download a SYSROOT
+
+RAVE needs a sysroot with a basic Linux environment (libraries, headers, etc.) in order to properly simulate binaries.
+You can download and install the sysroot we provide doing:
 
 ```bash
-./install_parallel.sh
+make SYSROOT
 ```
 
-### 7. Install GDB for RAVE:
+#### 4. Build LLVM
+
+RAVE needs an llvm-based compiler in order to compile the interfaces to Fortran and Python, and in order to compile the vectorized tests.
+You can download and install the EPI-LLVM compiler using:
+```bash
+make LLVM
+```
+Alternatively, use the flag `LLVM_DIR` to point to your local installation of LLVM.
+
+#### 5. Build RAVE
+
+Once you have a QEMU, ELFUTILS, and LLVM installation, you can install RAVE using:
+```bash
+make RAVE
+```
+
+#### 6. Enable Parallel support
+
+If you want to use RAVE with OPENMP/MPI binaries, you need to install the Parallel. If you want to do it manually, you can do it by calling this target:
 
 ```bash
-./install_gdb.sh [0_7 / 1_0]
+make PARALLEL
 ```
 
-## Testing
+#### 7. Build GDB
 
-In order to compile and vectorize RISC-V binaries, and emulate them with RAVE, we recommend loading the enviroment script (after having followed the installation steps):
+You can build a vector-enabled GDB for RVV0_7_1 and RVV1_0 in order to debug your emulated vectorized binaries.
 
-For RVV 0.7.1:
 ```bash
-RVV=0_7 source environment.sh
+make GDB
 ```
 
-For RVV 1.0:
+#### 8. Validate the build
+
+You can run the validation step using:
 ```bash
-RVV=1_0 source environment.sh
+make validation
 ```
 
+At this point, three test are executed:
+ - Instruction class → Emulates the whole RVV Spec and checks that instructions are classified correctly
+ - LMUL_SEW_VL → Checks that the LMUL, SEW, and VL are correctly measured.
+ - Multipage → Checks that loads using more than one memory page work.
 
-### 1. Compile the example codes
+
+## Running RAVE
+
+### 1. Sourcing the environment
+
+After building RAVE, you can load the enviroment (paths to RAVE and LLVM) using the `environment` script:
+```bash
+source environment.sh 0_7_1
+```
+
+or:
+
+```
+source environment.sh 1_0
+```
+
+### 2. Compile the example codes
 
 In the `test/examples` folder you can find the same example code in C, C++, Fortran, and Python, instrumented using the [RAVE API](#rave-api)
 
@@ -88,16 +134,18 @@ cd test/examples/
 make
 ```
 
-### 2. Emulate and profile binaries with RAVE
+### 3. Emulate and profile binaries with RAVE
 
 You can emulate the execution of the example binary with RAVE like this:
 
 ```bash
-rave ./example-c.x
+rave ./example-c-1_0.x
+rave ./example-cpp-1_0.x
+rave ./example-f-1_0.x 
+rave ../../build/sysroot/bin/python3.12 ./example.py
 ```
 
-
-### 3. Control the RAVE execution with environment variables
+### 4. Control the RAVE execution with environment variables
 
 Additionally, you can control RAVE's execution and output using these environment variables: 
 
@@ -138,7 +186,7 @@ Control report / profile / csv generation:
  - **RAVE_MUSA**: If set to \"1\", the paraver trace becomes MUSA-compatible. (default: 0). 
 
 
-## 4. Generate reports and profiles.
+## 5. Generate reports and profiles.
 
 ### RAVE API (code instrumentation)
 
@@ -301,26 +349,24 @@ If you want to redirect the report to a file, do:
 RAVE_REPORT_NAME=myfile rave ./example-c.x
 ```
 
+Remember to use `RAVE_ACCUM_REGIONS` if you want to accumulate regions that have the same name.
+
 You can generate this report in a CSV format using the "RAVE_CSV_NAME" or "RAVE_PRINT_CSV" environment variables.
 
 you can also generate a profile of your application:
 
 ```bash
 RAVE_PRINT_PROFILE=1 rave ./example-c.x
-------------------- PROFILE --------------------
- └─ GLOBAL_REGION .... executions: 1, total instr: 15064 (100.00 % of total, 100.00 % of parent)
-   ├─ initialization . executions: 1, total instr: 13122 (87.11 % of total, 87.11 % of parent)
-   │ ├─ ini_A ........ executions: 1, total instr: 12872 (85.45 % of total, 98.09 % of parent)
-   │ └─ ini_B ........ executions: 1, total instr: 91 (0.60 % of total, 0.69 % of parent)
-   └─ compute ........ executions: 1, total instr: 334 (2.22 % of total, 2.22 % of parent)
-     ├─ arith_vec .... executions: 1, total instr: 176 (1.17 % of total, 52.69 % of parent)
-     └─ if_vec ....... executions: 1, total instr: 142 (0.94 % of total, 42.51 % of parent)
+------------------------------------------------
+Elems	Instances	PC	Funct	file:line
+23462	1		0x772	compute	example.c:38
+12947	1		0x85a	compute	example.c:45
+12887	1		0x62a	initialize	example.c:6
+5209	1		0x668	initialize	example.c:13
 ------------------------------------------------
 ```
 
-Remember to use `RAVE_ACCUM_REGIONS` if you want to accumulate regions that have the same name.
-
-### 5. Generate Paraver traces with RAVE
+### Generate Paraver traces with RAVE
 
 RAVE also allows to generate Paraver traces (that can be visualized in Paraver):
 
@@ -364,89 +410,15 @@ In the subfolder `CFGs/per_phase_cfgs` you will find configuration files that ca
  - **table_average_vl_per_instruction_per_phase.cfg:** Opens a table that contains the averaged vector length per each simulated instruction type. The table can be configured (3D.Plane) to select which instrumented code phase is analyzed.
 
 
-### 6. Using RAVE with GDB
 
-If your emulated code has e.g. a SEGFAULT and you want to debug it, you can do so using the `rave_gdb` utility (:warning: Remember to compile your code with "-g"!):
-
-```bash
-rave_gdb ./main.x 
-
-----------------------------------------------------------
-Creating RAVE emulation with port 4210212
-GDB running
-Running GDB with target remote localhost:4210212
-Write "c" or "continue" in GDB to start your program
-----------------------------------------------------------
-/apps/x86/rave/rave-2502260926/gdb/gdb-rvv-0_7/share/gdb/python/gdb/command/prompt.py:48: SyntaxWarning: "is not" with a literal. Did you mean "!="?
-  if self.value is not '':
-/apps/x86/rave/rave-2502260926/gdb/gdb-rvv-0_7/share/gdb/python/gdb/command/prompt.py:60: SyntaxWarning: "is not" with a literal. Did you mean "!="?
-  if self.value is not '':
-GNU gdb (GDB) 8.2.50.20190202-git
-Copyright (C) 2019 Free Software Foundation, Inc.
-License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-Type "show copying" and "show warranty" for details.
-This GDB was configured as "--host=x86_64-pc-linux-gnu --target=riscv64-linux-gnu".
-Type "show configuration" for configuration details.
-For bug reporting instructions, please see:
-<http://www.gnu.org/software/gdb/bugs/>.
-Find the GDB manual and other documentation resources online at:
-    <http://www.gnu.org/software/gdb/documentation/>.
-
-For help, type "help".
-Type "apropos word" to search for commands related to "word"...
-Reading symbols from ././main.x...
-Remote debugging using localhost:4210212
-warning: remote target does not support file transfer, attempting to access files from local filesystem.
-warning: Unable to find dynamic linker breakpoint function.
-GDB will be unable to debug shared library initializers
-and track explicitly loaded dynamic code.
-0x00000040008125e0 in ?? ()
-Reading symbols from /apps/x86/rave/rave-2502260926/qemu-rave/RVV-0_7_1/bin/../../../sysroot/lib/ld-linux-riscv64-lp64d.so.1...
-(No debugging symbols found in /apps/x86/rave/rave-2502260926/qemu-rave/RVV-0_7_1/bin/../../../sysroot/lib/ld-linux-riscv64-lp64d.so.1)
-(gdb) 
-```
-
-From this point, use "continue" or "c" to start the program, and "bt" to print the back-trace:
-```bash
-(gdb) c
-Continuing.
-warning: Could not load shared library symbols for /apps/x86/rave/rave-2502260926/qemu-rave/RVV-0_7_1/bin/../../../parallel/ompt.so.
-Do you need "set solib-search-path" or "set sysroot"?
-
-Program received signal SIGSEGV, Segmentation fault.
-_wordcopy_fwd_aligned (dstp=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>, srcp=<error reading variable: dwarf2_find_location
-    _expression: Corrupted DWARF expression.>, len=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>) at wordcopy.c:79
-79	wordcopy.c: No such file or directory.
-(gdb) bt
-#0  _wordcopy_fwd_aligned (dstp=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>, srcp=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>, len=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>) at wordcopy.c:79
-#1  0x00000040008a7bde in __GI_memcpy (dstpp=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>,
-     srcpp=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>, len=<error reading variable: dwarf2_find_location_expression: Corrupted DWARF expression.>) at memcpy.c:51
-#2  0x00000000000105de in myfunc (A=0x132a0, B=0x26b30, N=10000) at main.c:4
-#3  main (argc=<optimized out>, argv=<optimized out>) at main.c:13
-```
-
-In this case, the SEGFAULT occurs on `main.c:4`:
-```c
-1: void myfunc(double * A, double * B, int N){
-2:
-3:	for(int i=0; i<N; ++i){
-4:		A[i] = B[1000000000+i];
-5:	}
-6: }
-```
-
-
-### 7. Run OMP programs with RAVE
+### Run OMP programs with RAVE
 
 Althought RAVE does not specifically provide parallelization metrics, you can run OMP binaries with it.
 
 In folder `test/axpy/` you will find a parallelized and vectorized Axpy code. Compile and run it like this:
 
-
 ```bash
-cd ../axpy
+cd test/axpy
 make axpy-omp
 OMP_NUM_THREADS=4 rave ./axpy-omp.x
 ```
@@ -455,14 +427,21 @@ In an OMP RAVE report, regions of code will be identified by their execution thr
 
 In an OMP paraver trace, you will find as many touples of scalar-vector rows as OMP threads.
 
-### 8. Run MPI programs with RAVE
+Parallel execution is an experimental feature currently under work, so it can break under some circumstances.
+
+### Run MPI programs with RAVE
 
 In a similar fashion, you can run MPI binaries with RAVE.
 
-In the same folder (`test/axpy/`) you can compile Axpy with MPI parallelization using the mpicc cross-compiler (which should be in your PATH if you correctly sourced the environment script), and run it with RAVE using you system's mpirun. 
+In the same folder (`test/axpy/`) you can compile Axpy with MPI parallelization using an mpicc cross-compiler for RISC-V.
+Once you have set up your environment with the correct `mpicc` path, you can compile the test:
 
 ```bash
 make axpy-mpi
+```
+
+And then emulate it using the system's x86 mpirun: 
+```
 mpirun -np 4 rave ./axpy-mpi.x
 ```
 
@@ -471,13 +450,17 @@ It is advised not to generate console reports with MPI binaries, as all processe
 
 In an MPI trace you will find groups of rows per each process. Each has a touples of scalar-vector rows per each OMP thread of the specific process. 
 
+MPI execution is an experimental feature currently under work, so it can break under some circumstances.
+
 
 ## Using GDB to debug RAVE
 
-If your emulated code has e.g. a SEGFAULT and you want to debug it, you can do so using the `rave_gdb` utility (:warning: Remember to compile your code with "-g"!):
+If your emulated code has e.g. a SEGFAULT and you want to debug it, you can do so using the `rave_gdb` utility (:warning: Remember to compile your code with "-g"!).
+
+`rave_gdb` can be found in `build/qemu-rave/RVV-[1_0 / 0_7_1]/bin/rave_gdb`.
 
 ```bash
-rave_gdb ./main.x 
+build/qemu-rave/RVV-1_0/bin/rave_gdb ./main.x 
 ----------------------------------------------------------
 Creating RAVE emulation with port 4210212
 GDB running
@@ -557,16 +540,21 @@ Here you can download [the slides presented at the RISC-V Techincal Session](htt
 
 In the presentation, [this demo code](https://ssh.hca.bsc.es/epi/ftp/RAVE/SDV_Tutorial_rave.tar.gz) is used to showcase RAVE's potential. You can see the [video tutorial in this link](https://www.youtube.com/watch?v=7eUnhmvcDtY)
 
+We also suggest following the [SDV Analysis Tutorial](https://repo.hca.bsc.es/gitlab/epi-public/risc-v-software-development-vehicles/-/wikis/SDV-Vector-Analysis-Tutorial), as it is the most updated material.
+
 Be aware that RAVE undergoes improvements and changes, so these resources might me outdated, specially the instrumentation part.
 
 ## Citing RAVE
 
 ```
-@article{vizcaino2024rave,
-  title={{RAVE: RISC-V Analyzer of Vector Executions, a QEMU tracing plugin}},
-  author={{Vizcaino, Pablo and Mantovani, Filippo and Labarta, Jesus and Ferrer, Roger}},
-  journal={{arXiv preprint arXiv:2409.13639}},
-  year={2024}
+@article{vizcaino2026designing,
+  title={Designing a QEMU plugin to profile multicore long vector RISC-V architectures: RAVE},
+  author={Vizca{\'\i}no Serrano, Pablo and Ferrer Iba{\~n}ez, Roger and Labarta Mancho, Jes{\'u}s Jos{\'e} and Mantovani, Filippo},
+  journal={Future generation computer systems},
+  volume={175},
+  number={article 108100},
+  year={2026},
+  publisher={Elsevier}
 }
 ```
 
