@@ -13,6 +13,7 @@ struct scalar_block_data_t{
 	uint64_t * PCs;
 	uint64_t PC_branch;
 	uint64_t PC_loop;
+	char has_func_jump;
 	int loop_instr;
 	int moved_bytes;
 	int flops;

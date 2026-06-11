@@ -17,6 +17,7 @@
 
 #define T_SCALAR 0x1000
 		#define T_BRANCH 0x0100
+		#define T_JUMP 0x0600
 #define T_VECTOR 0x2000
 #define T_VSETVL 0x3000
 

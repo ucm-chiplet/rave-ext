@@ -55,6 +55,7 @@ void rave_exit()
 		print_region_csv(FD_CSV, ACCUM_REGIONS);
 		//print_events_csv(FD_CSV);
 	}
+
 	if (PRINT_PROFILE){
 		init_dwfl(BINARY_NAME);
 		for(int i=0; i<N_THREADS; ++i){
@@ -65,9 +66,22 @@ void rave_exit()
 		//print_region_profile(FD_PROFILE, ACCUM_REGIONS);
 	}
 
+	if (PRINT_CALLTRACE){
+#if 1
+		//init_dwfl(BINARY_NAME);
+		for(int i=0; i<N_THREADS; ++i){
+			fprintf(FD_CALLTRACE,"-------------------" " CALL TRACE (thread %d) " "--------------------" "\n", i);
+			print_call_trace(FD_CALLTRACE, &cpus_state[i].call_trace);
+			fprintf(FD_CALLTRACE, "--------------------------------------------------------------------------\n");
+		}
+#endif
+
+	}
+
 	if (FD_CSV!=NULL) fclose(FD_CSV);
 	if (FD_REPORT!=NULL) fclose(FD_REPORT);
 	if (FD_PROFILE!=NULL) fclose(FD_PROFILE);
+	if (FD_CALLTRACE!=NULL) fclose (FD_CALLTRACE);
 
 #ifdef TIMEDEBUG
 	printf("Cycles in Translation: %.4f %d times, %lu (%.2f)\n", (double)time_trans/num_trans, num_trans, time_trans, (double)time_trans/(time_trans+time_vcpu_exe+time_vcpu_control));
@@ -270,6 +284,7 @@ void rave_init(int argc, char **argv){
 		else if (contains_string(argv[i], "STREAM_REPORT")) STREAM_REPORT = 1;
 		else if (contains_string(argv[i], "PRINT_CSV")) PRINT_CSV = 1;
 		else if (contains_string(argv[i], "PRINT_PROFILE")) PRINT_PROFILE = 1;
+		else if (contains_string(argv[i], "PRINT_CALLTRACE")) PRINT_CALLTRACE = 1;
 		else if (contains_string(argv[i], "ACCUM_REGIONS")) ACCUM_REGIONS = 1;
 		else if (contains_string(argv[i], "PLAIN_TEXT")) PLAIN_TEXT = 1;
 		else if (contains_string(argv[i], "MUSA")) {
@@ -341,6 +356,10 @@ void rave_init(int argc, char **argv){
 				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
 				FD_PROFILE = fopen(&argv[i][j+1], "w");
 			}
+			else if (contains_string(argv[i], "CALLTRACE_NAME")){
+				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				FD_CALLTRACE = fopen(&argv[i][j+1], "w");
+			}
 			else if (contains_string(argv[i], "REGION_EVENT")){
 				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
 				int event = atoi(&argv[i][j+1]);
@@ -355,6 +374,7 @@ void rave_init(int argc, char **argv){
 		}
 		if (PRINT_REPORT && FD_REPORT==NULL) FD_REPORT = stdout; 
 		if (PRINT_PROFILE && FD_PROFILE==NULL) FD_PROFILE = stdout; 
+		if (PRINT_CALLTRACE && FD_CALLTRACE==NULL) FD_CALLTRACE = stdout; 
 
 		if (PRINT_PRV){
 			write_prv(FD_PRV, 1, &expected_threads, N_PIPELINES);

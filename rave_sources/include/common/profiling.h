@@ -45,6 +45,33 @@ typedef struct profile_t profile_t;
 
 void reset_profile(profile_t * loop_profile);
 
+#define N_PCS_NODE 4096
+struct calltrace_node_t{
+	int fill;
+	uint64_t PCs[N_PCS_NODE];
+	struct calltrace_node_t * next;
+};
+typedef struct calltrace_node_t calltrace_node_t;
+
+struct calltrace_t{
+	int next_is_func;
+	int n_nodes;
+	calltrace_node_t * first_node;
+	calltrace_node_t * last_node;
+};
+typedef struct calltrace_t calltrace_t;
+
+void reset_calltrace(calltrace_t * ct);
+
+void add_to_calltrace(calltrace_t * ct, uint64_t PC);
+
+
+struct callstack_t{
+	uint64_t PC;
+	struct callstack_t * prev;
+};
+typedef struct callstack_t callstack_t;
+
 /*
 #define max_sample_freq 512
 #define log_sample 9
@@ -65,3 +92,4 @@ int get_first_module_base(Dwfl_Module *mod, void **userdata, const char *name, D
 void init_dwfl(const char *binary_path) ;
 int resolve_pc_to_source(Dwarf_Addr pc, const char ** symbol, const char **filename, int *line, int *column) ;
 void print_loop_profile(FILE * fd, profile_t * loop_profile);
+void print_call_trace(FILE * fd, calltrace_t * ct);

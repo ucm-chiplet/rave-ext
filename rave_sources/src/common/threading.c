@@ -22,12 +22,17 @@ int mpi_size;
 
 void newthread_cb(void){
 	if (alloc_threads < N_THREADS+1){
+		#if 1
 		printf("RAVE tried to to generate more threads (%d) than allocated (%d)\n", N_THREADS+1, alloc_threads);
 		printf("To allocate more threads, set the environment variable \"RAVE_MAX_THREADS\" to the desired value\n");
 		printf("\t - RAVE will allocate the maximum between OMP_NUM_THREADS and RAVE_MAX_THREADS\n");
 		exit(-1);
-		//alloc_threads *= 2;
-		//cpus_state = (thread_state_t*)realloc(cpus_state, sizeof(thread_state_t)*alloc_threads);
+		#else
+		//printf("Need more threads\n");
+		alloc_threads *= 2;
+		cpus_state = (thread_state_t*)realloc(cpus_state, sizeof(thread_state_t)*alloc_threads);
+		//printf("Added more threads\n");
+		#endif
 	}
 	reset_thread(N_THREADS); 
 	++N_THREADS;

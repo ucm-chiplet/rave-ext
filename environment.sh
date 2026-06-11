@@ -14,6 +14,7 @@ if [ $# -lt 1 ]; then
 	echo Remember you can specify which RVV to use with: 
 	echo source environment.sh 1_0
 	echo source environment.sh 0_7_1
+	export RVV=1_0
 else
 	export RVV=$1
 fi

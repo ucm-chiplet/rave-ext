@@ -24,6 +24,7 @@ int MUSA;
 int N_PIPELINES;
 char PRINT_LOGFILE = 0;
 char PRINT_PROFILE = 0;
+char PRINT_CALLTRACE = 0;
 char PRINT_PRV = 0;
 int RAVE_ELEN = 64;
 int RAVE_VLMAX = 0;
@@ -46,6 +47,7 @@ FILE * FD_ROW;
 FILE * FD_CSV;
 FILE * FD_COMM;
 FILE * FD_PROFILE;
+FILE * FD_CALLTRACE;
 
 thread_state_t * cpus_state;
 
@@ -111,6 +113,9 @@ void reset_thread(int cpu_index){
 	//Loop control:
 	reset_profile(&state->loop_profile);
 
+	//Call trace:
+	reset_calltrace(&state->call_trace);
+
 	state -> rave_event_number=-1;
 	state -> rave_value_number=-1;
 	reset_counters(&(state->accum_counters));
@@ -121,4 +126,3 @@ void reset_thread(int cpu_index){
 	setup_regs(cpu_index);
 
 }
-

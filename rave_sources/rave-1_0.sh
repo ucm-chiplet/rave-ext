@@ -1,5 +1,13 @@
 #!/bin/bash
 
+get_bin_name(){
+	i=1
+	while [[ ! -f "${!i}" || ! -x "${!i}" ]] || ! file -b --mime-type "${!i}" 2>/dev/null | grep -q -v '^text/'; do
+		((i++))
+	done
+	echo ${!i}
+}
+
 if [ $# -lt 1 ] || [[ "$1" == "--help" ]]; then
 	echo "Usage: $0 path/to/your/binary [arguments]"
 	echo "Additionally, these environment variables control the tracing plugin:"
@@ -91,19 +99,18 @@ fi
 if [ "$RAVE_REPORT_NAME" != "" ]; then #OPT-in
 	args=$args",PRINT_REPORT=on,REPORT_NAME=$RAVE_REPORT_NAME"
 fi
+BIN_NAME=$(get_bin_name $@)
 if [ "$RAVE_PRINT_PROFILE" == "1" ]; then #OPT-in
-	i=1
-	while [[ "${!i}" == "-E"* ]] || [[ "${!i}" == *"="* ]] ; do
-		((i++))
-	done
-	args=$args",PRINT_PROFILE=on,BINARY_NAME=${!i}"
+	args=$args",PRINT_PROFILE=on,BINARY_NAME=$BIN_NAME"
 fi
 if [ "$RAVE_PROFILE_NAME" != "" ]; then #OPT-in
-	i=1
-	while [[ "${!i}" == "-E"* ]] || [[ "${!i}" == *"="* ]] ; do
-		((i++))
-	done
-	args=$args",PRINT_PROFILE=on,BINARY_NAME=${!i},PROFILE_NAME=$RAVE_PROFILE_NAME"
+	args=$args",PRINT_PROFILE=on,BINARY_NAME=$BIN_NAME,PROFILE_NAME=$RAVE_PROFILE_NAME"
+fi
+if [ "$RAVE_PRINT_CALLTRACE" == "1" ]; then #OPT-in
+	args=$args",PRINT_CALLTRACE=on,BINARY_NAME=$BIN_NAME"
+fi
+if [ "$RAVE_CALLTRACE_NAME" != "" ]; then #OPT-in
+	args=$args",PRINT_CALLTRACE=on,BINARY_NAME=$BIN_NAME,CALLTRACE_NAME=$RAVE_CALLTRACE_NAME"
 fi
 if [ "$RAVE_PRINT_CSV" == "1" ] || [ "$RAVE_CSV_NAME" != "" ]; then #OPT-in
 	if [ "$RAVE_CSV_NAME" == "" ]; then

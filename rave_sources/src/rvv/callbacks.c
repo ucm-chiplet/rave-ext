@@ -67,6 +67,13 @@ inline void detect_loop_start(profile_t * loop_profile, uint64_t PC){
 	}
 }
 
+inline void detect_func_start(calltrace_t * call_trace, uint64_t PC){
+	if (call_trace->next_is_func == 1){
+		call_trace->next_is_func = 0;
+		add_to_calltrace(call_trace, PC);
+	}
+}
+
 void scalar_block_exec(thread_state_t * state, scalar_block_data_t * data){
 
 	uint64_t thread_timestamp = synch_threads(state);
@@ -94,6 +101,16 @@ void scalar_block_exec(thread_state_t * state, scalar_block_data_t * data){
 				loop_profile->loop_instr++;
 				loop_profile->loop_weight++;
 			}
+		}
+
+		//CALL TRACE CONTROL
+		if (PRINT_CALLTRACE){
+#if 1
+			//If we are on a new function, add it to the call trace
+			detect_func_start(&state->call_trace, data->PCs[0]);
+			//If block ends with a jump, next block will be a new function
+			if (data->has_func_jump) state->call_trace.next_is_func = 1; //Next block will be on a new funcion!
+#endif
 		}
 
 		//LOGFILE
@@ -158,6 +175,7 @@ void scalar_block_exec(thread_state_t * state, scalar_block_data_t * data){
 
 void rolling_scalar_block(uint32_t opcode, uint64_t PC, scalar_block_data_t * data){
 		int16_t type = instr_set_scalar_type(opcode);
+
 		if (TRACE_ENABLED && PRINT_PROFILE){
 			if (is_subtype(type, T_BRANCH)){
 				int64_t offset = get_loop_offset(opcode);
@@ -166,6 +184,18 @@ void rolling_scalar_block(uint32_t opcode, uint64_t PC, scalar_block_data_t * da
 					data->PC_loop = PC + offset;
 				}
 			}
+		}
+		if (PRINT_CALLTRACE){
+#if 1
+			if (data->has_func_jump){
+				fprintf(stderr, "JUMP not on last instruction in scalar block, aborting\n");
+				exit(-1);
+			}
+			if (is_subtype(type, T_JUMP)){
+				//printf("  Block contains jump\n");
+				data->has_func_jump = 1;	
+			}
+#endif
 		}
 		if (is_subsubsubtype(type, T_FUSED)) data->flops += 2;
 		else if (is_subsubsubtype(type, T_SINGLE)) data->flops += 1;
@@ -191,9 +221,15 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 	if (thread_timestamp==-1) return;
 
 	profile_t * loop_profile = &state->loop_profile;
-	if (TRACE_ENABLED && PRINT_PROFILE){
-		//Detect loop beginning: 
-		detect_loop_start(loop_profile, instr->PC);
+	if (TRACE_ENABLED){
+		if (PRINT_PROFILE){
+			detect_loop_start(loop_profile, instr->PC);
+		}
+		if (PRINT_CALLTRACE){
+#if 1
+			detect_func_start(&state->call_trace, instr->PC); 
+#endif
+		}
 	}
 
 	int row = SCALAR_ROW;

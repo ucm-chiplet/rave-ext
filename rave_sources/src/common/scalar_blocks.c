@@ -16,6 +16,7 @@ scalar_block_data_t * alloc_scalar_block(int max_instr){
 	scalar_block_data->PCs = (uint64_t*)malloc(sizeof(uint64_t)*max_instr);
 	scalar_block_data->PC_branch=-1;
 	scalar_block_data->PC_loop=-1;
+	scalar_block_data->has_func_jump=0;
 	scalar_block_data->moved_bytes=0;
 	scalar_block_data->flops=0;
 	scalar_block_data->loop_instr=0;

@@ -177,14 +177,24 @@ uint16_t instr_set_scalar_type(uint32_t insn_opcode){
 	if (quadrant!=0x3){ //Compressed
 		int f3 = (insn_opcode>>13)&0x7;
 
-		if  (quadrant==1 && f3 >= 6){
-			type |= T_BRANCH;
+		if  (quadrant==1){
+		 	if (f3 >= 6){
+				type |= T_BRANCH;
+			}else if (f3 == 5){
+				type |= T_JUMP;
+			}
 		}
 		else if (quadrant==0 && f3!=0){
 			type |= T_MEMORY;
 		}
-		else if (quadrant==2 && ((f3>=1 && f3 <=3) || (f3>=5))){
-			type |= T_MEMORY;
+		else if (quadrant==2){
+			int rs1 = (insn_opcode >> 7)&0x1F;
+			int rs2 = (insn_opcode >> 2)&0x1F;
+		  if ((f3>=1 && f3 <=3) || (f3>=5)){
+				type |= T_MEMORY;
+			}else if (f3==4 && rs1!=0 && rs2==0){
+				type |= T_JUMP;
+			}
 		}
 	}else{ //Not Compressed
 		if (f7 == 0x063){
@@ -195,6 +205,7 @@ uint16_t instr_set_scalar_type(uint32_t insn_opcode){
 		}
 		else if (f7 == 0b1010011) type |= T_SINGLE;
 		else if (f7 == 0b1000011) type |= T_FUSED;
+		else if (f7 == 0b1101111 || f7 == 0b1100111) type |= T_JUMP; 
 	}
 
 	return type;

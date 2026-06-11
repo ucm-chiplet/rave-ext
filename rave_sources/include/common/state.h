@@ -22,6 +22,7 @@ extern int MUSA;
 extern int N_PIPELINES;
 extern char PRINT_LOGFILE;
 extern char PRINT_PROFILE;
+extern char PRINT_CALLTRACE;
 extern char PRINT_PRV;
 extern int RAVE_ELEN;
 extern int RAVE_VLMAX;
@@ -43,6 +44,7 @@ extern FILE * FD_ROW;
 extern FILE * FD_CSV;
 extern FILE * FD_COMM;
 extern FILE * FD_PROFILE;
+extern FILE * FD_CALLTRACE;
 	
 //Per-thread info
 struct thread_state_t{
@@ -58,6 +60,9 @@ struct thread_state_t{
 
 	//For loop detection:
 	profile_t loop_profile;
+
+	//For callstack:
+	calltrace_t  call_trace;
 
 	//For events
 	int rave_event_number;

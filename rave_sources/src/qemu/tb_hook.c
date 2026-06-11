@@ -238,6 +238,7 @@ void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 			if (TRACE_SCALAR){
 				my_strcpy(scalar_block_data->strings[i-scalar_block_start], insn_disas); 
 			}
+			//printf("%d/%ld → %s\n",i,n,insn_disas);
 			rolling_scalar_block(insn_opcode, insn_vaddr, scalar_block_data);
 		}
 	}

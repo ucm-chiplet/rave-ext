@@ -215,6 +215,8 @@ static Dwfl *dwfl = NULL;
 extern uint64_t base /*= -1*/;
 
 void init_dwfl(const char *binary_path) {
+		if (dwfl) return; //Don't double-initialize...
+		
     // Initialize dwfl with callbacks that support dynamic libraries
     dwfl = dwfl_begin(&dwfl_callbacks);
     if (!dwfl) {
@@ -243,7 +245,6 @@ void init_dwfl(const char *binary_path) {
     close(fd);
 
     // Now report all loaded dynamic libraries for the current process
-    // This is the key addition for resolving symbols in .so files
     pid_t pid = getpid();
     if (dwfl_linux_proc_report(dwfl, pid) != 0) {
         fprintf(stderr, "Profile: dwfl_linux_proc_report failed: %s\n", 
@@ -265,8 +266,6 @@ void init_dwfl(const char *binary_path) {
     // Calculate the base address for relocation
     base = find_binary_base();
     
-    // Debug: Print all modules to verify they're loaded
-    // print_all_modules(dwfl);
 }
 
 // Helper to find the base address of the main binary
@@ -433,9 +432,9 @@ void print_loop_profile(FILE * fd, profile_t * loop_profile){
 #else
 			double avg_instr =  node->avg_instr / node->freq;
 			double avg_usage = node->register_usage / node->freq;
-			if (/*!ret*/ pc_symbol != NULL){
+			//if (/*!ret*/ pc_symbol != NULL){
 				totweight += node->weight;
-			}
+			//}
 			if ((double)node->weight / totweight < cutoff) break;
 			fprintf(fd,"%.0f" "\t" "%.1f" "\t" "%.3f" "\t" "%ld" "\t" "\t" "0x%lx" "\t",node->weight, avg_instr, avg_usage, node->freq, PC);
 			fprintf(fd, "%s" "\t" "%s:%d\n", pc_symbol!=NULL?pc_symbol:"Unknown", pc_file!=NULL?pc_file:"Unknown", pc_line); 
@@ -443,4 +442,76 @@ void print_loop_profile(FILE * fd, profile_t * loop_profile){
 			node = node->next;
 		}
 	fflush(fd);
+}
+
+calltrace_node_t * reset_calltrace_node(){
+	calltrace_node_t * ctn = (calltrace_node_t *)malloc(sizeof(calltrace_node_t));
+	ctn->fill = 0;  
+	ctn->next = NULL;
+	return ctn;
+}
+
+void reset_calltrace(calltrace_t * ct){
+	ct->next_is_func = 0;
+	ct->n_nodes = 1;
+	ct->first_node = reset_calltrace_node();
+	ct->last_node = ct->first_node;
+}
+void add_to_calltrace(calltrace_t * ct, uint64_t PC){
+	calltrace_node_t * curr = ct->last_node; 
+	if (curr->fill == N_PCS_NODE){ //Full node, allocate a new one
+		calltrace_node_t * ctn = reset_calltrace_node();
+		curr->next = ctn;
+		ct->n_nodes++;
+		curr = ctn;
+		ct->last_node = curr;
+	}
+	//Add new PC
+	curr->PCs[curr->fill] = PC;
+	curr->fill++;
+}
+
+void print_call_trace(FILE * fd, calltrace_t * ct){
+	calltrace_node_t * curr = ct->first_node;
+	int unknowns = 0;
+
+	char * enabler = getenv("RAVE_FUNC_ENABLER");
+	long PC_comp = 0;
+	char * enabler_PC = getenv("RAVE_PC_ENABLER");
+	if (enabler_PC != NULL){
+		char * endptr;
+		PC_comp = strtol(enabler_PC, &endptr, 16);
+	}
+
+	int enabled = (enabler_PC == NULL) && (enabler == NULL);
+
+	printf("%ld traced calls (Approx)\n", (long)ct->n_nodes*(long)N_PCS_NODE);
+	while (curr != NULL){
+		for(int i=0; i<curr->fill; ++i){
+			uint64_t PC = curr->PCs[i]-base;
+			const char * pc_file=NULL;
+			const char * pc_symbol=NULL;
+			int pc_line=-1;
+			int pc_column=-1;
+			/*int ret =*/ resolve_pc_to_source(PC, &pc_symbol, &pc_file, &pc_line, &pc_column); //I should cache this...
+			if (pc_symbol != NULL){
+				if (!enabled && enabler != NULL && strcmp(pc_symbol, enabler)==0){
+					enabled=1;
+				}else if (!enabled && PC_comp != 0 && PC==PC_comp){
+					enabled=1;
+				}
+
+				if(enabled){
+					if(unknowns != 0){
+						fprintf(fd,"Jumped through %d Unknown symbols\n", unknowns);
+					}
+					fprintf(fd, "%lx" "\t" "%s" "\t" "%s:%d\n", PC, pc_symbol!=NULL?pc_symbol:"Unknown", pc_file!=NULL?pc_file:"Unknown", pc_line); 
+					}
+					unknowns=0;
+				}else{
+					++unknowns;
+				}
+		}
+		curr = curr->next;
+	}
 }
