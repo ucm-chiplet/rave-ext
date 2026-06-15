@@ -1,11 +1,11 @@
---- target/riscv/vector_helper.bkp	2026-03-04 15:51:30.295677384 +0100
-+++ target/riscv/vector_helper.c	2026-03-04 15:52:05.429629614 +0100
-@@ -332,8 +332,17 @@
+--- target/riscv/vector_helper.c	2026-06-15 12:19:55.950291091 +0200
++++ target/riscv/modvector_helper.c	2026-06-15 12:26:46.375520150 +0200
+@@ -347,8 +347,17 @@
      MMUAccessType access_type = is_load ? MMU_DATA_LOAD : MMU_DATA_STORE;
  
      /* Check page permission/pmp/watchpoint/etc. */
--    flags = probe_access_flags(env, adjust_addr(env, addr), size, access_type,
--                               mmu_index, true, &host, ra);
+-    probe_pages(env, addr, size, ra, access_type, mmu_index, &host, &flags,
+-                true);
 +    target_ulong adjusted_addr = adjust_addr(env, addr);
 +    target_ulong page_offset = adjusted_addr & ~TARGET_PAGE_MASK;
 +    bool fits_in_page = (size <= TARGET_PAGE_SIZE - page_offset);

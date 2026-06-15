@@ -311,15 +311,11 @@ void rave_begin_region(uint32_t insn_opcode, thread_state_t * state){
 	internal_begin_region(state->cpu_index, data, &state->accum_counters, ACCUM_REGIONS);
 	region_trace(state->cpu_index, REGION_EVENT+track_regions.nesting-1, name_to_id(data));
 	if (PRINT_LOGFILE){
-		char * string;
-	 	if (-1 == asprintf(&string, "Begin region %s\n", data)){
-			printf("Error allocating string buffer\n");
-			exit(-1);
-		}
 		set_lock(write_lock);
-		qemu_plugin_outs(string);
+		qemu_plugin_outs("Begin region ");
+		qemu_plugin_outs(data);
+		qemu_plugin_outs("\n");
 		release_lock(write_lock);
-		free(string);
 	}
 }
 void rave_end_region(uint32_t insn_opcode, thread_state_t * state){
@@ -329,14 +325,10 @@ void rave_end_region(uint32_t insn_opcode, thread_state_t * state){
 	internal_end_region(state->cpu_index, data, &state->accum_counters, ACCUM_REGIONS, STREAM_REPORT?FD_REPORT:NULL);
 	region_trace(state->cpu_index, REGION_EVENT+track_regions.nesting, 0);
 	if (PRINT_LOGFILE){
-		char * string;
-	 	if (-1 == asprintf(&string, "End region %s\n", data)){
-			printf("Error allocating string buffer\n");
-			exit(-1);
-		}
 		set_lock(write_lock);
-		qemu_plugin_outs(string);
+		qemu_plugin_outs("End region ");
+		qemu_plugin_outs(data);
+		qemu_plugin_outs("\n");
 		release_lock(write_lock);
-		free(string);
 	}
 }
