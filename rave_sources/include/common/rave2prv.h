@@ -24,6 +24,7 @@
 #define event_ELEN 47000030
 #define event_sew 47000031
 #define event_lmul 47000032
+#define event_indexes 48000000
 #define event_stride 50000000
 
 #define clean_event(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_pc, event_scalb, event_addr, event_dst, event_src1, event_src2, event_instruction, event_class, event_vl, event_rvl, event_sew, event_lmul, event_stride)

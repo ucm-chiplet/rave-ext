@@ -278,6 +278,7 @@ void rave_init(int argc, char **argv){
 	for(int i=0; i<argc; ++i){
 		if (contains_string(argv[i], "TRACE_SCALAR")) TRACE_SCALAR = 1;
 		else if (contains_string(argv[i], "TRACE_ADDR")) TRACE_ADDR = 1;
+		else if (contains_string(argv[i], "TRACE_INDEXES")) TRACE_INDEXES = 1;
 		else if (contains_string(argv[i], "PRINT_PRV")) PRINT_PRV = 1;
 		else if (contains_string(argv[i], "PRINT_LOGFILE")) PRINT_LOGFILE = 1;
 		else if (contains_string(argv[i], "PRINT_REPORT")) PRINT_REPORT = 1;

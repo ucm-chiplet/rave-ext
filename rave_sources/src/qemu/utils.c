@@ -36,17 +36,18 @@ int64_t qemu_get_xreg(thread_state_t * state, int reg){
 }
 #else
 int idx_xregs;
+int idx_vregs;
 int idx_vl;
 int idx_vtype;
 void setup_regs(unsigned int cpu_index){
 	//Registers:
-	idx_xregs=idx_vl=idx_vtype=-1;
+	idx_xregs=idx_vl=idx_vtype=idx_vregs=-1;
 
 	GArray * regs = qemu_plugin_get_registers();
 	for (int i = 0; i < regs->len; i++) {
 		qemu_plugin_reg_descriptor *desc = &g_array_index(regs, qemu_plugin_reg_descriptor, i);
-		//printf("%d %s\n",i,desc->name);
 		if (idx_xregs < 0 && (g_strcmp0(desc->name, "zero")==0)) idx_xregs=i;
+		if (idx_vregs < 0 && (g_strcmp0(desc->name, "v0")==0)) idx_vregs=i;
 		if (idx_vtype < 0 && (g_strcmp0(desc->name, "vtype")==0)) idx_vtype=i;
 		if (idx_vl < 0 && (g_strcmp0(desc->name, "vl")==0)) idx_vl=i;
 	}
@@ -76,6 +77,23 @@ int64_t qemu_get_xreg(thread_state_t * state, int reg){
 	uint64_t reg_val = *((uint64_t*)buf->data);
   g_byte_array_unref(buf);
 	return (int64_t)reg_val; 
+}
+char * qemu_get_vreg(thread_state_t * state, int reg, int vlB){
+
+	int nregs = (vlB*8 + RAVE_VLMAX - 1) / RAVE_VLMAX; //Ceiling division
+	char * values = aligned_alloc(8, vlB);
+	int idx = 0;
+
+	for (int nr = 0; nr<nregs; ++nr){
+	  qemu_plugin_reg_descriptor *desc = &g_array_index((GArray*)(state->regs), qemu_plugin_reg_descriptor, idx_vregs+reg);
+		GByteArray *buf = g_byte_array_new();
+		qemu_plugin_read_register(desc->handle, buf);
+		//Read until enough bytes read (idx<vlB) or overflowed register (i<vlmax)
+		for(int i=0; idx<vlB && i<(RAVE_VLMAX/8); ++i) values[idx++] = buf->data[i];
+	  g_byte_array_unref(buf);
+	}
+
+	return values; 
 }
 #endif
 

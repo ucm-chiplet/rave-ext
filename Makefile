@@ -7,11 +7,20 @@ else
 endif
 
 
-TARGETS=QEMU ELFUTILS SYSROOT LLVM RAVE PARALLEL GDB validation
-.PHONY: $(TARGETS)
+TARGETS_RV=QEMU ELFUTILS SYSROOT LLVM RAVE PARALLEL GDB validation_rvv
+TARGETS_X86=DYNAMORIO validation_x86
 
 COMMAND?=all
 
+
+ifeq ($(ISA),x86)
+TARGETS := $(TARGETS_X86) 
+else ifeq ($(ISA),arm)
+else
+TARGETS := $(TARGETS_RV) 
+endif
+
+.PHONY: $(TARGETS)
 all: $(TARGETS) 
 
 QEMU: ; 
@@ -35,5 +44,13 @@ PARALLEL: LLVM
 GDB: ;
 	make -f makefiles/make_GDB.mk $(COMMAND) BUILD_DIR=$(BUILD_DIR) RVV=$(RVV)
 
-validation: RAVE 
-	make -f makefiles/make_validation.mk $(COMMAND) BUILD_DIR=$(BUILD_DIR) RVV=$(RVV) LLVM_DIR=$(LLVM_DIR)
+validation_rvv: RAVE 
+	make -f makefiles/make_validation_rvv.mk $(COMMAND) BUILD_DIR=$(BUILD_DIR) RVV=$(RVV) LLVM_DIR=$(LLVM_DIR)
+
+
+DYNAMORIO: ;
+	make -f makefiles/make_DYNAMORIO.mk $(COMMAND) BUILD_DIR=$(BUILD_DIR) ISA=$(ISA)
+XAVE: DYNAMORIO 
+	make -f makefiles/make_XAVE.mk $(COMMAND) BUILD_DIR=$(BUILD_DIR)
+validation_x86: XAVE
+	make -f makefiles/make_validation_x86.mk $(COMMAND) BUILD_DIR=$(BUILD_DIR)

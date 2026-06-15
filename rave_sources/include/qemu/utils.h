@@ -37,6 +37,7 @@ void setup_regs(unsigned int cpu_index);
 int64_t qemu_get_vl(thread_state_t * state);
 int64_t qemu_get_vtype(thread_state_t * state);
 int64_t qemu_get_xreg(thread_state_t * state, int reg);
+char * qemu_get_vreg(thread_state_t * state, int reg, int vlB);
 
 char contains_string(char * str, const char * find);
 void rave_read_string(unsigned int cpu_index, uint32_t insn_opcode, char * string, uint64_t maxlen);

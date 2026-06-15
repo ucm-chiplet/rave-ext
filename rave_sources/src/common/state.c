@@ -32,6 +32,7 @@ char REGIONS_ENABLED = 1; //Enabled by default
 int REGION_EVENT = 1000;
 char STREAM_REPORT = 0;
 char TRACE_ADDR = 0;
+char TRACE_INDEXES = 0;
 char TRACE_SCALAR = 0;
 uint64_t base;
 int disabled_once = 0;

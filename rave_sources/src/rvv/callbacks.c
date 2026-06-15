@@ -238,6 +238,11 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 	uint64_t addr = 0;
 	int stride = 0;
 
+	int8_t * indexes_8 = NULL;
+	int16_t * indexes_16 = NULL;
+	int32_t * indexes_32 = NULL;
+	int64_t * indexes_64 = NULL;
+
 	if (is_type(instr->type, T_VECTOR)){ //VECTOR
 		loop_profile -> used_vreg[((instr->instr32)>>7)&0x1F] = 1;
 		row = VECTOR_ROW;
@@ -249,6 +254,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 #else
 		sew = (vtype >> 3)&0x7;
 		lmul = vtype&0x7;
+
 #endif
 		if (is_subtype(instr->type, T_MEMORY)){
 			if (TRACE_ADDR){
@@ -263,7 +269,18 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 #ifndef RVV_07
 			int width = (instr->instr32 >> 12)&0x3; 
 			sew = width;
+#endif
 
+			if(TRACE_INDEXES && is_subsubtype(instr->type, T_INDEX)){
+				int src2 = (instr->instr32>>20)&0x1F;
+				char * contents = qemu_get_vreg(state,src2,vl*(2<<(sew)));
+				if (sew==0) indexes_8 = (int8_t*)contents;
+				else if (sew==1) indexes_16 = (int16_t*)contents;
+				else if (sew==2) indexes_32 = (int32_t*)contents;
+				else if (sew==3) indexes_64 = (int64_t*)contents;
+			}
+
+#ifndef RVV_07
 			if ((((instr->instr32>>20)&0xFF) == 0x28)){
 				//Whole register load/stre
 				sew = 0; //sew: 1 byte (8 bits)
@@ -336,6 +353,21 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 				trace_event_value(FD_PRV,event_pc, instr->PC);
 				trace_event_value(FD_PRV,event_scalb, state->scalar_instr_since_vector);
 				if (TRACE_ADDR) trace_event_value(FD_PRV,event_addr, addr);
+				if (TRACE_INDEXES){
+					if (indexes_8 != NULL){
+						for(int i=0; i<vl; ++i) trace_event_value(FD_PRV, event_indexes+i, (int)indexes_8[i]);
+						free(indexes_8);
+					}else if (indexes_16 != NULL){
+						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+i, (int)indexes_16[i]);
+						free(indexes_16);
+					}else if (indexes_32 != NULL){
+						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+i, (int)indexes_32[i]);
+						free(indexes_32);
+					}else if (indexes_64 != NULL){
+						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+i, indexes_64[i]);
+						free(indexes_64);
+					}
+				}
 				if (MUSA){
 					int prev_dst = state->prev_dst;
 					state->prev_dst = instr->dst;

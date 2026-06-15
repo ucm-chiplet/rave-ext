@@ -93,7 +93,7 @@ $(LIBDIR)/librave.so: $(OBJ) | $(LIBDIR)
 $(BINDIR): ;
 	mkdir -p $@
 $(BINDIR)/rave: | $(BINDIR)
-	cp $(RAVE_DIR)/rave-$(RVV).sh $@
+	cp $(RAVE_DIR)/scripts/rvv/rave-$(RVV).sh $@
 $(BINDIR)/rave_gdb: | $(BINDIR)
 	cp ./utils/rave_gdb $@
 	sed -i "s/EXT/${RVV}/g" $@

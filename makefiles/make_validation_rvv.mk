@@ -11,9 +11,9 @@ endif
 CC=$(LLVM_DIR)/bin/clang
 RAVE_INCLUDE=-I$(BUILD_DIR)/interfaces 
 
-SRCDIR=validation/src
-BINDIR=validation/bin
-SCRIPTDIR=validation/scripts
+SRCDIR=validation/src/rvv
+BINDIR=validation/bin/rvv
+SCRIPTDIR=validation/scripts/rvv
 
 TESTS := test_spec test_multi_page test_lmul_sew_vl test_counters test_profiling test_omp 
 #.PHONY: $(TESTS) 

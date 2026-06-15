@@ -30,6 +30,7 @@ extern char REGIONS_ENABLED;
 extern int REGION_EVENT;
 extern char STREAM_REPORT;
 extern char TRACE_ADDR;
+extern char TRACE_INDEXES;
 extern char TRACE_SCALAR;
 extern uint64_t base;
 extern int disabled_once;
