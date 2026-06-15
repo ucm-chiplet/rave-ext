@@ -118,7 +118,7 @@ $(INTERFACES_DIR)/rave_user_events.h: $(RAVE_DIR)/interfaces/rave_user_events.h 
 	cp $< $@
 
 $(INTERFACES_DIR)/rave_user_events.so: $(RAVE_DIR)/interfaces/py_module.py | $(BUILD_DIR)/sysroot
-	CC=$(CLANG) LDSHARED="$(CLANG) -pthread -shared" SYSROOT=$(BUILD_DIR)/sysroot python $< build --build-temp=./python_tmp --build-lib $(INTERFACES_DIR)
+	CC=$(CLANG) LDSHARED="$(CLANG) -pthread -shared" SYSROOT=$(BUILD_DIR)/sysroot python3 $< build --build-temp=./python_tmp --build-lib $(INTERFACES_DIR)
 	cd $(BUILD_DIR)/interfaces && ln -sf rave_user_events.cpython-* rave_user_events.so
 	rm -rf ./python_tmp
 
