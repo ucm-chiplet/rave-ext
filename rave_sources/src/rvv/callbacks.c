@@ -286,14 +286,14 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 	if (TRACE_ENABLED){
 		if (PRINT_LOGFILE){
 			if (!TRACE_SCALAR && state->scalar_instr_since_vector>0){
-				char * string;
-				if (-1 == asprintf(&string,"%d scalar instructions\n", state->scalar_instr_since_vector)){
-					printf("Error allocating string buffer\n");
+				char string[128];
+				if (-1 == sprintf(string,"%d", state->scalar_instr_since_vector)){
+					printf("Error sprintf\n"); 
 					exit(-1);
 				}
 				set_lock(write_lock);
 				qemu_plugin_outs(string);
-				free(string);
+				qemu_plugin_outs(" scalar instructions\n");
 				release_lock(write_lock);
 			}
 			set_lock(write_lock);
