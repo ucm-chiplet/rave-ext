@@ -8,6 +8,7 @@
 
 #include "utils.h"
 #include "qemu-plugin.h"
+#include <stdlib.h>
 
 #ifdef RVV_07
 //include/hw/core/cpu.h (0.7 :307 (def)) //Util for knowing OFFSET REGS
@@ -17,22 +18,32 @@
 //In accel/tcg/plugin-gen.c (l:175) is a good place to put : printf("Offset is %ld\n",offsetof(ArchCPU, env));
 #define OFFSET_CPUState (33552) //For 0.7
 #define RV_VLEN_MAX (256*64)
-#define OFFSET_REGS (sizeof(uint64_t)*32 + sizeof(uint64_t)*32 + sizeof(uint64_t)*(32*RV_VLEN_MAX/64))
+#define OFFSET_XREGS (sizeof(uint64_t)*32 + sizeof(uint64_t)*32 + sizeof(uint64_t)*(32*RV_VLEN_MAX/64))
+#define OFFSET_VREGS (sizeof(uint64_t)*32 + sizeof(uint64_t)*32)
 void setup_regs(unsigned int cpu_index){
 	uint8_t *cpu = qemu_get_cpu(cpu_index);
 	cpus_state[cpu_index].regs = (void*)(cpu + OFFSET_CPUState); 
 }
 int64_t qemu_get_vl(thread_state_t * state){
 	uint8_t * regs = (uint8_t*)state->regs;
-	return *(uint64_t*)(regs + OFFSET_REGS + sizeof(uint64_t)*2);
+	return *(uint64_t*)(regs + OFFSET_XREGS + sizeof(uint64_t)*2);
 }
 int64_t qemu_get_vtype(thread_state_t * state){
 	uint8_t * regs = (uint8_t*)state->regs;
-	return *(uint64_t*)(regs + OFFSET_REGS + sizeof(uint64_t)*4);
+	return *(uint64_t*)(regs + OFFSET_XREGS + sizeof(uint64_t)*4);
 }
 int64_t qemu_get_xreg(thread_state_t * state, int reg){
 	uint8_t * regs = (uint8_t*)state->regs;
 	return *(uint64_t*)(regs + sizeof(uint64_t)*reg); 
+}
+char * qemu_get_vreg(thread_state_t * state, int reg, int vlB){
+	uint8_t * regs = (uint8_t*)state->regs;
+	char * data = (char*)regs + OFFSET_VREGS + sizeof(uint64_t)*reg*RV_VLEN_MAX/64;
+	char * values = aligned_alloc(8, vlB);
+	for(int i=0; i<vlB; ++i){
+		values[i] = data[i]; 
+	}
+	return values; 
 }
 #else
 int idx_xregs;
