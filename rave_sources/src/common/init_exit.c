@@ -161,15 +161,6 @@ void rave_exit()
 			open_file(&FD_PCF, ext_filename);
 			events_and_values_to_pcf(FD_PCF, REGION_EVENT, track_regions.max_nested );
 			write_pcf(FD_PCF);
-			if (MUSA){
-				fprintf(FD_PCF, "EVENT_TYPE\n" "9   47000004     num-scalar-cycles-before\n");
-				fprintf(FD_PCF, "EVENT_TYPE\n" "9   47000024     Reg_src_overwritten\n");
-				fprintf(FD_PCF, "EVENT_TYPE\n" "9   47000020     requested-vector-length\n");
-				fprintf(FD_PCF, "EVENT_TYPE\n" "9   48000000     Address-offsets\n");
-				fprintf(FD_PCF, "EVENT_TYPE\n" "9   48100000     Register-gather-index\n");
-				for(int i=0; i<2048; ++i) fprintf(FD_PCF, "EVENT_TYPE\n" "9   %d     Address-offsets-%d\n", 48000001+i,i);
-				for(int i=0; i<2048; ++i) fprintf(FD_PCF, "EVENT_TYPE\n" "9   %d     Register-gather-index-%d\n", 48100001+i,i);
-			}
 			fclose(FD_PCF);
 
 			free(ext_filename);
