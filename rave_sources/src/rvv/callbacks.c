@@ -355,16 +355,20 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 				if (TRACE_ADDR) trace_event_value(FD_PRV,event_addr, addr);
 				if (TRACE_INDEXES){
 					if (indexes_8 != NULL){
-						for(int i=0; i<vl; ++i) trace_event_value(FD_PRV, event_indexes+i, (int)indexes_8[i]);
+						trace_event_value(FD_PRV, event_indexes, 1);
+						for(int i=0; i<vl; ++i) trace_event_value(FD_PRV, event_indexes+1+i, (int)indexes_8[i]);
 						free(indexes_8);
 					}else if (indexes_16 != NULL){
-						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+i, (int)indexes_16[i]);
+						trace_event_value(FD_PRV, event_indexes, 1);
+						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+1+i, (int)indexes_16[i]);
 						free(indexes_16);
 					}else if (indexes_32 != NULL){
-						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+i, (int)indexes_32[i]);
+						trace_event_value(FD_PRV, event_indexes, 1);
+						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+1+i, (int)indexes_32[i]);
 						free(indexes_32);
 					}else if (indexes_64 != NULL){
-						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+i, indexes_64[i]);
+						trace_event_value(FD_PRV, event_indexes, 1);
+						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+1+i, indexes_64[i]);
 						free(indexes_64);
 					}
 				}

@@ -3,6 +3,7 @@
 get_bin_name(){
 	i=1
 	while [[ ! -f "${!i}" || ! -x "${!i}" ]] || ! file -b --mime-type "${!i}" 2>/dev/null | grep -q -v '^text/'; do
+		if [ $i -gt $# ]; then break; fi
 		((i++))
 	done
 	echo ${!i}
