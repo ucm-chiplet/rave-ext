@@ -16,6 +16,7 @@
 #define event_dst 47000006
 #define event_src1 47000007
 #define event_src2 47000008
+#define event_src3 47000009
 #define event_instruction 47000015
 #define event_class 47000016
 #define event_vl 47000019
@@ -27,9 +28,9 @@
 #define event_indexes 48000000
 #define event_stride 50000000
 
-#define clean_event(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_pc, event_scalb, event_addr, event_dst, event_src1, event_src2, event_instruction, event_class, event_vl, event_rvl, event_sew, event_lmul, event_stride)
+#define clean_event(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_pc, event_scalb, event_addr, event_dst, event_src1, event_src2, event_src3, event_instruction, event_class, event_vl, event_rvl, event_sew, event_lmul, event_indexes, event_stride)
 
-#define clean_event_vector(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_scalb, event_addr, event_dst, event_src1, event_src2, event_vl, event_sew, event_lmul, event_stride)
+#define clean_event_vector(PRV) fprintf(PRV, ":%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0:%d:0", event_scalb, event_addr, event_dst, event_src1, event_src2, event_src3, event_vl, event_sew, event_lmul, event_indexes, event_stride)
 #define clean_event_scalar(PRV) fprintf(PRV, ":%d:0", event_rvl)
 
 #define PRV_SCALAR 1000

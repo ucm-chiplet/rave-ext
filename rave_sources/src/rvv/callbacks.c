@@ -149,6 +149,7 @@ void scalar_block_exec(thread_state_t * state, scalar_block_data_t * data){
 					trace_event_value(FD_PRV,event_dst, prev_dst);
 					trace_event_value(FD_PRV,event_src1, 0);
 					trace_event_value(FD_PRV,event_src2, 0);
+					trace_event_value(FD_PRV,event_src3, 0);
 					trace_event_value(FD_PRV,event_vl, 0);
 					trace_event_value(FD_PRV,event_sew, 0);
 					trace_event_value(FD_PRV,event_lmul, 0);
@@ -381,6 +382,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 				}
 				trace_event_value(FD_PRV,event_src1, instr->src1);
 				trace_event_value(FD_PRV,event_src2, instr->src2);
+				if (instr->src3>=0) trace_event_value(FD_PRV,event_src3, instr->src3);
 				trace_event_value(FD_PRV,event_instruction, instr->paraver_code);
 				trace_event_value(FD_PRV,event_vl, vl);
 				if (MUSA){

@@ -260,7 +260,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, 
 	data -> dst =  (field_idx > 1) ? reg2prv(instr_fields[1]) : 0;
 	data -> src1 = (field_idx > 2) ? reg2prv(instr_fields[2]) : 0; 
 	data -> src2 = (field_idx > 3) ? reg2prv(instr_fields[3]) : 0;
-	data -> src3 = 0;
+	data -> src3 = -1;
 
 	if (contains_string(instr_fields[0], "vset")){
 		data -> type = T_VSETVL;
@@ -272,8 +272,13 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, 
 			//change it back to "memory" (general)
 			data -> type &= ~T_STORE; 
 			data -> type |= T_MEMORY;
-			//data -> src3 = data -> dst;
+			data -> src3 = data -> dst;
 			//data -> dst = 0;
+		}
+		if (is_subtype(data->type, T_ARITH)){
+			if (is_subsubsubtype(data->type, T_FUSED)){
+				data -> src3 = data -> dst;
+			}
 		}
 		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode);
 	}else{
@@ -285,7 +290,6 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, 
 		 	data -> paraver_code = 1010 + (opcode | (funct3<<7) | (funct6<<10));
 		}
 	}
-
 	for(int i=0; i<field_idx; ++i){
 		//printf("%s\n",instr_fields[i]);
 		free(instr_fields[i]);
