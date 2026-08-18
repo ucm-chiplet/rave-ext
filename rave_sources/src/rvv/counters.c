@@ -18,17 +18,17 @@ void print_counters_human(FILE * fd, rave_counters * counters){
 	//Others...
 	double totbytes = counters->moved_bytes_s + counters->moved_bytes_v;
 	int level=ic.prev_nest;
-	indent(fd,++level,0); fprintf(fd,"Moved bytes: "); P_NUMBER(fd, "%.0f\n", totbytes);
+	indent(fd,++level,0); fprintf(fd,"Moved bytes: "); P_NUMBER(fd, "%.0f", totbytes); fprintf(fd,"\n");
 	indent(fd,++level,0); fprintf(fd,"Scalar: "); P_NUMBER(fd, "%.0f", counters->moved_bytes_s); PERCENTAGE(fd,counters->moved_bytes_s,totbytes,'\n');
 	indent(fd,  level,1); fprintf(fd,"Vector: "); P_NUMBER(fd, "%.0f", counters->moved_bytes_v); PERCENTAGE(fd,counters->moved_bytes_v,totbytes,'\n');
 
 	double totflops = counters->scalarflops + counters->vectorflops;
-	indent(fd,--level,0); fprintf(fd,"FLOPs: "); P_NUMBER(fd, "%.0f\n", totflops);
+	indent(fd,--level,0); fprintf(fd,"FLOPs: "); P_NUMBER(fd, "%.0f", totflops); fprintf(fd,"\n");
 	indent(fd,++level,0); fprintf(fd,"Scalar: "); P_NUMBER(fd, "%.0f", counters->scalarflops); PERCENTAGE(fd,counters->scalarflops,totflops,'\n');
 	indent(fd,  level,1); fprintf(fd,"Vector: "); P_NUMBER(fd, "%.0f", counters->vectorflops); PERCENTAGE(fd,counters->vectorflops,totflops,'\n');
 
 	//Print general counters
-	indent(fd,--level,1); fprintf(fd,"Instructions: "); P_NUMBER(fd, "%.0f\n", totinstr);
+	indent(fd,--level,1); fprintf(fd,"Instructions: "); P_NUMBER(fd, "%.0f", totinstr); fprintf(fd,"\n");
 	indent(fd,++level,0); fprintf(fd,"Scalar instr: "); P_NUMBER(fd, "%.0f", counters->scalar_instr); PERCENTAGE(fd,counters->scalar_instr, totinstr,'\n'); 
 	indent(fd,  level,0); fprintf(fd,"Vsetvl instr: "); P_NUMBER(fd, "%.0f", counters->vsetvl_instr); PERCENTAGE(fd,counters->vsetvl_instr, totinstr,'\n');
 	indent(fd,  level,1); fprintf(fd,"Vector instr: "); P_NUMBER(fd, "%.0f", vecinstr); PERCENTAGE(fd,vecinstr, totinstr,'\n'); 
@@ -69,7 +69,7 @@ void print_counters_human(FILE * fd, rave_counters * counters){
 				indent(fd,++level,0); fprintf(fd,"unit: "); P_NUMBER(fd,"%.0f", counters->vunit_instr[s]); PERCENTAGE(fd,counters->vunit_instr[s], totvmem,'\n');
 				indent(fd,  level,0); fprintf(fd,"strided: "); P_NUMBER(fd,"%.0f", counters->vstride_instr[s]); PERCENTAGE(fd,counters->vstride_instr[s], totvmem,'\n');
 				if (counters->vstride_instr[s] > 0){
-					indent(fd,++level,1); fprintf(fd,"Avg. Stride (B): "); P_NUMBER(fd,"%.2f\n", counters->agg_strides[s] / counters->vstride_instr[s]);
+					indent(fd,++level,1); fprintf(fd,"Avg. Stride (B): "); P_NUMBER(fd,"%.2f", counters->agg_strides[s] / counters->vstride_instr[s]); fprintf(fd,"\n");
 					--level;
 				}
 				indent(fd,level,0); fprintf(fd,"indexed: "); P_NUMBER(fd,"%.0f", counters->vidx_instr[s]); PERCENTAGE(fd,counters->vidx_instr[s], totvmem,'\n');

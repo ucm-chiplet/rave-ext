@@ -261,7 +261,7 @@ void print_region_human(FILE * fd, int n, region_t * region, int accumulate, int
 			if (!PLAIN_TEXT) fprintf(fd, CLEAR_FORMAT);	
 
 			//Print counters:
-			indent(fd, accumulate ? 1 : region->nesting+1, accumulate || no_childs); P_COUNTERS(fd, "%s\n", "Counters:");
+			indent(fd, accumulate ? 1 : region->nesting+1, accumulate || no_childs); P_COUNTERS(fd, "%s", "Counters:");	fprintf(fd,"\n");
 			ic.spaces = COMPRESS_REPORT ? 2 : 4;
 
 			print_counters_human(fd, &region->delta_counters);

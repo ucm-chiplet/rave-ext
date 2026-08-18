@@ -44,9 +44,9 @@ void rave_exit()
 	if(PRINT_REPORT && !STREAM_REPORT){
 		//Warning:
 		if (track_regions.total_regions<=1){
-			P_WARNING(FD_REPORT, "%s\n","----------------- WARNING! ---------------");
+			P_WARNING(FD_REPORT, "%s","----------------- WARNING! ---------------"); fprintf(FD_REPORT,"\n");
 			fprintf(FD_REPORT, "You did not define any code regions. Remember that code regions are defined with \"rave_begin/end_region\" now (or trace_\"begin/end\"_region if you are using sdv_trace\n");
-			P_WARNING(FD_REPORT, "%s\n","--------------------------------------------");
+			P_WARNING(FD_REPORT, "%s","--------------------------------------------"); fprintf(FD_REPORT,"\n");
 		}
 		print_region_report(FD_REPORT, ACCUM_REGIONS);
 		//print_events_report(FD_REPORT);
@@ -90,7 +90,7 @@ void rave_exit()
 #endif
 
 	if (disabled_once && PRINT_PRV && (PRINT_CSV || PRINT_REPORT)){
-		P_WARNING(stdout, "%s\n", "WARNING: Possible mismatch between Report/CSV and Paraver trace, as you used the rave_stop_trace/trace_disable directive");
+		P_WARNING(stdout, "%s", "WARNING: Possible mismatch between Report/CSV and Paraver trace, as you used the rave_stop_trace/trace_disable directive"); fprintf(stdout,"\n");
 	}
 
 	if (PRINT_PRV){
