@@ -68,7 +68,7 @@ LDFLAGS=-L${ELFUTILS_DIR}/lib -lelf -ldw
 
 .SECONDARY: $(OBJ)
 .PHONY: wrappers interfaces $(BINDIR)/rave  
-all: $(LIBDIR)/librave.so wrappers interfaces 
+all: $(LIBDIR)/librave.so interfaces wrappers 
 
 #### LIBRAVE
 
@@ -103,7 +103,7 @@ wrappers: $(BINDIR)/rave $(BINDIR)/rave_gdb
 
 CLANG=$(LLVM_DIR)/bin/clang
 FLANG=$(LLVM_DIR)/bin/flang
-INTERFACES_DIR=$(BUILD_DIR)/interfaces/rvv
+INTERFACES_DIR=$(BUILD_DIR)/interfaces
 RAVE_INCL=-I$(RAVE_DIR)/interfaces/rvv
 
 $(INTERFACES_DIR): ;
@@ -122,7 +122,7 @@ $(INTERFACES_DIR)/rave_user_events.so: $(RAVE_DIR)/interfaces/rvv/py_module.py |
 	cd $(INTERFACES_DIR) && ln -sf rave_user_events.cpython-* rave_user_events.so
 	rm -rf ./python_tmp
 
-interfaces: $(INTERFACES_DIR)/rave_user_events_f.o $(INTERFACES_DIR)/rave_user_events.h $(INTERFACES_DIR)/rave_user_events.so
+interfaces: $(INTERFACES_DIR)/rave_user_events.h $(INTERFACES_DIR)/rave_user_events_f.o $(INTERFACES_DIR)/rave_user_events.so
 
 ## CLEANING
 

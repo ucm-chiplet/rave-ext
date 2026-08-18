@@ -9,7 +9,7 @@ ifndef LLVM_DIR
 endif
 
 CC=$(LLVM_DIR)/bin/clang
-RAVE_INCLUDE=-I$(BUILD_DIR)/interfaces/rvv
+RAVE_INCLUDE=-I$(BUILD_DIR)/interfaces
 
 SRCDIR=validation/src
 BINDIR=validation/bin/rvv
