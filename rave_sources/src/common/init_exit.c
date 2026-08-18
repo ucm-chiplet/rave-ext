@@ -9,7 +9,7 @@
 #include "init_exit.h"
 #include "threading.h"
 #include "state.h"
-#include "tb_hook.h"
+//#include "tb_hook.h"
 #include "counters_generic.h"
 #include "rave2prv.h"
 #include "regions.h"
@@ -176,7 +176,6 @@ void rave_exit()
 				trace_event_value(FD_PRV,event_VLEN,RAVE_VLMAX);
 				trace_event_value(FD_PRV,event_ELEN,RAVE_ELEN);
 
-
 #define PRV_BUFFSIZE 2048
 				char buff[PRV_BUFFSIZE];
 
@@ -227,6 +226,7 @@ void rave_exit()
 	}
 	free_regions();
 	//free_event_regions(); //Legacy
+	fflush(stdout);
 }
 
 
@@ -239,16 +239,23 @@ void rave_init(int argc, char **argv){
 	expected_threads = 0;
 	alloc_threads = 0;
 
+
 	N_PIPELINES = 2;
 	MUSA = 0;
 
 	PLAIN_TEXT=0;
+	COMPRESS_REPORT=0;
 
 	timestamp = 0;
 	base = -1;
 
+
 	char * RAVE_VLEN = getenv("RAVE_VLEN");
+#if defined(RVV_07) || defined(RVV_10)
 	RAVE_VLMAX = RAVE_VLEN==NULL? 16384 : atoi(RAVE_VLEN);
+#elif defined(X86_64)
+	RAVE_VLMAX = RAVE_VLEN==NULL? 512 : atoi(RAVE_VLEN);
+#endif
 
 	parallel_region.master_thread = -1;
 	//long nprocs = sysconf(_SC_NPROCESSORS_ONLN);
@@ -279,6 +286,8 @@ void rave_init(int argc, char **argv){
 		else if (contains_string(argv[i], "PRINT_CALLTRACE")) PRINT_CALLTRACE = 1;
 		else if (contains_string(argv[i], "ACCUM_REGIONS")) ACCUM_REGIONS = 1;
 		else if (contains_string(argv[i], "PLAIN_TEXT")) PLAIN_TEXT = 1;
+		else if (contains_string(argv[i], "COMPRESS_REPORT")) COMPRESS_REPORT = 1;
+		else if (contains_string(argv[i], "OTHER_CHILDS")) OTHER_CHILDS = 1;
 		else if (contains_string(argv[i], "MUSA")) {
 			MUSA = 1;
 			N_PIPELINES = 1;
@@ -363,10 +372,22 @@ void rave_init(int argc, char **argv){
 				BINARY_NAME = malloc(len-j+1);
 				strcpy(BINARY_NAME,&argv[i][j+1]);
 			}
+			else if (contains_string(argv[i], "PROFILE_WEIGHT")){
+				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				if (contains_string(&argv[i][j+1], "ELEM")){
+					PROFILE_WEIGHT = w_ELEMS;
+				}else if (contains_string(&argv[i][j+1], "INSTR")){
+					PROFILE_WEIGHT = w_INSTR;
+				}else{
+					PROFILE_WEIGHT = w_ELEMS;
+					printf("Unknown PROFILE_WEIGHT value (not ELEM or INSTR), defaulting to ELEM\n");
+				}
+			}
 		}
 		if (PRINT_REPORT && FD_REPORT==NULL) FD_REPORT = stdout; 
 		if (PRINT_PROFILE && FD_PROFILE==NULL) FD_PROFILE = stdout; 
 		if (PRINT_CALLTRACE && FD_CALLTRACE==NULL) FD_CALLTRACE = stdout; 
+
 
 		if (PRINT_PRV){
 			write_prv(FD_PRV, 1, &expected_threads, N_PIPELINES);
@@ -377,10 +398,13 @@ void rave_init(int argc, char **argv){
 
 		rave_ini_regions();
 
+
 		rave_counters global_counters;
 		reset_counters(&global_counters);
+
 		//rave_eventandcounters(-1, 1, -1, &global_counters); //Start global event
 		internal_begin_region(0, "GLOBAL_REGION", &global_counters, ACCUM_REGIONS);
+
 
 		/* Register translation block and exit callbacks */
 	}

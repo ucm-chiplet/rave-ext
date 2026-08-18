@@ -10,7 +10,7 @@
 
 #ifdef RVV_07
 #undef RVV_10
-#else
+#elif ! defined (RVV_10)
 #define RVV_10
 #endif
 
@@ -34,10 +34,12 @@ void *qemu_get_cpu(int index);
 
 //Defined by us
 void setup_regs(unsigned int cpu_index);
-int64_t qemu_get_vl(thread_state_t * state);
-int64_t qemu_get_vtype(thread_state_t * state);
-int64_t qemu_get_xreg(thread_state_t * state, int reg);
-char * qemu_get_vreg(thread_state_t * state, int reg, int vlB);
+int64_t get_vl(thread_state_t * state);
+int64_t get_vtype(thread_state_t * state);
+int64_t get_xreg(thread_state_t * state, int reg);
+char * get_vreg(thread_state_t * state, int reg, int vlB);
+
+void plugin_outs(char * str);
 
 char contains_string(char * str, const char * find);
-void rave_read_string(unsigned int cpu_index, uint32_t insn_opcode, char * string, uint64_t maxlen);
+void rave_read_string(unsigned int cpu_index, uint64_t string_addr, uint64_t len, char * string, uint64_t maxlen);

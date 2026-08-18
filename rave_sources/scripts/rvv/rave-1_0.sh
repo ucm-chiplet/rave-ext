@@ -105,23 +105,37 @@ if [ "$RAVE_REPORT_NAME" != "" ]; then #OPT-in
 	args=$args",PRINT_REPORT=on,REPORT_NAME=$RAVE_REPORT_NAME"
 fi
 BIN_NAME=$(get_bin_name $@)
+args=$args",BINARY_NAME=$BIN_NAME"
 if [ "$RAVE_PRINT_PROFILE" == "1" ]; then #OPT-in
-	args=$args",PRINT_PROFILE=on,BINARY_NAME=$BIN_NAME"
+	args=$args",PRINT_PROFILE=on"
 fi
 if [ "$RAVE_PROFILE_NAME" != "" ]; then #OPT-in
-	args=$args",PRINT_PROFILE=on,BINARY_NAME=$BIN_NAME,PROFILE_NAME=$RAVE_PROFILE_NAME"
+	args=$args",PRINT_PROFILE=on,PROFILE_NAME=$RAVE_PROFILE_NAME"
 fi
 if [ "$RAVE_PRINT_CALLTRACE" == "1" ]; then #OPT-in
-	args=$args",PRINT_CALLTRACE=on,BINARY_NAME=$BIN_NAME"
+	args=$args",PRINT_CALLTRACE=on"
 fi
 if [ "$RAVE_CALLTRACE_NAME" != "" ]; then #OPT-in
-	args=$args",PRINT_CALLTRACE=on,BINARY_NAME=$BIN_NAME,CALLTRACE_NAME=$RAVE_CALLTRACE_NAME"
+	args=$args",PRINT_CALLTRACE=on,CALLTRACE_NAME=$RAVE_CALLTRACE_NAME"
 fi
 if [ "$RAVE_PRINT_CSV" == "1" ] || [ "$RAVE_CSV_NAME" != "" ]; then #OPT-in
 	if [ "$RAVE_CSV_NAME" == "" ]; then
-		RAVE_CSV_NAME=rave_summary.csv
+		if [ "$BIN_NAME" != "" ]; then
+			RAVE_CSV_NAME=`basename ${BIN_NAME}`_rave.csv
+		else
+			RAVE_CSV_NAME=rave_summary.csv
+		fi
 	fi
 	args=$args",PRINT_CSV=on,CSV_NAME=$RAVE_CSV_NAME"
+fi
+if [ "$RAVE_COMPRESS_REPORT" == "1" ]; then
+	args=$args",COMPRESS_REPORT=on"
+fi
+if [ "$RAVE_OTHER_CHILDS" == "1" ]; then
+	args=$args",OTHER_CHILDS=on"
+fi
+if [ "$RAVE_PROFILE_WEIGHT" != "" ]; then
+	args=$args",PROFILE_WEIGHT=$RAVE_PROFILE_WEIGHT"
 fi
 if [ "$RAVE_PLAIN_TEXT" == "1" ]; then
 	args=$args",PLAIN_TEXT=on"

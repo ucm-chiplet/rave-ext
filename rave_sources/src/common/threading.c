@@ -49,14 +49,12 @@ void parallel_end(unsigned int cpu_index){
 	parallel_region.master_thread = -1;
 }
 
-void parallel_begin(unsigned int cpu_index, uint32_t insn_opcode){
+void parallel_begin(unsigned int cpu_index, int parallelism){
 	//Atomicity assumed (only on thread active when this happens -> No nested parallel regions
 	//TODO: Check this assumption, act accordingly
 	parallel_region.master_thread = cpu_index;
 
 	//Build barrier
-	int src1 = (insn_opcode>>15)&0x1F;
-	int parallelism = qemu_get_xreg(&cpus_state[cpu_index],src1);
 	parallel_region.n_threads = parallelism;
 
 	//Allocate more threads if needed (It shouldn't cause a race condition here)

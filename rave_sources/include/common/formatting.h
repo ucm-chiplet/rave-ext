@@ -21,6 +21,7 @@
 
 //From state.h
 extern int PLAIN_TEXT;
+extern int COMPRESS_REPORT;
 #define P_GENERIC(fd,format,x,color)\
 	if(!PLAIN_TEXT) fprintf(fd,color); \
 	fprintf(fd,format,x);\
@@ -33,6 +34,11 @@ extern int PLAIN_TEXT;
 #define P_NUMBER(fd,format,x) P_GENERIC(fd,format,x,BOLD_BLUE)
 #define P_VL(fd,format,x) P_GENERIC(fd,format,x,BOLD_GREEN)
 #define P_PERCENTAGE(fd,format,x) P_GENERIC(fd,format,x,BOLD_PINK)
+
+#define P_NUMBER2 P_VL
+#define P_NUMBER3 P_PERCENTAGE
+#define P_NUMBER4 P_COUNTERS
+#define P_NUMBER5 P_WARNING
 
 struct indent_control_t{
 	char buffer[1024];

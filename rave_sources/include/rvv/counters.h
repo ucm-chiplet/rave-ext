@@ -11,7 +11,7 @@
 
 #define PERCENTAGE(fd,x,y,fin)\
 	if (x>0) {\
-		P_PERCENTAGE(fd, " (%.2f %%)", ((y)==0?0:(100.0*(x))/(y)));\
+		P_PERCENTAGE(fd, " (%.2f%%)", ((y)==0?0:(100.0*(x))/(y)));\
 	}\
 	fprintf(fd,"%c",fin);
 

@@ -37,5 +37,5 @@ event_info * add_event(int id, const char *name);
 
 void rave_event_and_value(uint32_t insn_opcode, thread_state_t * state);
 void rave_name_event_value(uint32_t insn_opcode, thread_state_t * state);
-void rave_event_string(uint32_t insn_opcode, thread_state_t * state);
-void rave_value_string(uint32_t insn_opcode, thread_state_t * state);
+void rave_event_string(char * str_ptr, thread_state_t * state);
+void rave_value_string(char * str_ptr, thread_state_t * state);

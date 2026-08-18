@@ -101,8 +101,8 @@ void rave_event_and_value(uint32_t insn_opcode, thread_state_t * state){
 	int src2 = (insn_opcode>>20)&0x1F;
 
 
-	int qemu_trace_event = qemu_get_xreg(state,src1);
-	int qemu_trace_value = qemu_get_xreg(state,src2);
+	int qemu_trace_event = get_xreg(state,src1);
+	int qemu_trace_value = get_xreg(state,src2);
 
 	set_lock(write_lock);
 	//rave_eventandcounters(qemu_trace_event, qemu_trace_value, cpu_index, &cpus_state[cpu_index].accum_counters);
@@ -132,17 +132,13 @@ void rave_event_and_value(uint32_t insn_opcode, thread_state_t * state){
 void rave_name_event_value(uint32_t insn_opcode, thread_state_t * state){
 	int src1 = (insn_opcode>>15)&0x1F;
 	int src2 = (insn_opcode>>20)&0x1F;
-	state->rave_event_number = qemu_get_xreg(state,src1);
-	state->rave_value_number = qemu_get_xreg(state,src2);
+	state->rave_event_number = get_xreg(state,src1);
+	state->rave_value_number = get_xreg(state,src2);
 }
 
-void rave_event_string(uint32_t insn_opcode, thread_state_t * state){
-	char data[128];
-	rave_read_string(state->cpu_index, insn_opcode, data, 128);
-	add_event(state->rave_event_number,data); 
+void rave_event_string(char * str_ptr, thread_state_t * state){
+	add_event(state->rave_event_number,str_ptr); 
 }
-void rave_value_string(uint32_t insn_opcode, thread_state_t * state){
-	char data[128];
-	rave_read_string(state->cpu_index, insn_opcode, data, 128);
-	add_value_to_event(state->rave_event_number,state->rave_value_number,data); 
+void rave_value_string(char * str_ptr, thread_state_t * state){
+	add_value_to_event(state->rave_event_number,state->rave_value_number,str_ptr); 
 }

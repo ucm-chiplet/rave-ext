@@ -41,5 +41,4 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 		const qemu_info_t *info, int argc,
 		char **argv);
 
-char is_rave_api(uint32_t insn_opcode, struct qemu_plugin_insn * insn);
 void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb);

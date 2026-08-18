@@ -6,6 +6,7 @@
 // * Email:  pablo.vizcaino@bsc.es
 /*********************************************************/
 
+#include "state.h"
 #include "profiling.h"
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +15,7 @@
 //#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-
+#include <formatting.h>
 
 void reset_profile(profile_t * loop_profile){
 	loop_profile -> first_loop_node = NULL;
@@ -23,6 +24,7 @@ void reset_profile(profile_t * loop_profile){
 	loop_profile -> jump_PC = -1;
 	loop_profile -> loop_its = 0;
 	loop_profile -> loop_instr = 0;
+	loop_profile -> loop_vinstr = 0;
 	loop_profile -> loop_weight = 0;
 	for(int i=0; i<NUM_VREGS; ++i) loop_profile -> used_vreg[i]=0;
 	
@@ -104,6 +106,7 @@ void update_PC(profile_t * loop_profile){
 	uint64_t PC = loop_profile -> curr_loop_PC;
  	uint64_t weight = loop_profile -> loop_weight;
 	double avg_instr = loop_profile -> loop_its==0 ? 0 : (double)(loop_profile -> loop_instr) / (loop_profile -> loop_its); 
+	double avg_vinstr = loop_profile -> loop_its==0 ? 0 : (double)(loop_profile -> loop_vinstr) / (loop_profile -> loop_its); 
 	int reg_count=0;
 	for(int i=0; i<NUM_VREGS; ++i) reg_count += (int)loop_profile->used_vreg[i];
 	//loop_node * prev = loop_profile->last_loop_node; 
@@ -127,7 +130,9 @@ void update_PC(profile_t * loop_profile){
 		node -> PC = PC;
 		node -> freq = 1;
 		node -> weight = (double)weight;
-		node -> avg_instr = avg_instr;
+		node -> tot_instr = avg_instr;
+		node -> tot_vinstr = avg_vinstr;
+		node -> tot_its = loop_profile->loop_its;
 		node -> register_usage = (double)reg_count / NUM_VREGS;
 		node -> next = NULL;
 		node -> prev = loop_profile->last_loop_node;
@@ -142,7 +147,9 @@ void update_PC(profile_t * loop_profile){
 		node -> freq += 1;
 		//node -> weight = node->weight * (double)(node->freq-1)/(node->freq) + (double)weight/node->freq;
 		node -> weight += (double)weight; 
-		node -> avg_instr += avg_instr;
+		node -> tot_instr += avg_instr;
+		node -> tot_vinstr += avg_vinstr;
+		node -> tot_its += loop_profile->loop_its;
 		node -> register_usage += (double)reg_count / NUM_VREGS;
 	}
 
@@ -203,6 +210,54 @@ void sample(uint64_t PC){
 	}
 }
 */
+
+static int read_len(char **p) {
+    int n = 0;
+    while (**p >= '0' && **p <= '9') { n = n * 10 + (**p - '0'); (*p)++; }
+    return n;
+}
+
+/* s must be a NUL-terminated, writable buffer. Modified in place. */
+void demangle_cpp(char *mangled, char *demangled, int maxsize) {
+		if (mangled==NULL) return;
+    if (strncmp(mangled, "_Z", 2) != 0) { //No mangled
+    	memcpy(demangled, mangled, strlen(mangled)); 
+			return;
+		}
+    char *p = mangled + 2;
+    if (*p == 'L') p++;                       /* local-linkage marker */
+    char *name = NULL;   /* points inside s */
+    int   nlen = 0;
+    if (*p == 'N') {
+        p++;                                  /* enter nested-name */
+        while (*p && *p != 'E') {
+            if ((*p == 'C' || *p == 'D') && p[1] >= '0' && p[1] <= '9') {
+                p += 2;                        /* ctor/dtor: keep prior name */
+                continue;
+            }
+            char *lenp = p;
+            int len = read_len(&lenp);
+            if (len <= 0) break;               /* unparsed construct (template, etc.) */
+            name = lenp;
+            nlen = len;
+            p = lenp + len;
+        }
+    } else {
+        char *lenp = p;
+        int len = read_len(&lenp);
+        if (len > 0) {
+            name = lenp;
+            nlen = len;
+        }
+    }
+
+    if (name) {
+				if (nlen >= maxsize) nlen=maxsize-1;
+        memcpy(demangled, name, nlen); 
+        demangled[nlen] = '\0';
+    }
+}
+
 
 
 static const Dwfl_Callbacks dwfl_callbacks = {
@@ -406,9 +461,19 @@ void cleanup_dwfl(void) {
 }
 
 void print_loop_profile(FILE * fd, profile_t * loop_profile){
-	fprintf(fd,"Elems" "\t" "avg_instr" "\t" "avg_vreg_use" "\t" "Instances" "\t" "PC" "\t" "Funct" "\t" "file:line" "\n");
+//	P_COUNTERS(fd,"%s","Elems" "\t" "avg_instr" "\t" "avg_its" "\t" "avg_vreg_use" "\t" "Instances" /*"\t" "PC"*/ "\t" "Funct" "\t" "file:line" "\n");
+
+	if (PROFILE_WEIGHT == w_ELEMS){ P_NUMBER5(fd,"%s","Elems\t");}
+	else{ P_NUMBER5(fd,"%s","Instr\t");}
+	P_NUMBER(fd,"%s","Instances\t");
+	P_NUMBER2(fd,"%s","Iters(avg)\t");
+	P_NUMBER(fd,"%s","it_Instr(avg)\t");
+	P_NUMBER3(fd,"%s","vmix\t");
+	P_NUMBER(fd,"%s","vreg_use(avg)\t");
+	P_NAME(fd,"%s","Function\t");
+	fprintf(fd,"%s","file:line\n");
 	uint64_t totweight=0.0;
-	const double cutoff=0.01;
+	const double cutoff=0.0075;
 		loop_node * node = loop_profile->first_loop_node; 
 		while(node != NULL){
 			uint64_t PC = node->PC-base;
@@ -416,29 +481,25 @@ void print_loop_profile(FILE * fd, profile_t * loop_profile){
 			const char * pc_symbol=NULL;
 			int pc_line=-1;
 			int pc_column=-1;
-
 			/*int ret =*/ resolve_pc_to_source(PC, &pc_symbol, &pc_file, &pc_line, &pc_column);
-#if 0
-			if (/*!ret*/ pc_symbol != NULL){
-				totweight += node->weight;
-				if ((double)node->weight / totweight < cutoff) break;
-				double avg_instr = node->avg_instr / node->freq;
-				double avg_usage = node->register_usage / node->freq;
-				fprintf(fd,"%.0f" "\t" "%.1f" "\t" "%.3f" "\t" "%ld" "\t" "\t" "0x%lx" "\t",node->weight, avg_instr, avg_usage, node->freq, PC);
-				fprintf(fd, "%s" "\t" "%s:%d\n", pc_symbol!=NULL?pc_symbol:"Unknown", pc_file!=NULL?pc_file:"Unknown", pc_line); 
-			}else{
-				printf("Unresolved PC: %lx, symmbol is %s\n", PC, pc_symbol!=NULL?pc_symbol:"NULL");
-			}
-#else
-			double avg_instr =  node->avg_instr / node->freq;
+			char demangled[128]="Unknown";
+			demangle_cpp((char*)pc_symbol, demangled, 128);
+			double avg_its = node->tot_its / node->freq;
+			double avg_instr =  node->tot_instr / node->freq;
+			double vmix = node->tot_vinstr / node->tot_instr;
 			double avg_usage = node->register_usage / node->freq;
-			//if (/*!ret*/ pc_symbol != NULL){
-				totweight += node->weight;
-			//}
+			totweight += node->weight;
 			if ((double)node->weight / totweight < cutoff) break;
-			fprintf(fd,"%.0f" "\t" "%.1f" "\t" "%.3f" "\t" "%ld" "\t" "\t" "0x%lx" "\t",node->weight, avg_instr, avg_usage, node->freq, PC);
-			fprintf(fd, "%s" "\t" "%s:%d\n", pc_symbol!=NULL?pc_symbol:"Unknown", pc_file!=NULL?pc_file:"Unknown", pc_line); 
-#endif
+			P_NUMBER5(fd, "%.0f\t", node->weight);
+			P_NUMBER(fd, "%ld\t",  node->freq);
+			P_NUMBER2(fd, "%.1f\t", avg_its);
+			P_NUMBER(fd, "%.1f\t", avg_instr);
+			P_NUMBER3(fd, "%.2f\t", vmix);
+			P_NUMBER(fd, "%.2f\t", avg_usage);
+			P_NAME(fd,"%s\t",demangled);
+			fprintf(fd, "%s:%d\n", pc_file!=NULL?pc_file:"Unknown", pc_line);
+			//fprintf(fd,"%.0f" "\t" "%.1f" "\t" "%.1f" "\t" "%.3f" "\t" "%ld" "\t" "\t" /*"0x%lx" "\t"*/,node->weight, avg_instr, avg_its, avg_usage, node->freq/*, PC*/);
+			//fprintf(fd, "%s" "\t" "%s:%d\n", demangled, pc_file!=NULL?pc_file:"Unknown", pc_line); 
 			node = node->next;
 		}
 	fflush(fd);

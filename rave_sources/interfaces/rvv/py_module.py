@@ -29,7 +29,7 @@ extra_compile_args = [
 
 rave_user_events_module = Extension(
     'rave_user_events',
-    sources=[os.path.join(current_dir, 'rave_user_events_wrapper.c')],
+    sources=[os.path.join(current_dir, '../common/rave_user_events_wrapper.c')],
     include_dirs=include_dirs,
     extra_compile_args=extra_compile_args,
     extra_link_args=['--sysroot=' + sysroot],

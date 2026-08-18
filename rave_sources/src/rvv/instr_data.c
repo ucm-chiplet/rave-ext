@@ -296,3 +296,33 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, 
 	}
 	return data;
 }
+
+enum RAVE_API_t decode_rave_api(uint32_t insn_opcode){
+	unsigned int dst = (insn_opcode>>7)&0x1F;
+	if (dst!=0) return NO_API;
+	unsigned int major = (insn_opcode)&0x7F;
+	unsigned int funct3=(insn_opcode>>12)&0x7;
+	unsigned int funct6=(insn_opcode>>26)&0x3F;
+	int32_t imm = ((int32_t)insn_opcode>>20); 
+
+	if (major == 0x13 && funct3 == 0){
+		if (imm==-2) return RESTART_TRACE; //li x0, -2 (restart trace)
+		else if (imm==-3) return ENABLE_TRACE; //li x0, -3 (enable trace)
+		else if (imm==-4) return DISABLE_TRACE; //li x0, -4 (disable trace)		
+		else if (imm==-7) return ENABLE_REGIONS; //li x0, -5 (enable regions)
+		else if (imm==-8) return DISABLE_REGIONS; //li x0, -6 (disable regions)		
+	}else if (major==0x33){
+		if (funct3 == 0x6) return EVENT_AND_VALUE; // or x0, ..., ... (rave_event_and_value)		
+		else if (funct3 == 0x7) return NAME_EVENT_VALUE; //and x0, ..., ... (name event value)		
+		else if (funct3 == 1 && funct6==0) return EVENT_STRING; // sll x0, ..., ... (event string)
+		else if (funct3 == 5 && funct6==0) return VALUE_STRING;// srl x0, ..., ... (action: value string)
+		else if (funct3 == 0 && funct6==0) return BEGIN_REGION; // add x0, ..., ... (action: begin region string)
+		else if (funct3 == 0 && funct6==0x10) return END_REGION; // sub x0, ..., ... (action: end region string)
+	//----------------------------------------
+	// OMP control
+	//----------------------------------------
+	}else if (major == 0x13 && funct3 == 0 &&  imm==-5) return PARALLEL_BARRIER; //li x0, -5 (parallel_barrier)		
+	else if (major == 0x33 && funct3 == 4 && funct6 == 0) return PARALLEL_BEGIN; //xor x0, ..., ... (parallel begin)		
+	else if (major == 0x13 && funct3 == 0 &&  imm==-6) return PARALLEL_END; //li x0, -6 (parallel_end)		
+	return NO_API;
+}

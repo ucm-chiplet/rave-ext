@@ -56,10 +56,12 @@ inline void detect_loop_start(profile_t * loop_profile, uint64_t PC){
 			if (loop_profile->loop_its == 1){ //If we took the first branch, reset counters and do actual measures
 				loop_profile->loop_weight = 0;
 				loop_profile->loop_instr = 0;
+				loop_profile->loop_vinstr = 0;
 				for(int i=0; i<NUM_VREGS; ++i) loop_profile -> used_vreg[i] = 0;
 			}else if (loop_profile->loop_its == 2){ //If we took the second iteration, assume iteration 0 was equal to iteration 1.
 				loop_profile->loop_weight *= 2;
 				loop_profile->loop_instr *= 2;
+				loop_profile->loop_vinstr *= 2;
 			}
 			loop_profile->loop_its++;
 		}
@@ -94,6 +96,7 @@ void scalar_block_exec(thread_state_t * state, scalar_block_data_t * data){
 					if (data->PCs[i] != loop_profile->curr_loop_PC){ //New loop
 						loop_profile->loop_its = 1;
 						loop_profile->loop_instr = (data->PC_branch-data->PC_loop)/4; //Approximation
+						loop_profile->loop_vinstr = 0; //Approximation
 					}
 					loop_profile->curr_loop_PC = data->PC_branch; 
 					loop_profile->jump_PC = data->PC_loop; 
@@ -117,8 +120,8 @@ void scalar_block_exec(thread_state_t * state, scalar_block_data_t * data){
 		if (PRINT_LOGFILE && TRACE_SCALAR){
 			set_lock(write_lock);
 			for(int i=0; i<n_instr; ++i){
-				qemu_plugin_outs(data->strings[i]);
-				qemu_plugin_outs("\n");
+				plugin_outs(data->strings[i]);
+				plugin_outs("\n");
 			}
 			release_lock(write_lock);
 		}
@@ -247,8 +250,8 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 	if (is_type(instr->type, T_VECTOR)){ //VECTOR
 		loop_profile -> used_vreg[((instr->instr32)>>7)&0x1F] = 1;
 		row = VECTOR_ROW;
-		vl = qemu_get_vl(state); 
-		vtype = qemu_get_vtype(state);
+		vl = get_vl(state); 
+		vtype = get_vtype(state);
 #ifdef RVV_07
 		sew = (vtype >> 2)&0x7;
 		lmul = vtype&0x3;
@@ -260,12 +263,12 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 		if (is_subtype(instr->type, T_MEMORY)){
 			if (TRACE_ADDR){
 				int src1 = (instr->instr32>>15)&0x1F;
-				addr = qemu_get_xreg(state,src1);
+				addr = get_xreg(state,src1);
 			}
 
 			if (is_subsubtype(instr->type, T_STRIDE)){
 				int src2 = (instr->instr32>>20)&0x1F;
-				stride = qemu_get_xreg(state,src2);
+				stride = get_xreg(state,src2);
 			}
 #ifndef RVV_07
 			int width = (instr->instr32 >> 12)&0x3; 
@@ -274,7 +277,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 
 			if(TRACE_INDEXES && is_subsubtype(instr->type, T_INDEX)){
 				int src2 = (instr->instr32>>20)&0x1F;
-				char * contents = qemu_get_vreg(state,src2,vl*(2<<(sew)));
+				char * contents = get_vreg(state,src2,vl*(2<<(sew)));
 				if (sew==0) indexes_8 = (int8_t*)contents;
 				else if (sew==1) indexes_16 = (int16_t*)contents;
 				else if (sew==2) indexes_32 = (int32_t*)contents;
@@ -297,7 +300,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 		}
 	}else if (is_type(instr->type, T_VSETVL)){ 
 		int src1 = (instr->instr32>>15)&0x1F;
-		rvl = qemu_get_xreg(state,src1);
+		rvl = get_xreg(state,src1);
 	}
 
 	//  Logfile  //
@@ -310,13 +313,13 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 					exit(-1);
 				}
 				set_lock(write_lock);
-				qemu_plugin_outs(string);
-				qemu_plugin_outs(" scalar instructions\n");
+				plugin_outs(string);
+				plugin_outs(" scalar instructions\n");
 				release_lock(write_lock);
 			}
 			set_lock(write_lock);
-			qemu_plugin_outs(instr->asm_string);
-			qemu_plugin_outs("\n");
+			plugin_outs(instr->asm_string);
+			plugin_outs("\n");
 			release_lock(write_lock);
 		}
 
@@ -408,7 +411,11 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 	// Counters //
 	loop_profile->loop_instr++; 
 	if (is_type(instr->type, T_VECTOR)) {
-		loop_profile->loop_weight += vl;
+		if (PROFILE_WEIGHT == w_ELEMS)
+			loop_profile->loop_weight += vl;
+		else if (PROFILE_WEIGHT == w_INSTR)
+			loop_profile->loop_weight ++;
+		loop_profile->loop_vinstr++;
 
 		state->scalar_instr_since_vector=0;
 		++state->accum_counters.vector_instr[sew];

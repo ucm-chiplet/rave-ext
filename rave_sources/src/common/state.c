@@ -20,25 +20,28 @@ char TRACE_ENABLED = 1; //Enabled by default
 char ACCUM_REGIONS = 0;
 FILE * FD_PRV;
 FILE * FD_REPORT;
-int MUSA;
 int N_PIPELINES;
 char PRINT_LOGFILE = 0;
 char PRINT_PROFILE = 0;
 char PRINT_CALLTRACE = 0;
 char PRINT_PRV = 0;
+int MUSA;
 int RAVE_ELEN = 64;
 int RAVE_VLMAX = 0;
+char TRACE_INDEXES = 0;
+char OTHER_CHILDS = 0;
+
 char REGIONS_ENABLED = 1; //Enabled by default 
 int REGION_EVENT = 1000;
 char STREAM_REPORT = 0;
 char TRACE_ADDR = 0;
-char TRACE_INDEXES = 0;
 char TRACE_SCALAR = 0;
 uint64_t base;
 int disabled_once = 0;
 uint64_t timestamp;
 int PLAIN_TEXT=0;
-
+int COMPRESS_REPORT=0;
+int PROFILE_WEIGHT=w_ELEMS;
 char PRINT_REPORT = 0;
 char PRINT_CSV = 0;
 char * filename = NULL; 
@@ -61,7 +64,6 @@ void restart_trace(){
 		trace_row(FD_PRV,0, 0, SCALAR_ROW, 0);
 		trace_event_value(FD_PRV,event_VLEN,RAVE_VLMAX);
 		trace_event_value(FD_PRV,event_ELEN,RAVE_ELEN);
-
 	}
 	//restart global region
 	//global_region -> closed = 0;
@@ -93,10 +95,14 @@ void disable_trace(int cpu_index){
 	if (PRINT_PRV){
 		trace_row(FD_PRV,mpi_rank, cpu_index, SCALAR_ROW, timestamp);
 		clean_event(FD_PRV); 
+#if defined(RVV_07) || defined(RVV_10)
 		if (!MUSA){
+#endif
 			trace_row(FD_PRV,mpi_rank, cpu_index, VECTOR_ROW, timestamp);
 			clean_event(FD_PRV); 
+#if defined(RVV_07) || defined(RVV_10)
 		}
+#endif
 	}
 }
 
@@ -104,8 +110,10 @@ void reset_thread(int cpu_index){
 	thread_state_t * state = &cpus_state[cpu_index];
 	state -> cpu_index = cpu_index;
 	state -> last_row = 0;
+#if defined(RVV_07) || defined(RVV_10)
 	state -> reset_stride = 0;
 	state -> last_was_vsetvl = 0;
+#endif
 	state -> scalar_instr_since_vector = 0;
 	state -> print_first_scalar = 1;
 	state -> need_align = 1;

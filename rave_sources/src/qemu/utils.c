@@ -24,19 +24,19 @@ void setup_regs(unsigned int cpu_index){
 	uint8_t *cpu = qemu_get_cpu(cpu_index);
 	cpus_state[cpu_index].regs = (void*)(cpu + OFFSET_CPUState); 
 }
-int64_t qemu_get_vl(thread_state_t * state){
+int64_t get_vl(thread_state_t * state){
 	uint8_t * regs = (uint8_t*)state->regs;
 	return *(uint64_t*)(regs + OFFSET_XREGS + sizeof(uint64_t)*2);
 }
-int64_t qemu_get_vtype(thread_state_t * state){
+int64_t get_vtype(thread_state_t * state){
 	uint8_t * regs = (uint8_t*)state->regs;
 	return *(uint64_t*)(regs + OFFSET_XREGS + sizeof(uint64_t)*4);
 }
-int64_t qemu_get_xreg(thread_state_t * state, int reg){
+int64_t get_xreg(thread_state_t * state, int reg){
 	uint8_t * regs = (uint8_t*)state->regs;
 	return *(uint64_t*)(regs + sizeof(uint64_t)*reg); 
 }
-char * qemu_get_vreg(thread_state_t * state, int reg, int vlB){
+char * get_vreg(thread_state_t * state, int reg, int vlB){
 	uint8_t * regs = (uint8_t*)state->regs;
 	char * data = (char*)regs + OFFSET_VREGS + sizeof(uint64_t)*reg*RV_VLEN_MAX/64;
 	char * values = aligned_alloc(8, vlB);
@@ -65,7 +65,7 @@ void setup_regs(unsigned int cpu_index){
 	cpus_state[cpu_index].regs = (void*)regs;
 }
 
-int64_t qemu_get_vl(thread_state_t * state){
+int64_t get_vl(thread_state_t * state){
   qemu_plugin_reg_descriptor *desc = &g_array_index((GArray*)(state->regs), qemu_plugin_reg_descriptor, idx_vl);
 	GByteArray *buf = g_byte_array_new();
 	qemu_plugin_read_register(desc->handle, buf);
@@ -73,7 +73,7 @@ int64_t qemu_get_vl(thread_state_t * state){
   g_byte_array_unref(buf);
 	return (int64_t)reg_val; 
 }
-int64_t qemu_get_vtype(thread_state_t * state){
+int64_t get_vtype(thread_state_t * state){
   qemu_plugin_reg_descriptor *desc = &g_array_index((GArray*)(state->regs), qemu_plugin_reg_descriptor, idx_vtype);
 	GByteArray *buf = g_byte_array_new();
 	qemu_plugin_read_register(desc->handle, buf);
@@ -81,7 +81,7 @@ int64_t qemu_get_vtype(thread_state_t * state){
   g_byte_array_unref(buf);
 	return (int64_t)reg_val; 
 }
-int64_t qemu_get_xreg(thread_state_t * state, int reg){
+int64_t get_xreg(thread_state_t * state, int reg){
   qemu_plugin_reg_descriptor *desc = &g_array_index((GArray*)(state->regs), qemu_plugin_reg_descriptor, idx_xregs+reg);
 	GByteArray *buf = g_byte_array_new();
 	qemu_plugin_read_register(desc->handle, buf);
@@ -89,7 +89,7 @@ int64_t qemu_get_xreg(thread_state_t * state, int reg){
   g_byte_array_unref(buf);
 	return (int64_t)reg_val; 
 }
-char * qemu_get_vreg(thread_state_t * state, int reg, int vlB){
+char * get_vreg(thread_state_t * state, int reg, int vlB){
 
 	int nregs = (vlB*8 + RAVE_VLMAX - 1) / RAVE_VLMAX; //Ceiling division
 	char * values = aligned_alloc(8, vlB);
@@ -108,6 +108,10 @@ char * qemu_get_vreg(thread_state_t * state, int reg, int vlB){
 }
 #endif
 
+void plugin_outs(char * str){
+	qemu_plugin_outs(str);
+}
+
 char contains_string(char * str, const char * find){
 	int slen = strlen(str);
 	int flen = strlen(find);
@@ -121,12 +125,7 @@ char contains_string(char * str, const char * find){
 	return 0;
 }
 
-void rave_read_string(unsigned int cpu_index, uint32_t insn_opcode, char * string, uint64_t maxlen){
-	int src1 = (insn_opcode>>15)&0x1F;
-	int src2 = (insn_opcode>>20)&0x1F;
-	uint64_t string_addr = qemu_get_xreg(&cpus_state[cpu_index],src1);
-	uint64_t len = qemu_get_xreg(&cpus_state[cpu_index],src2);
-
+void rave_read_string(unsigned int cpu_index, uint64_t string_addr, uint64_t len, char * string, uint64_t maxlen){
 	//Read string from guest memory
 	#ifndef RVV_07
 	GByteArray *mem_buf = g_byte_array_new();

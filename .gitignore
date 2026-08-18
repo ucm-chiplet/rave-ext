@@ -6,3 +6,5 @@
 *.x
 *.o
 *.trace
+downloads
+build

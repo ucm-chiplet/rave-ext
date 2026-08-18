@@ -5,6 +5,8 @@ void reset_counters(rave_counters * c);
 void copy_counters(rave_counters * c1, rave_counters * c2);
 //c1 += c2;
 void add_counters(rave_counters * c1, rave_counters * c2);
+//c1 -= c2;
+void sub_counters(rave_counters * c1, rave_counters * c2);
 #if 0
 //c1 = moving_avg(c1,c2)
 void avg_counters(rave_counters * c1, rave_counters * c2, int n);

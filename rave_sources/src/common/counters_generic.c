@@ -33,6 +33,15 @@ void add_counters(rave_counters * c1, rave_counters * c2){
 	}
 }
 
+//c1 -= c2;
+void sub_counters(rave_counters * c1, rave_counters * c2){
+	double * c1_ptr = (double *)c1;
+	double * c2_ptr = (double *)c2;
+	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
+		c1_ptr[c] -= c2_ptr[c]; 
+	}
+}
+
 #if 0
 //c1 = moving_avg(c1,c2)
 void avg_counters(rave_counters * c1, rave_counters * c2, int n){

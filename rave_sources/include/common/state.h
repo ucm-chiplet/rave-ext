@@ -9,7 +9,6 @@
 
 #include "profiling.h"
 #include "counters.h"
-#include <qemu-plugin.h>
 #include <stdint.h>
 
 //Exported Variables
@@ -18,24 +17,28 @@ extern char TRACE_ENABLED;
 extern char ACCUM_REGIONS;
 extern FILE * FD_PRV;
 extern FILE * FD_REPORT;
-extern int MUSA;
 extern int N_PIPELINES;
 extern char PRINT_LOGFILE;
 extern char PRINT_PROFILE;
 extern char PRINT_CALLTRACE;
 extern char PRINT_PRV;
+extern int MUSA;
 extern int RAVE_ELEN;
 extern int RAVE_VLMAX;
+extern char TRACE_INDEXES;
+extern char OTHER_CHILDS;
 extern char REGIONS_ENABLED;
 extern int REGION_EVENT;
 extern char STREAM_REPORT;
 extern char TRACE_ADDR;
-extern char TRACE_INDEXES;
 extern char TRACE_SCALAR;
 extern uint64_t base;
 extern int disabled_once;
 extern uint64_t timestamp;
 extern int PLAIN_TEXT;
+extern int COMPRESS_REPORT;
+enum weight_t {w_ELEMS, w_INSTR};
+extern int PROFILE_WEIGHT;
 extern char PRINT_REPORT;
 extern char PRINT_CSV;
 extern char * filename;
@@ -51,8 +54,10 @@ extern FILE * FD_CALLTRACE;
 struct thread_state_t{
 	int cpu_index;
 	int last_row;
+#if defined(RVV_07) || defined(RVV_10)
 	int reset_stride;
 	int last_was_vsetvl;
+#endif
 	int scalar_instr_since_vector;
 	int print_first_scalar;
 	char need_align;

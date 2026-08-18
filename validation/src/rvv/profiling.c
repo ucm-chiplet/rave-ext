@@ -14,7 +14,7 @@ int main(){
 				".endr \n"
 		);
 		asm volatile( 
-				"li %[count], 100\n"
+				"li %[count], 200\n"
 				"1: \n"
 				"addi %[count], %[count], -1 \n"
 				"bne %[count], x0, 1b \n"

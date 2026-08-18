@@ -35,4 +35,5 @@ if [ $ret -ne 0 ]; then
 fi
 
 echo $green [TEST OK] OMP $nc
+rm -f ${RAVE_CSV_NAME}
 exit 0

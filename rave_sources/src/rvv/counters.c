@@ -38,10 +38,11 @@ void print_counters_human(FILE * fd, rave_counters * counters){
 	//Print SEW-specific counters (vec)
 	if (!vecinstr) return;
 	for(int s=0; s<SEWS; ++s){
+		if (COMPRESS_REPORT && counters->vector_instr[s]<=0) continue;
 		indent(fd, level, (s==SEWS-1)); 
-		fprintf(fd,"SEW %d vector instr: ", 1<<(s+3)); P_NUMBER(fd, "%.0f", counters->vector_instr[s]); PERCENTAGE(fd,counters->vector_instr[s], vecinstr, counters->vector_instr[s]>0?' ':'\n');
+		fprintf(fd,"SEW %d %s: ", 1<<(s+3), COMPRESS_REPORT?"v.ins":"vector instr" ); P_NUMBER(fd, "%.0f", counters->vector_instr[s]); PERCENTAGE(fd,counters->vector_instr[s], vecinstr, counters->vector_instr[s]>0?' ':'\n');
 		if (counters->vector_instr[s]>0){
-			fprintf(fd, " [avg VL: "); P_VL(fd, "%.2f",counters->velem[s] / counters->vector_instr[s]); fprintf(fd," elements]\n");
+			fprintf(fd, "[avg VL: "); P_VL(fd, "%.2f",counters->velem[s] / counters->vector_instr[s]); fprintf(fd," elems]\n");
 			double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s] + counters->vspill_instr[s];
 			double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
 			double  totvred	= counters->vfp_reductions[s] + counters->vint_reductions[s];
@@ -49,14 +50,14 @@ void print_counters_human(FILE * fd, rave_counters * counters){
 
 			indent(fd,++level,0); fprintf(fd,"Arith: "); P_NUMBER(fd,"%.0f",totvarith); PERCENTAGE(fd,totvarith, counters->vector_instr[s],totvarith>0?' ':'\n');
 			if (totvarith>0){
-			 	fprintf(fd, " [avg VL: "); P_VL(fd, "%.2f", counters->velem_arith[s] / totvarith); fprintf(fd," elements]\n");
+			 	fprintf(fd, "[avg VL: "); P_VL(fd, "%.2f", counters->velem_arith[s] / totvarith); fprintf(fd," elems]\n");
 				indent(fd,++level,0); fprintf(fd,"FP: "); P_NUMBER(fd,"%.0f", counters->vfp_instr[s]); PERCENTAGE(fd,counters->vfp_instr[s], totvarith,'\n');
 				indent(fd,  level,1); fprintf(fd,"INT: "); P_NUMBER(fd,"%.0f", counters->vint_instr[s]); PERCENTAGE(fd,counters->vint_instr[s], totvarith,'\n');
 				--level;
 			}
 			indent(fd,level,0); fprintf(fd,"Reduction: "); P_NUMBER(fd,"%.0f",totvred); PERCENTAGE(fd,totvred, counters->vector_instr[s],totvred>0?' ':'\n');
 			if (totvred>0){
-			 	fprintf(fd, " [avg VL: "); P_VL(fd, "%.2f", counters->velem_reductions[s] / totvred); fprintf(fd," elements]\n");
+			 	fprintf(fd, "[avg VL: "); P_VL(fd, "%.2f", counters->velem_reductions[s] / totvred); fprintf(fd," elems]\n");
 				indent(fd,++level,0); fprintf(fd,"FP: "); P_NUMBER(fd,"%.0f", counters->vfp_reductions[s]); PERCENTAGE(fd,counters->vfp_reductions[s], totvred,'\n');
 				indent(fd,  level,1); fprintf(fd,"INT: "); P_NUMBER(fd,"%.0f", counters->vint_reductions[s]); PERCENTAGE(fd,counters->vint_reductions[s], totvred,'\n');
 				--level;
@@ -64,7 +65,7 @@ void print_counters_human(FILE * fd, rave_counters * counters){
 
 			indent(fd,level,0); fprintf(fd,"Memory: "); P_NUMBER(fd,"%.0f", totvmem); PERCENTAGE(fd,totvmem, counters->vector_instr[s], totvmem>0?' ':'\n');
 			if (totvmem>0){
-			 	fprintf(fd, " [avg VL: "); P_VL(fd,"%.2f",counters->velem_mem[s] / totvmem); fprintf(fd," elements]\n");
+			 	fprintf(fd, "[avg VL: "); P_VL(fd,"%.2f",counters->velem_mem[s] / totvmem); fprintf(fd," elems]\n");
 				indent(fd,++level,0); fprintf(fd,"unit: "); P_NUMBER(fd,"%.0f", counters->vunit_instr[s]); PERCENTAGE(fd,counters->vunit_instr[s], totvmem,'\n');
 				indent(fd,  level,0); fprintf(fd,"strided: "); P_NUMBER(fd,"%.0f", counters->vstride_instr[s]); PERCENTAGE(fd,counters->vstride_instr[s], totvmem,'\n');
 				if (counters->vstride_instr[s] > 0){
@@ -78,12 +79,12 @@ void print_counters_human(FILE * fd, rave_counters * counters){
 
 			indent(fd,level,0);	fprintf(fd,"Mask: "); P_NUMBER(fd,"%.0f", counters->vmask_instr[s]); PERCENTAGE(fd,counters->vmask_instr[s], counters->vector_instr[s], counters->vmask_instr[s]>0?' ':'\n');
 			if (counters->vmask_instr[s]>0) {
-				fprintf(fd, " [avg VL: "); P_VL(fd, "%.2f", counters->velem_mask[s] / counters->vmask_instr[s]); fprintf(fd," elements]\n");
+				fprintf(fd, "[avg VL: "); P_VL(fd, "%.2f", counters->velem_mask[s] / counters->vmask_instr[s]); fprintf(fd," elems]\n");
 			}
 
 			indent(fd,level,1); fprintf(fd,"Other: "); P_NUMBER(fd,"%.0f", totvother); PERCENTAGE(fd,totvother, counters->vector_instr[s], totvother>0?' ':'\n');
 			if (totvother>0) {
-				fprintf(fd, " [avg VL: "); P_VL(fd,"%.2f", (counters->velem[s]-counters->velem_arith[s]-counters->velem_reductions[s]-counters->velem_mem[s]-counters->velem_mask[s])/totvother); fprintf(fd," elements]\n");
+				fprintf(fd, "[avg VL: "); P_VL(fd,"%.2f", (counters->velem[s]-counters->velem_arith[s]-counters->velem_reductions[s]-counters->velem_mem[s]-counters->velem_mask[s])/totvother); fprintf(fd," elems]\n");
 			}
 			--level;
 		}
@@ -104,7 +105,7 @@ void print_csv_header(FILE * fd){
 			fprintf(fd, ",v_e%d_mask,v_e%d_mask_elems",sew,sew);
 			fprintf(fd, ",v_e%d_other,v_e%d_other_elems",sew,sew);
 		}
-		fprintf(fd,"\n");
+		//fprintf(fd,"\n");
 }
 
 void print_counters_csv(FILE * fd, rave_counters * counters){
@@ -134,5 +135,5 @@ void print_counters_csv(FILE * fd, rave_counters * counters){
 		fprintf(fd,",%.0f,%.0f", counters->vmask_instr[s], counters->velem_mask[s]); 
 		fprintf(fd,",%.0f,%.0f", totvother, velem_other);
 	}
-	fprintf(fd,"\n");
+	//fprintf(fd,"\n");
 }

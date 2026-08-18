@@ -14,7 +14,9 @@ struct loop_node{
 	uint64_t PC;
 	long freq;
 	double weight;
-	double avg_instr;
+	double tot_instr;
+	double tot_vinstr;
+	double tot_its;
 	double register_usage;
 	struct loop_node * next;
 	struct loop_node * prev;
@@ -37,6 +39,7 @@ struct profile_t{
 	uint64_t jump_PC;
 	uint64_t loop_its;
 	uint64_t loop_instr;
+	uint64_t loop_vinstr;
 	uint64_t loop_weight;
 	char used_vreg[NUM_VREGS];
 	PC_hash_map_node PC_hash_map[NHASHES];

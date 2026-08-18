@@ -190,7 +190,7 @@ Control report / profile / csv generation:
 
 ### RAVE API (code instrumentation)
 
-You can instrument your code using the RAVE API. Althought you can use RAVE without instrumentation, we recommend taking a look on the API's functions defined in the `interfaces/rave_user_events.h` header. You can instrument the code into regions using:
+You can instrument your code using the RAVE API. Althought you can use RAVE without instrumentation, we recommend taking a look on the API's functions defined in the `interfaces/rvv/rave_user_events.h` header. You can instrument the code into regions using:
 
 | Rave API call | Description  |
 |---------------|--------------|

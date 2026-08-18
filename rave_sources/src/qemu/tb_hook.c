@@ -20,6 +20,14 @@
 #include "scalar_blocks.h"
 #include "init_exit.h"
 
+void rv_read_string(unsigned int cpu_index, uint32_t insn_opcode, char * str_ptr, int maxlen){
+	int src1 = (insn_opcode>>15)&0x1F;
+	int src2 = (insn_opcode>>20)&0x1F;
+	uint64_t string_addr = get_xreg(&cpus_state[cpu_index],src1);
+	uint64_t len = get_xreg(&cpus_state[cpu_index],src2);
+	rave_read_string(cpu_index, string_addr, len, str_ptr, maxlen);
+}
+
 void vcpu_scalar_block_exec(unsigned int cpu_index, void *udata){
 	scalar_block_data_t * data = (scalar_block_data_t *)udata;
 	scalar_block_exec(&cpus_state[cpu_index], data);
@@ -31,11 +39,15 @@ void vcpu_insn_exec(unsigned int cpu_index, void *udata){
 }
 void vcpu_rave_event_string(unsigned int cpu_index, void * insn_opcode_void){
 	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
-	rave_event_string(insn_opcode, &cpus_state[cpu_index]);
+	char str_ptr[128];
+	rv_read_string(cpu_index, insn_opcode, str_ptr, 128);
+	rave_event_string(str_ptr, &cpus_state[cpu_index]);
 }
 void vcpu_rave_value_string(unsigned int cpu_index, void * insn_opcode_void){
 	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
-	rave_value_string(insn_opcode, &cpus_state[cpu_index]);
+	char str_ptr[128];
+	rv_read_string(cpu_index, insn_opcode, str_ptr, 128);
+	rave_value_string(str_ptr, &cpus_state[cpu_index]);
 }
 void vcpu_rave_event_and_value(unsigned int cpu_index, void * insn_opcode_void){
 	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
@@ -47,18 +59,24 @@ void vcpu_rave_name_event_value(unsigned int cpu_index, void* insn_opcode_void){
 }
 void vcpu_rave_begin_region(unsigned int cpu_index, void * insn_opcode_void){
 	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
-	rave_begin_region(insn_opcode, &cpus_state[cpu_index]);
+	char str_ptr[128];
+	rv_read_string(cpu_index, insn_opcode, str_ptr, 128);
+	rave_begin_region(str_ptr, &cpus_state[cpu_index]);
 }
 void vcpu_rave_end_region(unsigned int cpu_index, void * insn_opcode_void){
 	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
-	rave_end_region(insn_opcode, &cpus_state[cpu_index]);
+	char str_ptr[128];
+	rv_read_string(cpu_index, insn_opcode, str_ptr, 128);
+	rave_end_region(str_ptr, &cpus_state[cpu_index]);
 }
 void vcpu_parallel_end(unsigned int cpu_index, void * udata){
 	parallel_end(cpu_index);
 }
 void vcpu_parallel_begin(unsigned int cpu_index, void* insn_opcode_void){
 	uint32_t insn_opcode = (uint32_t)(uint64_t)insn_opcode_void;
-	parallel_begin(cpu_index, insn_opcode);
+	int src1 = (insn_opcode>>15)&0x1F;
+	int parallelism = get_xreg(&cpus_state[cpu_index],src1);
+	parallel_begin(cpu_index, parallelism);
 }
 void vcpu_parallel_barrier(unsigned int cpu_index, void * udata){
 	parallel_barrier(cpu_index);
@@ -100,68 +118,38 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 }
 
 char is_rave_api(uint32_t insn_opcode, struct qemu_plugin_insn * insn){
-	unsigned int dst = (insn_opcode>>7)&0x1F;
-	if (dst!=0) return 0;
-	unsigned int major = (insn_opcode)&0x7F;
-	unsigned int funct3=(insn_opcode>>12)&0x7;
-	unsigned int funct6=(insn_opcode>>26)&0x3F;
-	int32_t imm = ((int32_t)insn_opcode>>20); 
-	//printf("ins 0x%08x → major %02x , f3 %01x, f6 %02x, imm=%d\n",insn_opcode,major,funct3,funct6,imm);
-	//----------------------------------------
-	// TRACE control
-	//----------------------------------------
-	if (major == 0x13 && funct3 == 0){
-		//li x0, -2 (restart trace)
-		if (imm==-2){
+
+	enum RAVE_API_t type = decode_rave_api(insn_opcode);
+
+	if (type==RESTART_TRACE) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_restart_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
-		//li x0, -3 (enable trace)
-		}else if (imm==-3){
+	else if (type==ENABLE_TRACE) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_enable_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
-		//li x0, -4 (disable trace)		
-		}else if (imm==-4){ 
+	else if (type==DISABLE_TRACE) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_disable_trace, QEMU_PLUGIN_CB_R_REGS, NULL);
-		//li x0, -5 (enable regions)
-		}else if (imm==-7){
+	else if (type==ENABLE_REGIONS) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_enable_regions, QEMU_PLUGIN_CB_R_REGS, NULL);
-		//li x0, -6 (disable regions)		
-		}else if (imm==-8){ 
+	else if (type==DISABLE_REGIONS) 
 		qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_disable_regions, QEMU_PLUGIN_CB_R_REGS, NULL);
-		}
-	}else if (major==0x33){
-		// or x0, ..., ... (rave_event_and_value)		
-		if (funct3 == 0x6){
+	else if (type==EVENT_AND_VALUE) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_event_and_value, QEMU_PLUGIN_CB_NO_REGS, (void *)(uint64_t)insn_opcode);
-		//and x0, ..., ... (name event value)		
-		}else if (funct3 == 0x7){
+	else if (type==NAME_EVENT_VALUE) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_name_event_value, QEMU_PLUGIN_CB_NO_REGS, (void *)(uint64_t)insn_opcode);
-		// sll x0, ..., ... (action: event string)
-		}else if (funct3 == 1 && funct6==0) {
+	else if (type==EVENT_STRING) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_event_string, QEMU_PLUGIN_CB_NO_REGS, (void *)(uint64_t)insn_opcode);
-		// srl x0, ..., ... (action: value string)
-		}else if (funct3 == 5 && funct6==0) {
+	else if (type==VALUE_STRING) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_value_string, QEMU_PLUGIN_CB_NO_REGS, (void *)(uint64_t)insn_opcode);
-		// add x0, ..., ... (action: begin region string)
-		}else if (funct3 == 0 && funct6==0) {
+	else if (type==BEGIN_REGION) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_begin_region, QEMU_PLUGIN_CB_NO_REGS, (void *)(uint64_t)insn_opcode);
-		// sub x0, ..., ... (action: end region string)
-		}else if (funct3 == 0 && funct6==0x10) {
+	else if (type==END_REGION) 
 			qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_rave_end_region, QEMU_PLUGIN_CB_NO_REGS, (void *)(uint64_t)insn_opcode);
-		}	
-	//----------------------------------------
-	// OMP control
-	//----------------------------------------
-	//li x0, -5 (parallel_barrier)		
-	}else if (major == 0x13 && funct3 == 0 &&  imm==-5){ 
+	else if (type==PARALLEL_BARRIER) 
 		qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_parallel_barrier, QEMU_PLUGIN_CB_NO_REGS, NULL);
-	//xor x0, ..., ... (parallel begin)		
-	}else if (major == 0x33 && funct3 == 4 && funct6 == 0){
+	else if (type==PARALLEL_BEGIN) 
 		qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_parallel_begin, QEMU_PLUGIN_CB_R_REGS, (void *)(uint64_t)insn_opcode);
-	//li x0, -6 (parallel_end)		
-	}else if (major == 0x13 && funct3 == 0 &&  imm==-6){ 
+	else if (type==PARALLEL_END) 
 		qemu_plugin_register_vcpu_insn_exec_cb(insn, vcpu_parallel_end, QEMU_PLUGIN_CB_NO_REGS, NULL);
-	}else{
-		return 0;
-	}
+	else return 0;
 	return 1;
 }
 

@@ -78,5 +78,8 @@ uint16_t instr_set_scalar_type(uint32_t insn_opcode);
 int64_t get_loop_offset(uint32_t insn_opcode);
 
 
+enum RAVE_API_t { NO_API, RESTART_TRACE, ENABLE_TRACE, DISABLE_TRACE, ENABLE_REGIONS, DISABLE_REGIONS, EVENT_AND_VALUE, NAME_EVENT_VALUE,
+									EVENT_STRING, VALUE_STRING, BEGIN_REGION, END_REGION, PARALLEL_BARRIER, PARALLEL_BEGIN, PARALLEL_END};
+enum RAVE_API_t decode_rave_api(uint32_t insn_opcode);
 
 

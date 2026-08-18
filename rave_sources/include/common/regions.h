@@ -19,6 +19,7 @@ struct region_t{
 	rave_counters delta_counters;
 	rave_counters acc_counters;
 	int opened_by;
+	struct region_t * parent;
 	//int enabled;
 };
 typedef struct region_t region_t;
@@ -77,5 +78,5 @@ void print_region_human(FILE * fd, int n, region_t * region, int accumulate, int
 void print_region_report(FILE * fd, int accumulate);
 void print_region_csv(FILE * fd, int accumulate);
 
-void rave_begin_region(uint32_t insn_opcode, thread_state_t * state);
-void rave_end_region(uint32_t insn_opcode, thread_state_t * state);
+void rave_begin_region(char * str_ptr, thread_state_t * state);
+void rave_end_region(char * str_ptr, thread_state_t * state);

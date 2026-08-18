@@ -40,5 +40,5 @@ extern volatile int write_lock;
 
 void newthread_cb(void);
 void parallel_end(unsigned int cpu_index);
-void parallel_begin(unsigned int cpu_index, uint32_t insn_opcode);
+void parallel_begin(unsigned int cpu_index, int parallelism);
 void parallel_barrier(unsigned int cpu_index);
