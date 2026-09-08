@@ -31,7 +31,7 @@ void rave_exit()
 	double * global_counters_ptr = (double *)&global_counters;
 	for(int i=0; i<N_THREADS; ++i){
 		double * thread_counters_ptr = (double *)&cpus_state[i].accum_counters; 
-		for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
+		for(size_t c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
 			global_counters_ptr[c] += thread_counters_ptr[c]; 
 		}
 	}
@@ -199,10 +199,10 @@ void rave_exit()
 					int r;
 					//Skip header
 					while (!found_newline && (r=fread(buff, 1, PRV_BUFFSIZE, FD_PRV))){
-						for(int i=0; i<r; ++i){
-							if (buff[i]=='\n'){
+						for(int j=0; j<r; ++j){
+							if (buff[j]=='\n'){
 								found_newline=1;
-								fwrite(&buff[i+1], 1, r-i-1, FD_NEWPRV);
+								fwrite(&buff[j+1], 1, r-j-1, FD_NEWPRV);
 								break;
 							}
 						}
@@ -294,7 +294,7 @@ void rave_init(int argc, char **argv){
 		}
 		else if (contains_string(argv[i], "PRV_NAME")){
 #if 1
-			int j; for(j=0; j<strlen(argv[i]); ++j)	if (argv[i][j] == '=') break;
+			size_t j; for(j=0; j<strlen(argv[i]); ++j)	if (argv[i][j] == '=') break;
 
 			int l_filename = strlen(&argv[i][j+1]);
 			filename = malloc(l_filename+1);
@@ -333,8 +333,7 @@ void rave_init(int argc, char **argv){
 			}
 			else if (contains_string(argv[i], "CSV_NAME")){
 				//++i;
-				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
-				char * world_rank = getenv("OMPI_COMM_WORLD_SIZE");
+				size_t j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
 				mpi_size = world_rank==NULL? 1 : atoi(world_rank);
 				if (mpi_size > 1){
 					char * rank = getenv("OMPI_COMM_WORLD_RANK");
@@ -350,19 +349,19 @@ void rave_init(int argc, char **argv){
 				}
 			}
 			else if (contains_string(argv[i], "REPORT_NAME")){
-				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				size_t j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
 				FD_REPORT = fopen(&argv[i][j+1], "w");
 			}
 			else if (contains_string(argv[i], "PROFILE_NAME")){
-				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				size_t j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
 				FD_PROFILE = fopen(&argv[i][j+1], "w");
 			}
 			else if (contains_string(argv[i], "CALLTRACE_NAME")){
-				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				size_t j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
 				FD_CALLTRACE = fopen(&argv[i][j+1], "w");
 			}
 			else if (contains_string(argv[i], "REGION_EVENT")){
-				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				size_t j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
 				int event = atoi(&argv[i][j+1]);
 				REGION_EVENT = event>0 ? event : REGION_EVENT;
 			}
@@ -373,7 +372,7 @@ void rave_init(int argc, char **argv){
 				strcpy(BINARY_NAME,&argv[i][j+1]);
 			}
 			else if (contains_string(argv[i], "PROFILE_WEIGHT")){
-				int j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				size_t j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
 				if (contains_string(&argv[i][j+1], "ELEM")){
 					PROFILE_WEIGHT = w_ELEMS;
 				}else if (contains_string(&argv[i][j+1], "INSTR")){

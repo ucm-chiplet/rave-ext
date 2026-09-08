@@ -20,7 +20,9 @@ parallel_region_t parallel_region;
 volatile int write_lock = 0;
 int mpi_size;
 
-void newthread_cb(void){
+void newthread_cb(long unsigned int id, unsigned int vcpu_index){
+	(void)id;         /* Silence unused parameter error */
+  (void)vcpu_index; /* Silence unused parameter error */
 	if (alloc_threads < N_THREADS+1){
 		#if 1
 		printf("RAVE tried to to generate more threads (%d) than allocated (%d)\n", N_THREADS+1, alloc_threads);
@@ -38,7 +40,7 @@ void newthread_cb(void){
 	++N_THREADS;
 }
 
-void parallel_end(unsigned int cpu_index){
+void parallel_end(int cpu_index){
 
 	//Wait for everyone to cross the last barrier
 	while (__sync_val_compare_and_swap(&parallel_region.crossed_barrier, 0, 0) != 0) {;} 
@@ -49,7 +51,7 @@ void parallel_end(unsigned int cpu_index){
 	parallel_region.master_thread = -1;
 }
 
-void parallel_begin(unsigned int cpu_index, int parallelism){
+void parallel_begin(int cpu_index, int parallelism){
 	//Atomicity assumed (only on thread active when this happens -> No nested parallel regions
 	//TODO: Check this assumption, act accordingly
 	parallel_region.master_thread = cpu_index;
@@ -70,7 +72,7 @@ void parallel_begin(unsigned int cpu_index, int parallelism){
 }
 
 #include <sched.h>
-void parallel_barrier(unsigned int cpu_index){
+void parallel_barrier(int cpu_index){
 
 	//Wait if the previous barrier has not been crossed by other threads
 	while (__sync_val_compare_and_swap(&parallel_region.crossed_barrier, 0, 0) != 0) {sched_yield();} 
@@ -83,7 +85,7 @@ void parallel_barrier(unsigned int cpu_index){
 
 	//Set max barrier time
 	while (1) {
-		int old_tmax = parallel_region.barrier_time; // Read the current tmax
+		uint64_t old_tmax = parallel_region.barrier_time; // Read the current tmax
 		if (cpus_state[cpu_index].timestamp<= old_tmax) break; // No need to update if the thread's t is not greater than tmax
 
 		// Atomically update tmax if it has not changed

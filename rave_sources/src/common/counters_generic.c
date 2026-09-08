@@ -10,7 +10,7 @@
 
 void reset_counters(rave_counters * c){
 	double * ptr = (double *)c;
-	for(int i=0; i<sizeof(rave_counters)/sizeof(double); ++i){
+	for(size_t i=0; i<sizeof(rave_counters)/sizeof(double); ++i){
 		ptr[i]=0.0;
 	}
 }
@@ -19,7 +19,7 @@ void reset_counters(rave_counters * c){
 void copy_counters(rave_counters * c1, rave_counters * c2){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
-	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
+	for(size_t c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
 		c1_ptr[c] = c2_ptr[c]; 
 	}
 }
@@ -28,7 +28,7 @@ void copy_counters(rave_counters * c1, rave_counters * c2){
 void add_counters(rave_counters * c1, rave_counters * c2){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
-	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
+	for(size_t c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
 		c1_ptr[c] += c2_ptr[c]; 
 	}
 }
@@ -37,7 +37,7 @@ void add_counters(rave_counters * c1, rave_counters * c2){
 void sub_counters(rave_counters * c1, rave_counters * c2){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
-	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
+	for(size_t c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
 		c1_ptr[c] -= c2_ptr[c]; 
 	}
 }
@@ -47,7 +47,7 @@ void sub_counters(rave_counters * c1, rave_counters * c2){
 void avg_counters(rave_counters * c1, rave_counters * c2, int n){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
-	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
+	for(size_t c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
 		c1_ptr[c] += (c2_ptr[c]-c1_ptr[c])/n;
 	}
 }
@@ -56,7 +56,7 @@ void avg_counters(rave_counters * c1, rave_counters * c2, int n){
 void mul_counters(rave_counters * c1, rave_counters * c2, double mult){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
-	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
+	for(size_t c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
 		c1_ptr[c] = c2_ptr[c] * mult;
 	}
 }
@@ -65,7 +65,7 @@ void mul_counters(rave_counters * c1, rave_counters * c2, double mult){
 void update_counters(rave_counters * c1, rave_counters * c2){
 	double * c1_ptr = (double *)c1;
 	double * c2_ptr = (double *)c2;
-	for(int c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
+	for(size_t c=0; c<sizeof(rave_counters)/sizeof(double); ++c){
 		c1_ptr[c] = c2_ptr[c] - c1_ptr[c]; 
 	}
 }

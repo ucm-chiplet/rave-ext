@@ -380,7 +380,7 @@ static void print_all_modules(Dwfl *dwfl) {
 
 // Improved resolve function that handles dynamic libraries properly
 int resolve_pc_to_source(Dwarf_Addr pc, const char **symbol, 
-                         const char **filename, int *line, int *column) {
+                         const char **file_name, int *line, int *column) {
     if (!dwfl) {
         fprintf(stderr, "dwfl not initialized\n");
         return -1;
@@ -440,12 +440,12 @@ int resolve_pc_to_source(Dwarf_Addr pc, const char **symbol,
     }
 
     // Extract just the filename from the full path
-    if (filename) {
+    if (file_name) {
         const char *last_slash = strrchr(file_str, '/');
         if (last_slash) {
-            *filename = last_slash + 1;
+            *file_name = last_slash + 1;
         } else {
-            *filename = file_str;
+            *file_name = file_str;
         }
     }
 
@@ -537,7 +537,7 @@ void print_call_trace(FILE * fd, calltrace_t * ct){
 	int unknowns = 0;
 
 	char * enabler = getenv("RAVE_FUNC_ENABLER");
-	long PC_comp = 0;
+	uint64_t PC_comp = 0;
 	char * enabler_PC = getenv("RAVE_PC_ENABLER");
 	if (enabler_PC != NULL){
 		char * endptr;

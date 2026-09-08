@@ -76,21 +76,21 @@ int16_t instr_set_vector_type(uint32_t insn_opcode){
 												funct3 = get_bit_field(insn_opcode,14,12);
 												funct6 = get_bit_field(insn_opcode,31,26);
 												if (funct3 == 1 || funct3 == 5){ // OPFVV, OPFVF
-																if (funct6 >= 0b011000 && funct6 <= 0b011111){ //mask gen
+																if (funct6 >= 0x18 && funct6 <= 0x1F){ //mask gen
 																				subtype = T_MASK;
 #ifdef RVV_07
-																}else if (funct6 != 0b001100 && //vfmv.f.s
-																					funct6 != 0b001101 && //vfmv.s.f
-																					funct6 != 0b010111 && //vfmerge, vfmv
-																					funct6 != 0b100010 && //fconverts
-																					(funct6 != 0b100011 || get_bit_field(insn_opcode,19,15)!=0b10000)){ //fclass
+																}else if (funct6 != 0x0C && //vfmv.f.s
+																					funct6 != 0x0D && //vfmv.s.f
+																					funct6 != 0x17 && //vfmerge, vfmv
+																					funct6 != 0x22 && //fconverts
+																					(funct6 != 0x23 || get_bit_field(insn_opcode,19,15)!=0x10)){ //fclass
 #else
-																}else if (funct6 != 0b001110 && //vfslide1up
-																					funct6 != 0b001111 && //vfslide1down
-																					funct6 != 0b010000 && //vfmv.f.s or vfmv.s.f
-																					funct6 != 0b010010 && //converts
-																					funct6 != 0b010111 && //vfmerge, vfmv
-																					(funct6 != 0b010011 || get_bit_field(insn_opcode,19,15)!=0b10000)){ //fclass
+																}else if (funct6 != 0x0E && //vfslide1up
+																					funct6 != 0x0F && //vfslide1down
+																					funct6 != 0x10 && //vfmv.f.s or vfmv.s.f
+																					funct6 != 0x12 && //converts
+																					funct6 != 0x17 && //vfmerge, vfmv
+																					(funct6 != 0x13 || get_bit_field(insn_opcode,19,15)!=0x10)){ //fclass
 #endif
 																				if (funct6 == 1 || funct6 ==3 || funct6 == 5 || funct6 == 7 || funct6 == 49 || funct6 == 51){
 																					subtype = T_REDUCTION;
@@ -102,16 +102,16 @@ int16_t instr_set_vector_type(uint32_t insn_opcode){
 																				subsubtype = T_FP;
 																}
 												}else if (funct3 == 0 || funct3 == 3 || funct3 == 4){ //OPIVV, OPIVI, OPIVX
-																if (funct6 >= 0b011000 && funct6 <= 0b011111){ //mask gen
+																if (funct6 >= 0x18 && funct6 <= 0x1F){ //mask gen
 																				subtype = T_MASK;
-																}else if (funct6 != 0b001100 && //vrgather
-																					funct6 != 0b001110 && //slideup, gatherei16 in 1.0
-																					funct6 != 0b001111 && //slidedown
-																					funct6 != 0b101110 && //vnclipu
-																					funct6 != 0b101111 && //vnclip
-																					funct6 != 0b010111 //vmerge/vmv
+																}else if (funct6 != 0x0C && //vrgather
+																					funct6 != 0x0E && //slideup, gatherei16 in 1.0
+																					funct6 != 0x0F && //slidedown
+																					funct6 != 0x2E && //vnclipu
+																					funct6 != 0x2F && //vnclip
+																					funct6 != 0x17 //vmerge/vmv
 #ifndef RVV_07																																
-																					&& (funct6 != 0b100111 || funct3 != 3) //vmv1r
+																					&& (funct6 != 0x27 || funct3 != 3) //vmv1r
 #endif																																							
 																					){ 
 																		if (funct6 == 48 || funct6 == 49){
@@ -124,34 +124,34 @@ int16_t instr_set_vector_type(uint32_t insn_opcode){
 																}
 												}else if (funct3 == 2 || funct3 == 6){ //OPMVV, OPMVX,
 #ifdef RVV_07
-																if (funct6 == 0b010110){ //VMUNARY0
+																if (funct6 == 0x16){ //VMUNARY0
 																	vs1 = get_bit_field(insn_opcode,19,15);
-																	if (vs1 >= 0b00001 && vs1 <= 0b00011){
+																	if (vs1 >= 0x01 && vs1 <= 0x03){
 																				subtype = T_MASK;
 																	}
 #else
-																if (funct6 == 0b010100){ //VMUNARY0
+																if (funct6 == 0x14){ //VMUNARY0
 																	vs1 = get_bit_field(insn_opcode,19,15);
-																	if (vs1 >= 0b00001 && vs1 <= 0b00011){
+																	if (vs1 >= 0x01 && vs1 <= 0x03){
 																				subtype = T_MASK;
 																	}
 #endif
-																}else if (funct6 >= 0b011000 && funct6 <= 0b011111){ //mask arith
+																}else if (funct6 >= 0x18 && funct6 <= 0x1F){ //mask arith
 																				subtype = T_MASK;
 #ifdef RVV_07
-																}else if (funct6 != 0b001101 && //vmv.s.x
-																					funct6 != 0b001110 && //slide1up
-																					funct6 != 0b001111 && //slide1down
-																					funct6 != 0b010100 && //popc
-																					funct6 != 0b010101 && //vmfirst
-																					funct6 != 0b001100 && //vext
-																					funct6 != 0b010111){ //vmcompress
+																}else if (funct6 != 0x0D && //vmv.s.x
+																					funct6 != 0x0E && //slide1up
+																					funct6 != 0x0F && //slide1down
+																					funct6 != 0x14 && //popc
+																					funct6 != 0x15 && //vmfirst
+																					funct6 != 0x0C && //vext
+																					funct6 != 0x17){ //vmcompress
 #else
-																}else if (funct6 != 0b010000 && //vmv.s.x, vmv.x.s, vpopc, vfirst
-																					funct6 != 0b001110 && //slide1up
-																					funct6 != 0b001111 && //slide1down
-																					funct6 != 0b010010 && //vzext
-																					funct6 != 0b010111){ //vmcompress
+																}else if (funct6 != 0x10 && //vmv.s.x, vmv.x.s, vpopc, vfirst
+																					funct6 != 0x0E && //slide1up
+																					funct6 != 0x0F && //slide1down
+																					funct6 != 0x12 && //vzext
+																					funct6 != 0x17){ //vmcompress
 #endif
 																				if ((funct6 >= 0 && funct6 <= 7) /*|| (funct6 == 48 || funct6 == 49)*/){
 																					subtype = T_REDUCTION;
@@ -200,18 +200,18 @@ uint16_t instr_set_scalar_type(uint32_t insn_opcode){
 		if (f7 == 0x063){
 		 	type |= T_BRANCH;
 		}
-		else if (f7 == 0b0000011 || f7 == 0b0100011 || f7 == 0b0000111 || f7 == 0b0100111){ 
+		else if (f7 == 0x03 || f7 == 0x23 || f7 == 0x07 || f7 == 0x27){ 
 		 	type |= T_MEMORY;
 		}
-		else if (f7 == 0b1010011) type |= T_SINGLE;
-		else if (f7 == 0b1000011) type |= T_FUSED;
-		else if (f7 == 0b1101111 || f7 == 0b1100111) type |= T_JUMP; 
+		else if (f7 == 0x53) type |= T_SINGLE;
+		else if (f7 == 0x43) type |= T_FUSED;
+		else if (f7 == 0x6F || f7 == 0x67) type |= T_JUMP; 
 	}
 
 	return type;
 }
 
-instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, int PRINT_PRV){
+instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, int prv_print){
 
 	char * instr_fields[8]; //8 is more than enough
 
@@ -264,7 +264,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, 
 
 	if (contains_string(instr_fields[0], "vset")){
 		data -> type = T_VSETVL;
-		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode);
+		if (prv_print) data -> paraver_code = instr2prv(insn_opcode);
 	}else if (instr_fields[0][0]=='v'){
 		data -> type = instr_set_vector_type(insn_opcode);
 
@@ -280,10 +280,10 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, 
 				data -> src3 = data -> dst;
 			}
 		}
-		if (PRINT_PRV) data -> paraver_code = instr2prv(insn_opcode);
+		if (prv_print) data -> paraver_code = instr2prv(insn_opcode);
 	}else{
 		data -> type = instr_set_scalar_type(insn_opcode); 
-		if (PRINT_PRV){
+		if (prv_print){
 			int opcode = get_bit_field(insn_opcode,6,0);
 			int funct3 = get_bit_field(insn_opcode,14,12);
 			int	funct6 = get_bit_field(insn_opcode,31,26);

@@ -46,7 +46,7 @@ inline uint64_t synch_threads(thread_state_t * state){
 }
 
 inline void detect_loop_start(profile_t * loop_profile, uint64_t PC){
-	if (loop_profile->jump_PC!=-1){
+	if (loop_profile->jump_PC!=(uint64_t)-1){
 		if (PC != loop_profile->jump_PC){ //Loop not taken
 			update_PC(loop_profile);
 			//reset it so next one-it loop is not that far off...
@@ -79,7 +79,7 @@ inline void detect_func_start(calltrace_t * call_trace, uint64_t PC){
 void scalar_block_exec(thread_state_t * state, scalar_block_data_t * data){
 
 	uint64_t thread_timestamp = synch_threads(state);
-	if (thread_timestamp==-1) return;
+	if (thread_timestamp==(uint64_t)-1) return;
 	profile_t * loop_profile = &state->loop_profile;
 	int n_instr = data->instr;
 
@@ -222,7 +222,7 @@ void rolling_scalar_block(uint32_t opcode, uint64_t PC, scalar_block_data_t * da
 void insn_exec(thread_state_t * state, instr_data * instr){
 
 	uint64_t thread_timestamp = synch_threads(state);
-	if (thread_timestamp==-1) return;
+	if (thread_timestamp==(uint64_t)-1) return;
 
 	profile_t * loop_profile = &state->loop_profile;
 	if (TRACE_ENABLED){
@@ -360,19 +360,19 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 				if (TRACE_INDEXES){
 					if (indexes_8 != NULL){
 						trace_event_value(FD_PRV, event_indexes, 1);
-						for(int i=0; i<vl; ++i) trace_event_value(FD_PRV, event_indexes+1+i, (int)indexes_8[i]);
+						for(uint64_t i=0; i<vl; ++i) trace_event_value(FD_PRV, event_indexes+1+i, (int)indexes_8[i]);
 						free(indexes_8);
 					}else if (indexes_16 != NULL){
 						trace_event_value(FD_PRV, event_indexes, 1);
-						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+1+i, (int)indexes_16[i]);
+						for(uint64_t i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+1+i, (int)indexes_16[i]);
 						free(indexes_16);
 					}else if (indexes_32 != NULL){
 						trace_event_value(FD_PRV, event_indexes, 1);
-						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+1+i, (int)indexes_32[i]);
+						for(uint64_t i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+1+i, (int)indexes_32[i]);
 						free(indexes_32);
 					}else if (indexes_64 != NULL){
 						trace_event_value(FD_PRV, event_indexes, 1);
-						for(int i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+1+i, indexes_64[i]);
+						for(uint64_t i=0; i<vl; ++i)  trace_event_value(FD_PRV, event_indexes+1+i, indexes_64[i]);
 						free(indexes_64);
 					}
 				}

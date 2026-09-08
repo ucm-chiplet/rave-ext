@@ -107,6 +107,9 @@ fprintf(fd,
 "EVENT_TYPE\n"
 "9   47000005     address\n"
 
+);
+
+fprintf(fd,
 "EVENT_TYPE\n"
 "9   47000006     RDest\n"
 "VALUES\n"
@@ -208,6 +211,9 @@ fprintf(fd,
 "96 t0\n"
 "99 s0\n"
 
+);
+
+fprintf(fd,
 
 "EVENT_TYPE\n"
 "9   47000007     RSrc1\n"
@@ -310,6 +316,9 @@ fprintf(fd,
 "96 t0\n"
 "99 s0\n"
 
+);
+
+fprintf(fd,
 
 "EVENT_TYPE\n"
 "9   47000008     RSrc2\n"
@@ -412,6 +421,9 @@ fprintf(fd,
 "96 t0\n"
 "99 s0\n"
 
+);
+
+fprintf(fd,
 
 "EVENT_TYPE\n"
 "9   47000009     RSrc3\n"
@@ -513,6 +525,10 @@ fprintf(fd,
 "95 v31\n"
 "96 t0\n"
 "99 s0\n"
+
+);
+
+fprintf(fd,
 
 "EVENT_TYPE\n"
 "9   47000015     Instruction\n"
@@ -678,6 +694,9 @@ fprintf(fd,
 "325 vmclr\n"
 "326 vmmv\n"
 "327 vmset\n"
+);
+
+fprintf(fd,
 "400 vluxei64\n"
 "401 vluxei8\n"
 "402 vluxei32\n"
@@ -855,6 +874,9 @@ fprintf(fd,
 "582 vloxseg8ei16\n"
 "583 vloxseg8ei32\n"
 "584 vloxseg8ei64\n"
+);
+
+fprintf(fd,
 "800 vsuxei8\n"
 "801 vsse8\n"
 "802 vsoxei8\n"
@@ -993,6 +1015,10 @@ fprintf(fd,
 "1001 vsetvl\n"
 "1002 vsetvli\n"
 "1003 vsetivli\n"
+
+);
+
+fprintf(fd,
 
 
 "EVENT_TYPE\n"

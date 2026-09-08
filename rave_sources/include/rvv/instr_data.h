@@ -69,9 +69,9 @@ typedef struct qemu_event qemu_event;
 
 //instr_data * scalar_empty_struct;
 
-#define MAJOR_LOAD 0b0000111
-#define MAJOR_STORE 0b0100111
-#define MAJOR_ARITH 0b1010111
+#define MAJOR_LOAD 0x7 //0b0000111
+#define MAJOR_STORE 0x27 //0b0100111
+#define MAJOR_ARITH 0x57 //0b1010111
 #define get_bit_field(insn_opcode, high, low) ((insn_opcode >> low) & ((1<<(high-low+1))-1))
 instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, int PRINT_PRV);
 uint16_t instr_set_scalar_type(uint32_t insn_opcode);

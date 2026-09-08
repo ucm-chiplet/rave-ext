@@ -37,8 +37,8 @@
 #define SCALAR_ROW 0
 #define VECTOR_ROW 1
 void set_pipelines(int N);
-void trace_row(FILE * FD_PRV, int process, int cpu, int pipeline, uint64_t timestamp);
-void trace_event_value(FILE * FD_PRV, int event, uint64_t value);
+void trace_row(FILE * fd, int process, int cpu, int pipeline, uint64_t tstamp);
+void trace_event_value(FILE * fd, int event, uint64_t value);
 int reg2prv(char * r);
 void open_file(FILE **fd, char * name);
 void write_prv(FILE * fd, int procs, int * OMPthreads, int pipelines);

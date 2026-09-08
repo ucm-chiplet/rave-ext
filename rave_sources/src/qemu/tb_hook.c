@@ -112,7 +112,7 @@ QEMU_PLUGIN_EXPORT int qemu_plugin_install(qemu_plugin_id_t id,
 		qemu_plugin_register_vcpu_tb_trans_cb(id, vcpu_tb_trans);
 		qemu_plugin_register_atexit_cb(id, plugin_exit, NULL);
 
-		qemu_plugin_register_vcpu_init_cb(id, (void (*))newthread_cb);
+		qemu_plugin_register_vcpu_init_cb(id, newthread_cb);
 
 		return 0;
 }
@@ -176,8 +176,8 @@ void vcpu_tb_trans(qemu_plugin_id_t id, struct qemu_plugin_tb *tb)
 	*/
 
 	scalar_block_data_t * scalar_block_data = NULL;
-	int scalar_block_start = 0;
-	for (int i = 0; i < n; i++) {
+	size_t scalar_block_start = 0;
+	for (size_t i = 0; i < n; i++) {
 		insn = qemu_plugin_tb_get_insn(tb, i);
 		insn_disas = qemu_plugin_insn_disas(insn);
 		uint64_t insn_vaddr = qemu_plugin_insn_vaddr(insn);

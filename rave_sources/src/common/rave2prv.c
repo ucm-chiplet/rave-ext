@@ -14,12 +14,12 @@
 
 #include "state.h" //For N_PIPELINES
 
-void trace_row(FILE * FD_PRV, int process, int cpu, int pipeline, uint64_t timestamp){
+void trace_row(FILE * fd, int process, int cpu, int pipeline, uint64_t tstamp){
 	pipeline=pipeline % N_PIPELINES; //For MUSA: pipeline will always be 0
-	fprintf(FD_PRV, "\n2:1:%d:%d:%d:%lu", process+1, cpu+1, pipeline+1, timestamp);
+	fprintf(fd, "\n2:1:%d:%d:%d:%lu", process+1, cpu+1, pipeline+1, tstamp);
 }
-void trace_event_value(FILE * FD_PRV, int event, uint64_t value){
-	fprintf(FD_PRV, ":%d:%lu", event,value);
+void trace_event_value(FILE * fd, int event, uint64_t value){
+	fprintf(fd, ":%d:%lu", event,value);
 }
 int reg2prv(char * r){
 	if (strcmp(r, "zero")==0) return 102; 

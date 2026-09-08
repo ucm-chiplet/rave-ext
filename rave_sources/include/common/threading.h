@@ -38,7 +38,7 @@ extern int alloc_threads;
 extern parallel_region_t parallel_region;
 extern volatile int write_lock;
 
-void newthread_cb(void);
-void parallel_end(unsigned int cpu_index);
-void parallel_begin(unsigned int cpu_index, int parallelism);
-void parallel_barrier(unsigned int cpu_index);
+void newthread_cb(long unsigned int id, unsigned int vcpu_index);
+void parallel_end(int cpu_index);
+void parallel_begin(int cpu_index, int parallelism);
+void parallel_barrier(int cpu_index);

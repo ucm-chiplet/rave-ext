@@ -55,7 +55,7 @@ void setup_regs(unsigned int cpu_index){
 	idx_xregs=idx_vl=idx_vtype=idx_vregs=-1;
 
 	GArray * regs = qemu_plugin_get_registers();
-	for (int i = 0; i < regs->len; i++) {
+	for (unsigned int i = 0; i < regs->len; i++) {
 		qemu_plugin_reg_descriptor *desc = &g_array_index(regs, qemu_plugin_reg_descriptor, i);
 		if (idx_xregs < 0 && (g_strcmp0(desc->name, "zero")==0)) idx_xregs=i;
 		if (idx_vregs < 0 && (g_strcmp0(desc->name, "v0")==0)) idx_vregs=i;

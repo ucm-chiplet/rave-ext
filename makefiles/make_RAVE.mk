@@ -25,7 +25,10 @@ utils.o \
 tb_hook.o 
 
 CC=gcc
-CFLAGS=-O3 -Wall -Werror -fPIC -g
+CFLAGS=-O3 -Wall -Wno-unused-parameter -Werror -fPIC -g
+ifeq ($(PEDANTIC),1) 
+  CFLAGS += -Wextra -Wpedantic -Wshadow #-Wconversion
+endif
 CFLAGS+= `pkg-config --cflags glib-2.0`
 
 LIBDIR=$(BUILD_DIR)/qemu-rave/RVV-$(RVV)/lib
