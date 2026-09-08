@@ -87,6 +87,6 @@ void restart_trace();
 void enable_regions();
 void disable_regions();
 void enable_trace();
-void disable_trace();
+void disable_trace(int cpu_index);
 
 void reset_thread(int cpu_index);
