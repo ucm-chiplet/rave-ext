@@ -32,6 +32,11 @@ extern int REGION_EVENT;
 extern char STREAM_REPORT;
 extern char TRACE_ADDR;
 extern char TRACE_SCALAR;
+extern char TRACE_EXTENDED;
+extern char DEBUG_INFO;
+extern int RAW_DIST;
+extern int WAR_DIST;
+extern int WAW_DIST;
 extern uint64_t base;
 extern int disabled_once;
 extern uint64_t timestamp;
@@ -49,7 +54,19 @@ extern FILE * FD_CSV;
 extern FILE * FD_COMM;
 extern FILE * FD_PROFILE;
 extern FILE * FD_CALLTRACE;
+
+// Registers inicialization index.
+#define RAVE_INI_REG_S 0
+#define RAVE_INI_REG_F 32
+#define RAVE_INI_REG_V 64
 	
+typedef struct inst_compressed_t inst_compressed_t;
+struct inst_compressed_t {
+    char * asm_string;
+    uint64_t pos;
+    uint16_t type;
+};
+
 //Per-thread info
 struct thread_state_t{
 	int cpu_index;
@@ -76,6 +93,10 @@ struct thread_state_t{
 
 	//For MUSA:
 	int prev_dst;
+
+    // To check dependencies
+    struct inst_compressed_t write_reg_deps[96];
+    struct inst_compressed_t read_reg_deps[96];
 
 	void * regs;
 };

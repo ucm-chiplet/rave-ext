@@ -84,7 +84,59 @@ void scalar_block_exec(thread_state_t * state, scalar_block_data_t * data){
 	int n_instr = data->instr;
 
 	if (TRACE_ENABLED){
+        if(TRACE_EXTENDED){
+            for(int i=0; i<n_instr; ++i){
+                // -ADDED
+                inst_compressed_t instr_c;
+                instr_c.asm_string = data->strings[i];
+                uint64_t pos_aux = 0;
+                for(int j=0; j<SEWS; ++j){
+                    pos_aux+=state->accum_counters.vector_instr[j];
+                }
+                instr_c.pos = state->accum_counters.scalar_instr+state->accum_counters.vsetvl_instr+pos_aux+1;
+                instr_c.type = 0x0000; //Scalar instruction
+                if(TRACE_SCALAR){
+                    if(valid_reg_id(data->dst_d[i])) {
+                        // WAW: Write After Write (Depende de la última escritura)
+                        if(state->write_reg_deps[data->dst_d[i]].pos != 0 && 
+                           (instr_c.pos - state->write_reg_deps[data->dst_d[i]].pos <= WAW_DIST)) {
+                                state->accum_counters.WAW_deps++;
+                                if(DEBUG_INFO) fprintf(stdout, "WAW dependency detected on register %d: write at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
+                                    data->dst_d[i], instr_c.pos, instr_c.asm_string, 
+                                    state->write_reg_deps[data->dst_d[i]].pos, state->write_reg_deps[data->dst_d[i]].asm_string);
+                        }
+                        
+                        // WAR: Write After Read (Depende de la última lectura)
+                        if(state->read_reg_deps[data->dst_d[i]].pos != 0 && 
+                           (instr_c.pos - state->read_reg_deps[data->dst_d[i]].pos <= WAR_DIST)) {
+                                state->accum_counters.WAR_deps++;
+                                if(DEBUG_INFO) fprintf(stdout, "WAR dependency detected on register %d: write at pos %li, instruction: %s, previous read at pos %li, previous instruction: %s\n", 
+                                    data->dst_d[i], instr_c.pos, instr_c.asm_string, 
+                                    state->read_reg_deps[data->dst_d[i]].pos, state->read_reg_deps[data->dst_d[i]].asm_string);
+                        }
+                    }
+                    if(valid_reg_id(data->src1_d[i]) && state->write_reg_deps[data->src1_d[i]].pos != 0 && 
+                       (instr_c.pos - state->write_reg_deps[data->src1_d[i]].pos <= RAW_DIST)) {
+                            state->accum_counters.RAW_deps++;
+                            if(DEBUG_INFO) fprintf(stdout, "RAW dependency detected on register %d: read at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
+                                data->src1_d[i], instr_c.pos, instr_c.asm_string, 
+                                state->write_reg_deps[data->src1_d[i]].pos, state->write_reg_deps[data->src1_d[i]].asm_string);
+                    }
+                    if(valid_reg_id(data->src2_d[i]) && state->write_reg_deps[data->src2_d[i]].pos != 0 && 
+                       (instr_c.pos - state->write_reg_deps[data->src2_d[i]].pos <= RAW_DIST)){
+                            state->accum_counters.RAW_deps++;
+                            if(DEBUG_INFO) fprintf(stdout, "RAW dependency detected on register %d: read at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
+                                data->src2_d[i], instr_c.pos, instr_c.asm_string, 
+                                state->write_reg_deps[data->src2_d[i]].pos, state->write_reg_deps[data->src2_d[i]].asm_string);
+                    }
+                }
 
+				if(valid_reg_id(data->dst_d[i])) state->write_reg_deps[data->dst_d[i]] = instr_c;
+				if(valid_reg_id(data->src1_d[i])) state->read_reg_deps[data->src1_d[i]] = instr_c;
+
+                // -ENDADDED
+            }
+        }
 		//LOOP PROFILER CONTROL
 		if (PRINT_PROFILE){
 			for(int i=0; i<n_instr; ++i){
@@ -246,6 +298,59 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 	int16_t * indexes_16 = NULL;
 	int32_t * indexes_32 = NULL;
 	int64_t * indexes_64 = NULL;
+
+    // To keep track of dependencies
+    if(TRACE_EXTENDED){
+        inst_compressed_t instr_c;
+        instr_c.asm_string = instr->asm_string;
+        uint64_t pos_aux = 0;
+        for(int j=0; j<SEWS; ++j){
+            pos_aux+=state->accum_counters.vector_instr[j];
+        }
+        instr_c.pos = state->accum_counters.scalar_instr+state->accum_counters.vsetvl_instr+pos_aux+1;
+        instr_c.type = instr->type;
+        if(valid_reg_id(instr->dst_d)){
+            if(state->write_reg_deps[instr->dst_d].pos != 0
+                && (instr_c.pos-state->write_reg_deps[instr->dst_d].pos <= WAW_DIST)) {
+                    state->accum_counters.VWAW_deps++;
+                    if(DEBUG_INFO) fprintf(stdout, "WAW dependency detected on register %d: write at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
+                        instr->dst_d, instr_c.pos, instr->asm_string, 
+                        state->write_reg_deps[instr->dst_d].pos, state->write_reg_deps[instr->dst_d].asm_string);            
+            }
+            if(state->write_reg_deps[instr->dst_d].pos != 0
+                && (instr_c.pos-state->read_reg_deps[instr->dst_d].pos <= WAR_DIST)) {
+                    state->accum_counters.VWAR_deps++;
+                    if(DEBUG_INFO) fprintf(stdout, "WAR dependency detected on register %d: write at pos %li, instruction: %s, previous read at pos %li, previous instruction: %s\n", 
+                        instr->dst_d, instr_c.pos, instr->asm_string, 
+                        state->read_reg_deps[instr->dst_d].pos, state->read_reg_deps[instr->dst_d].asm_string);
+            }
+        }
+        if(valid_reg_id(instr->src1_d) && (instr->src1_d > 0 && state->write_reg_deps[instr->src1_d].pos != 0)
+            && (instr_c.pos-state->write_reg_deps[instr->src1_d].pos <= RAW_DIST)) {
+                state->accum_counters.VRAW_deps++;
+                if(DEBUG_INFO) fprintf(stdout, "RAW dependency detected on register %d: read at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
+                    instr->src1_d, instr_c.pos, instr->asm_string, 
+                    state->write_reg_deps[instr->src1_d].pos, state->write_reg_deps[instr->src1_d].asm_string);
+        }
+        if(valid_reg_id(instr->src2_d) &&(instr->src2_d > 0 && state->write_reg_deps[instr->src2_d].pos != 0)
+            && (instr_c.pos-state->write_reg_deps[instr->src2_d].pos <= RAW_DIST)){
+                state->accum_counters.VRAW_deps++;
+                if(DEBUG_INFO) fprintf(stdout, "RAW dependency detected on register %d: read at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
+                    instr->src2_d, instr_c.pos, instr->asm_string, 
+                    state->write_reg_deps[instr->src2_d].pos, state->write_reg_deps[instr->src2_d].asm_string);
+        }
+        if(valid_reg_id(instr->src3_d) &&(instr->src3_d > 0 && state->write_reg_deps[instr->src3_d].pos != 0)
+            && (instr_c.pos-state->write_reg_deps[instr->src3_d].pos <= RAW_DIST)){
+                state->accum_counters.VRAW_deps++;
+                if(DEBUG_INFO) fprintf(stdout, "RAW dependency detected on register %d: read at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
+                    instr->src3_d, instr_c.pos, instr->asm_string, 
+                    state->write_reg_deps[instr->src3_d].pos, state->write_reg_deps[instr->src3_d].asm_string);
+        }
+        if(valid_reg_id(instr->dst_d)) state->write_reg_deps[instr->dst_d] = instr_c;
+        if(valid_reg_id(instr->src1_d)) state->read_reg_deps[instr->src1_d] = instr_c;
+        if(valid_reg_id(instr->src2_d)) state->read_reg_deps[instr->src2_d] = instr_c;
+        if(valid_reg_id(instr->src3_d)) state->read_reg_deps[instr->src3_d] = instr_c;
+    }
 
 	if (is_type(instr->type, T_VECTOR)){ //VECTOR
 		loop_profile -> used_vreg[((instr->instr32)>>7)&0x1F] = 1;
@@ -420,37 +525,130 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 		state->scalar_instr_since_vector=0;
 		++state->accum_counters.vector_instr[sew];
 		state->accum_counters.velem[sew] += vl;
-		if (is_subtype(instr->type, T_ARITH)){
-			if (is_subsubtype(instr->type, T_FP)){
-				++state->accum_counters.vfp_instr[sew];
-				state->accum_counters.velem_arith[sew] += vl; 
-				if (is_subsubsubtype(instr->type, T_FUSED)) state->accum_counters.vectorflops += 2*vl; 
-				else state->accum_counters.vectorflops += vl;
-			}else if (is_subsubtype(instr->type, T_INT)){
-				++state->accum_counters.vint_instr[sew];
-				state->accum_counters.velem_arith[sew] += vl; 
-			}
-		}else if (is_subtype(instr->type, T_REDUCTION)){
-			state->accum_counters.velem_reductions[sew] += vl;
-			if (is_subsubtype(instr->type, T_FP)){
-				++state->accum_counters.vfp_reductions[sew];
-			}else if (is_subsubtype(instr->type, T_INT)){
-				++state->accum_counters.vint_reductions[sew];
-			}
-		}else if (is_subtype(instr->type, T_MASK)){
-			++state->accum_counters.vmask_instr[sew];
-			state->accum_counters.velem_mask[sew] += vl; 
-		}else if (is_subtype(instr->type, T_MEMORY)){
-			state->accum_counters.moved_bytes_v += vl*(1<<(sew));
-			state->accum_counters.velem_mem[sew] += vl; 
-			if (is_subsubtype(instr->type, T_UNIT)) ++state->accum_counters.vunit_instr[sew];
-			else if (is_subsubtype(instr->type, T_STRIDE)){
-				++state->accum_counters.vstride_instr[sew];
-				state->accum_counters.agg_strides[sew] += stride;
-			}
-			else if (is_subsubtype(instr->type, T_INDEX)) ++state->accum_counters.vidx_instr[sew];
-			else if (is_subsubtype(instr->type, T_SPILL)) ++state->accum_counters.vspill_instr[sew];
-		}
+
+        if(TRACE_EXTENDED){
+            // To track accumulated vl, lmul, occupancy...
+            vtype = get_vtype(state);
+            double real_lmul = 0;
+            double real_sew_bits = 8 << sew; // 0,1,2,3 -> SEW 8,16,32,64
+            bool ta = (vtype >> 6) & 0x1; // ta bit
+            //bool ma = (vtype >> 7) & 0x1; // ma bit
+            if (lmul < 4) {
+                real_lmul = (double)(1 << lmul); // 0,1,2,3 -> 1,2,4,8
+            } 
+            #ifndef RVV_07
+            else {
+                // Soporte para fractional LMUL en RVV 1.0 (Códigos 5,6,7 -> 1/8, 1/4, 1/2)
+                real_lmul = 1.0 / (double)(1 << (8 - lmul)); 
+            }
+            #endif
+
+            double effective_vl = (vl * real_sew_bits)>(RAVE_VLMAX * real_lmul) ? RAVE_VLMAX * real_lmul : (vl * real_sew_bits);
+            state->accum_counters.vl_accumulated_b += effective_vl; // Acumulación de VL en bits
+            state->accum_counters.VLMAX_accumulated += RAVE_VLMAX*real_lmul/real_sew_bits; // Acumulación de VLMAX para avg
+            state->accum_counters.lmul_accumulated += real_lmul;
+
+            if(effective_vl < real_lmul*RAVE_VLMAX) {
+                if(ta)
+                    state->accum_counters.ta_count++;
+                else
+                    state->accum_counters.tu_count++;
+            }
+            double occupancy = (RAVE_VLMAX * real_lmul > 0) ? effective_vl / (RAVE_VLMAX * real_lmul) : 0;
+            state->accum_counters.occupancy_accumulated += occupancy;
+
+            // Extended type counters.
+            if(is_type_ext(instr->type_ext, MASK_EXT_BASE, TYPE_EXT_ARITH)){
+                state->accum_counters.velem_arith[sew] += vl; 
+                if(is_type_ext(instr->type_ext, TYPE_EXT_FP, TYPE_EXT_FP)){
+                    ++state->accum_counters.vfp_instr[sew];
+                    if (is_subsubsubtype(instr->type, T_FUSED)) state->accum_counters.vectorflops += 2*vl; // e.g. FMA. We use current decoding as it's exactly as we needed in this aspect.
+                    else state->accum_counters.vectorflops += vl;
+                }else{
+                    state->accum_counters.velem_arith[sew] += vl; 
+                    ++state->accum_counters.vint_instr[sew];
+                }
+
+                if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_ARITH_WIDENING)){
+                    ++state->accum_counters.vwidening_instr[sew];
+                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_COMP_FUSED)){
+                        ++state->accum_counters.vwfused_instr[sew];
+                    }
+                } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_ARITH_NARROWING)) {
+                    ++state->accum_counters.vnarrowing_instr[sew];
+                } else {
+                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_MOVE)){
+                        ++state->accum_counters.vmove_instr[sew];
+                        if(is_type_ext(instr->type_ext, MASK_EXT_OPERAND, TYPE_EXT_WRITE_SCALAR)){
+                            ++state->accum_counters.m_inst_v_s[sew];
+                        } else if(is_type_ext(instr->type_ext, MASK_EXT_OPERAND, TYPE_EXT_READ_SCALAR)){
+                            ++state->accum_counters.m_inst_s_v[sew];
+                        }
+                    } else {
+                        if(is_type_ext(instr->type_ext, MASK_EXT_OPERAND, TYPE_EXT_WRITE_SCALAR)){
+                            ++state->accum_counters.inst_v_s[sew];
+                        } else if(is_type_ext(instr->type_ext, MASK_EXT_OPERAND, TYPE_EXT_READ_SCALAR)){
+                            ++state->accum_counters.inst_s_v[sew];
+                        }
+                        if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_MASK)){
+                            ++state->accum_counters.vmask_instr[sew];
+                        } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_PERMUTATION)){
+                            ++state->accum_counters.vperm_instr[sew];
+                        } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_COMPUTATION) || 
+                                  is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_COMP_FUSED)){
+                            ++state->accum_counters.vcomputation_instr[sew];
+                            if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_COMP_FUSED)){
+                                ++state->accum_counters.vfused_instr[sew];
+                            }
+                        }
+                    }
+                }
+
+            }else if (is_subtype(instr->type, T_MEMORY)){ // We'll be using type for memory counters.
+                state->accum_counters.moved_bytes_v += vl*(1<<(sew));
+                state->accum_counters.velem_mem[sew] += vl; 
+                if (is_subsubtype(instr->type, T_UNIT)) ++state->accum_counters.vunit_instr[sew];
+                else if (is_subsubtype(instr->type, T_STRIDE)){
+                    ++state->accum_counters.vstride_instr[sew];
+                    state->accum_counters.agg_strides[sew] += stride;
+                }
+                else if (is_subsubtype(instr->type, T_INDEX)) ++state->accum_counters.vidx_instr[sew];
+                else if (is_subsubtype(instr->type, T_SPILL)) ++state->accum_counters.vspill_instr[sew];
+            }
+            // End of extended type counters.
+        }else {
+            if (is_subtype(instr->type, T_ARITH)){
+                if (is_subsubtype(instr->type, T_FP)){
+                    ++state->accum_counters.vfp_instr[sew];
+                    state->accum_counters.velem_arith[sew] += vl; 
+                    if (is_subsubsubtype(instr->type, T_FUSED)) state->accum_counters.vectorflops += 2*vl; 
+                    else state->accum_counters.vectorflops += vl;
+                }else if (is_subsubtype(instr->type, T_INT)){
+                    ++state->accum_counters.vint_instr[sew];
+                    state->accum_counters.velem_arith[sew] += vl; 
+                }
+            }else if (is_subtype(instr->type, T_REDUCTION)){
+                state->accum_counters.velem_reductions[sew] += vl;
+                if (is_subsubtype(instr->type, T_FP)){
+                    ++state->accum_counters.vfp_reductions[sew];
+                }else if (is_subsubtype(instr->type, T_INT)){
+                    ++state->accum_counters.vint_reductions[sew];
+                }
+            }else if (is_subtype(instr->type, T_MASK)){
+                ++state->accum_counters.vmask_instr[sew];
+                state->accum_counters.velem_mask[sew] += vl; 
+            }else if (is_subtype(instr->type, T_MEMORY)){
+                state->accum_counters.moved_bytes_v += vl*(1<<(sew));
+                state->accum_counters.velem_mem[sew] += vl; 
+                if (is_subsubtype(instr->type, T_UNIT)) ++state->accum_counters.vunit_instr[sew];
+                else if (is_subsubtype(instr->type, T_STRIDE)){
+                    ++state->accum_counters.vstride_instr[sew];
+                    state->accum_counters.agg_strides[sew] += stride;
+                }
+                else if (is_subsubtype(instr->type, T_INDEX)) ++state->accum_counters.vidx_instr[sew];
+                else if (is_subsubtype(instr->type, T_SPILL)) ++state->accum_counters.vspill_instr[sew];
+            }
+        }
 	}else if (is_type(instr->type, T_VSETVL)){ 
 		loop_profile->loop_weight += 1;
 		++state->accum_counters.vsetvl_instr;
@@ -467,4 +665,3 @@ void insn_exec(thread_state_t * state, instr_data * instr){
 	state->last_was_vsetvl = is_type(instr->type, T_VSETVL);
 
 }
-

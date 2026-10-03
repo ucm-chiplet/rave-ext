@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include "counters_generic.h"
 #include "utils.h"
+#include <string.h>
 
 uint64_t timestamp;
 //QEMU_PLUGIN_EXPORT int qemu_plugin_version;
@@ -36,6 +37,11 @@ int REGION_EVENT = 1000;
 char STREAM_REPORT = 0;
 char TRACE_ADDR = 0;
 char TRACE_SCALAR = 0;
+char TRACE_EXTENDED = 0;
+char DEBUG_INFO = 0;
+int RAW_DIST = 8;
+int WAR_DIST = 20;
+int WAW_DIST = 8;
 uint64_t base;
 int disabled_once = 0;
 uint64_t timestamp;
@@ -128,6 +134,8 @@ void reset_thread(int cpu_index){
 	state -> rave_event_number=-1;
 	state -> rave_value_number=-1;
 	reset_counters(&(state->accum_counters));
+	memset(state->write_reg_deps, 0, sizeof(state->write_reg_deps));
+	memset(state->read_reg_deps, 0, sizeof(state->read_reg_deps));
 	
 	//Musa:
 	state -> prev_dst = 0;

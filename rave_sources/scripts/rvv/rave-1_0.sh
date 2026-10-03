@@ -16,6 +16,11 @@ echo "
  - **RAVE_TRACE_SCALAR**: If set to \"1\", adds tracing information for each scalar instruction (trace gets a lot bigger). Otherwise, scalar instructions are treated as bursts. (default: 0)
  - **RAVE_TRACE_ADDR**: If set to \"1\", adds tracing information of the base address of vector loads/stores. (default: 0)
  - **RAVE_TRACE_INDEXES**: If set to \"1\", adds tracing information of the offsets in vector indexed loads/stores. (default: 0)
+ - **RAVE_TRACE_EXTENDED**: If set to \"1\", enables extended tracing information. (default: 0)
+ - **RAVE_DEBUG_INFO**: If set to \"1\", enables debug information. (default: 0)
+ - **RAVE_RAW_DIST**: Sets the RAW dependency distance threshold.
+ - **RAVE_WAR_DIST**: Sets the WAR dependency distance threshold.
+ - **RAVE_WAW_DIST**: Sets the WAW dependency distance threshold.
 
 Control RAVE internals:
  - RAVE_VLEN: Sets the maximum available vector-length in bits (default: 16384).
@@ -68,6 +73,21 @@ if [ "$RAVE_TRACE_ADDR" == "1" ]; then
 fi
 if [ "$RAVE_TRACE_INDEXES" == "1" ]; then
 	args=$args",TRACE_INDEXES=on"
+fi
+if [ "$RAVE_TRACE_EXTENDED" == "1" ]; then
+	args=$args",TRACE_EXTENDED=on"
+fi
+if [ "$RAVE_DEBUG_INFO" == "1" ]; then
+	args=$args",DEBUG_INFO=on"
+fi
+if [ "$RAVE_RAW_DIST" != "" ]; then
+	args=$args",RAW_DIST=$RAVE_RAW_DIST"
+fi
+if [ "$RAVE_WAR_DIST" != "" ]; then
+	args=$args",WAR_DIST=$RAVE_WAR_DIST"
+fi
+if [ "$RAVE_WAW_DIST" != "" ]; then
+	args=$args",WAW_DIST=$RAVE_WAW_DIST"
 fi
 if [ "$RAVE_PRINT_LOGFILE" == "1" ] || [ "$RAVE_LOGFILE_NAME" != "" ]; then
 	args=$args",PRINT_LOGFILE=on"
@@ -165,4 +185,3 @@ fi
 
 export LD_LIBRARY_PATH=${SCRIPT_DIR}/../../../elfutils/lib:$LD_LIBRARY_PATH
 ${QEMU_PATH}/qemu-riscv64 $QEMU_OPTION $RAVE_LOGFILE_NAME -d plugin -plugin ${RAVE_PLUGIN}/librave.so$args -L ${RAVE_SYSROOT} ${ENV_VARS} -cpu $QEMU_CPU $@
-

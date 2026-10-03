@@ -34,6 +34,13 @@ struct rave_counters{
 				double velem_arith[SEWS];
 				double vfp_instr[SEWS];
 				double vint_instr[SEWS];
+                double vnarrowing_instr[SEWS];
+                double vwidening_instr[SEWS];
+                double vmove_instr[SEWS];
+                double vperm_instr[SEWS];
+                double vcomputation_instr[SEWS];
+                double vwfused_instr[SEWS];
+                double vfused_instr[SEWS];
 
 				//Reductions
 				double velem_reductions[SEWS];
@@ -49,6 +56,30 @@ struct rave_counters{
 				double moved_bytes_v;
 				double scalarflops;
 				double vectorflops;
+
+                // To check scalar-vector instructions and distinguish common from moves.
+                double inst_s_v[SEWS];
+                double inst_v_s[SEWS];
+                double m_inst_s_v[SEWS];
+                double m_inst_v_s[SEWS];
+
+                // To track accumulates and thus be able after to tell the average.
+                double vl_accumulated_b;
+                double lmul_accumulated;
+                double occupancy_accumulated;
+                double VLMAX_accumulated;
+
+                // To keep track of the number of dependencies(scalar and vector)
+                double VRAW_deps;
+                double VWAR_deps;
+                double VWAW_deps;
+                double RAW_deps;
+                double WAR_deps;
+                double WAW_deps;
+
+                // To track the number of (effective) times we've had ta vs tu
+                double ta_count;
+                double tu_count;
 };
 typedef struct rave_counters rave_counters;
 

@@ -277,6 +277,8 @@ void rave_init(int argc, char **argv){
 		if (contains_string(argv[i], "TRACE_SCALAR")) TRACE_SCALAR = 1;
 		else if (contains_string(argv[i], "TRACE_ADDR")) TRACE_ADDR = 1;
 		else if (contains_string(argv[i], "TRACE_INDEXES")) TRACE_INDEXES = 1;
+		else if (contains_string(argv[i], "TRACE_EXTENDED")) TRACE_EXTENDED = 1;
+		else if (contains_string(argv[i], "DEBUG_INFO")) DEBUG_INFO = 1;
 		else if (contains_string(argv[i], "PRINT_PRV")) PRINT_PRV = 1;
 		else if (contains_string(argv[i], "PRINT_LOGFILE")) PRINT_LOGFILE = 1;
 		else if (contains_string(argv[i], "PRINT_REPORT")) PRINT_REPORT = 1;
@@ -365,6 +367,18 @@ void rave_init(int argc, char **argv){
 				int event = atoi(&argv[i][j+1]);
 				REGION_EVENT = event>0 ? event : REGION_EVENT;
 			}
+			else if (contains_string(argv[i], "RAW_DIST")){
+				size_t j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				RAW_DIST = atoi(&argv[i][j+1]);
+			}
+			else if (contains_string(argv[i], "WAR_DIST")){
+				size_t j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				WAR_DIST = atoi(&argv[i][j+1]);
+			}
+			else if (contains_string(argv[i], "WAW_DIST")){
+				size_t j; for(j=0; j<strlen(argv[i]); ++j) if (argv[i][j] == '=') break;
+				WAW_DIST = atoi(&argv[i][j+1]);
+			}
 			else if (contains_string(argv[i], "BINARY_NAME")){
 				int len = strlen(argv[i]);
 				int j; for(j=0; j<len; ++j) if (argv[i][j] == '=') break;
@@ -407,4 +421,3 @@ void rave_init(int argc, char **argv){
 
 		/* Register translation block and exit callbacks */
 	}
-

@@ -16,6 +16,11 @@ echo "
  - **RAVE_TRACE_SCALAR**: If set to \"1\", adds tracing information for each scalar instruction (trace gets a lot bigger). Otherwise, scalar instructions are treated as bursts. (default: 0)
  - **RAVE_TRACE_ADDR**: If set to \"1\", adds tracing information of the base address of vector loads/stores. (default: 0)
  - **RAVE_TRACE_INDEXES**: If set to \"1\", adds tracing information of the offsets in vector indexed loads/stores. (default: 0)
+ - **RAVE_TRACE_EXTENDED**: If set to \"1\", enables extended tracing information. (default: 0)
+ - **RAVE_DEBUG_INFO**: If set to \"1\", enables debug information. (default: 0)
+ - **RAVE_RAW_DIST**: Sets the RAW dependency distance threshold.
+ - **RAVE_WAR_DIST**: Sets the WAR dependency distance threshold.
+ - **RAVE_WAW_DIST**: Sets the WAW dependency distance threshold.
 
 Control RAVE internals:
  - RAVE_VLEN: Sets the maximum available vector-length in bits (default: 16384).
@@ -69,6 +74,21 @@ if [ "$RAVE_TRACE_ADDR" == "1" ]; then
 fi
 if [ "$RAVE_TRACE_INDEXES" == "1" ]; then
 	args=$args",arg=TRACE_INDEXES"
+fi
+if [ "$RAVE_TRACE_EXTENDED" == "1" ]; then
+	args=$args",arg=TRACE_EXTENDED"
+fi
+if [ "$RAVE_DEBUG_INFO" == "1" ]; then
+	args=$args",arg=DEBUG_INFO"
+fi
+if [ "$RAVE_RAW_DIST" != "" ]; then
+	args=$args",arg=RAW_DIST=$RAVE_RAW_DIST"
+fi
+if [ "$RAVE_WAR_DIST" != "" ]; then
+	args=$args",arg=WAR_DIST=$RAVE_WAR_DIST"
+fi
+if [ "$RAVE_WAW_DIST" != "" ]; then
+	args=$args",arg=WAW_DIST=$RAVE_WAW_DIST"
 fi
 if [ "$RAVE_PRINT_LOGFILE" == "1" ] || [ "$RAVE_LOGFILE_NAME" != "" ]; then
 	args=$args",arg=PRINT_LOGFILE"
