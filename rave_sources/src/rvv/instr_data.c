@@ -174,12 +174,12 @@ int16_t instr_set_vector_type(uint32_t insn_opcode){
  * - This only takes into account RVV 1.0 especification, thus, RVV 0.7 results may be wrong.
  * - To distinguish between some instructions, e.g. narrowing and widening we need to bring the asm string, i.e.,
  *   we don't allways use the opcode to determine the type_ext.
+ * - We use cur_type to extend memory decoding without decoding everything that has just been decoded.
  */
-uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm){
+uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm, uint16_t cur_type){
     int opcode = get_bit_field(insn_opcode,6,0); 
-    //int funct6,funct3,mop,vs1;
-    int funct6,funct3, vm, vs1;
-
+    int funct6,funct3, vm, vs1, mop;
+    unsigned int nf;
     uint16_t type_ext = 0x0000;
 
     switch(opcode){
@@ -190,7 +190,7 @@ uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm){
             vs1 = get_bit_field(insn_opcode, 19, 15);
             vm  = get_bit_field(insn_opcode, 25, 25);
 
-            // Check if the instruction is a narrowing or widening operation
+            /** NARROWING & WIDENING INSTRUCTIONS */
             if(instr_asm[0] == 'v' && (instr_asm[1] == 'n' || (instr_asm[1] == 'f' && instr_asm[2] == 'n'))){       // Narrowing
 
                 type_ext |= TYPE_EXT_ARITH_NARROWING;
@@ -205,7 +205,7 @@ uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm){
 
             }
 
-            // Detect if the instruction is a Fused Multiply-Add (FMA) or Multiply-Subtract (FMS) operation
+            /** FUSED INSTRUCTIONS */
             if (strstr(instr_asm, "macc") || strstr(instr_asm, "madd") || 
                 strstr(instr_asm, "msac") || strstr(instr_asm, "msub")) {
                 
@@ -222,12 +222,12 @@ uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm){
                 }
             }
 
-            // To check whether the instruction is move or not and if it needs to be marked as a transfer instruction            
+            // To check whether the instruction reads from a scalar reg       
             if (funct3 > 3 && funct3 < 7) {
                 type_ext |= TYPE_EXT_READ_SCALAR;
             }
 
-            // To distinguish move instructions from other arithmetic instructions.
+            /** MOVE INSTRUCTIONS */
             if(funct6 == 0x10){
                 if ((funct3 == 2 || funct3 == 1) && vs1 == 0) {                         // vmv.x.s, vfmv.f.s
                     type_ext |= TYPE_EXT_ARITH_MOVE; 
@@ -258,15 +258,52 @@ uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm){
                 }
             }
 
+            /** REDUCTION INSTRUCTIONS */
+            if (funct3 == 2 && ((funct6 >= 0 && funct6 <= 7) || funct6 == 0x30 || funct6 == 0x31)) {   
+                /**OPMVV: 010 
+                 * f6 == 0x30 y 0x31: vwredsumu y vwredsum
+                 * others: vredsum, vredand, vredor, vredxor, vredminu, vredmin, vredmaxu, vredmax
+                */
+                type_ext &= ~MASK_EXT_SUBSUBTYPE;
+                type_ext |= TYPE_EXT_ARITH_REDUCTION;
+            } else if (funct3 == 1 &&
+                ((funct6%2 == 1 && funct6 > 0 && funct6 < 8) || funct6 == 0x31 || funct6 == 0x33)) {   
+                /**OPFVV: 001
+                 * f6 == 0x31 y 0x33: vfwredsumu y vfwredsum
+                 * others: vfredosum, vfredusum, vfredmin, vfredmax
+                */
+                type_ext &= ~MASK_EXT_SUBSUBTYPE;
+                type_ext |= TYPE_EXT_ARITH_REDUCTION;
+            } 
+
             break;
 
         case MAJOR_LOAD:
             type_ext |= TYPE_EXT_LOAD;
+			nf = (insn_opcode >> 29) & 0x7;
+            if(nf) {
+                type_ext |= TYPE_EXT_MEMORY_SEGMENTED;
+            }
+            if(is_subsubtype(cur_type, T_INDEX)){
+                mop = get_bit_field(insn_opcode,28,26);
+                if(mop == 3) type_ext |= TYPE_EXT_MEMORY_ORDERED;
+                else       type_ext |= TYPE_EXT_MEMORY_UNORDERED; // I know that as its 000 we dont need to do this but to be more explicit I prefer to.
+            }
  
             break;
 
         case MAJOR_STORE:
-            type_ext |= TYPE_EXT_STORE;		
+            type_ext |= TYPE_EXT_STORE;	
+			nf = (insn_opcode >> 29) & 0x7;
+            if(nf) {
+                type_ext |= TYPE_EXT_MEMORY_SEGMENTED;
+            }	
+            if(is_subsubtype(cur_type, T_INDEX)){
+                mop = get_bit_field(insn_opcode,28,26);
+                if(mop == 3) type_ext |= TYPE_EXT_MEMORY_ORDERED;
+                else       type_ext |= TYPE_EXT_MEMORY_UNORDERED; // I know that as its 000 we dont need to do this but to be more explicit I prefer to.
+                
+            }
  
             break;
     }
@@ -376,7 +413,7 @@ instr_data * fill_instr_struct(uint64_t pc, char * instr, uint32_t insn_opcode, 
 		if (prv_print) data -> paraver_code = instr2prv(insn_opcode);
 	}else if (instr_fields[0][0]=='v'){
 		data -> type = instr_set_vector_type(insn_opcode);
-        data -> type_ext = instr_set_vector_type_ext(insn_opcode, instr_fields[0]);
+        data -> type_ext = instr_set_vector_type_ext(insn_opcode, instr_fields[0], data -> type);
 
 		if (is_subtype(data->type, T_STORE)){
 			//change it back to "memory" (general)

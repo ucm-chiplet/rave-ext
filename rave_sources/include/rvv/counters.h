@@ -9,6 +9,8 @@
 
 #include <stdio.h>
 
+#define NUM_VECTOR_REGS 32
+
 #define PERCENTAGE(fd,x,y,fin)\
 	if (x>0) {\
 		fprintf(fd, " "); P_PERCENTAGE(fd, "(%.2f%%)", ((y)==0?0:(100.0*(x))/(y)));\
@@ -27,8 +29,16 @@ struct rave_counters{
 				double vunit_instr[SEWS];
 				double vstride_instr[SEWS];
 				double agg_strides[SEWS];
+				double agg_strides_squared[SEWS];
 				double vidx_instr[SEWS];
+                double vidx_instr_ordered[SEWS];
+                double vidx_instr_unordered[SEWS]; // We could remove `vidx_instr`. We'll keep it for though.
 				double vspill_instr[SEWS];
+                double vseg_instr_unit[SEWS];
+                double vseg_instr_stride[SEWS];
+                double vseg_instr_idx[SEWS];
+
+				double vector_register_usage[NUM_VECTOR_REGS];
 
 				//Arith
 				double velem_arith[SEWS];
@@ -46,6 +56,8 @@ struct rave_counters{
 				double velem_reductions[SEWS];
 				double vfp_reductions[SEWS];
 				double vint_reductions[SEWS];
+				double vfp_reductions_n[SEWS];
+				double vint_reductions_n[SEWS];
 
 				//Masks
 				double velem_mask[SEWS];

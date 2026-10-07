@@ -15,6 +15,12 @@
 #include "scalar_blocks.h"
 #include <sched.h>
 
+static void record_vector_register(double * usage, short reg){
+	if (reg >= RAVE_INI_REG_V && reg < RAVE_INI_REG_V + NUM_VECTOR_REGS) {
+		usage[reg - RAVE_INI_REG_V] = 1;
+	}
+}
+
 inline uint64_t synch_threads(thread_state_t * state){
 	int cpu_index = state->cpu_index;
 	if (cpu_index >= N_THREADS){ //Wait for the thread to be properly initialized
@@ -273,6 +279,7 @@ void rolling_scalar_block(uint32_t opcode, uint64_t PC, scalar_block_data_t * da
 //Vector and vsetvli instructions
 void insn_exec(thread_state_t * state, instr_data * instr){
 
+    if(DEBUG_INFO) fprintf(stdout, "Executing instruction: %s\n", instr->asm_string);
 	uint64_t thread_timestamp = synch_threads(state);
 	if (thread_timestamp==(uint64_t)-1) return;
 
@@ -353,6 +360,10 @@ void insn_exec(thread_state_t * state, instr_data * instr){
     }
 
 	if (is_type(instr->type, T_VECTOR)){ //VECTOR
+		record_vector_register(state->accum_counters.vector_register_usage, instr->dst);
+		record_vector_register(state->accum_counters.vector_register_usage, instr->src1);
+		record_vector_register(state->accum_counters.vector_register_usage, instr->src2);
+		record_vector_register(state->accum_counters.vector_register_usage, instr->src3);
 		loop_profile -> used_vreg[((instr->instr32)>>7)&0x1F] = 1;
 		row = VECTOR_ROW;
 		vl = get_vl(state); 
@@ -565,7 +576,6 @@ void insn_exec(thread_state_t * state, instr_data * instr){
                     if (is_subsubsubtype(instr->type, T_FUSED)) state->accum_counters.vectorflops += 2*vl; // e.g. FMA. We use current decoding as it's exactly as we needed in this aspect.
                     else state->accum_counters.vectorflops += vl;
                 }else{
-                    state->accum_counters.velem_arith[sew] += vl; 
                     ++state->accum_counters.vint_instr[sew];
                 }
 
@@ -573,6 +583,11 @@ void insn_exec(thread_state_t * state, instr_data * instr){
                     ++state->accum_counters.vwidening_instr[sew];
                     if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_COMP_FUSED)){
                         ++state->accum_counters.vwfused_instr[sew];
+                    } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_REDUCTION)){
+                        if(is_type_ext(instr->type_ext, TYPE_EXT_FP, TYPE_EXT_INT))
+                            ++state->accum_counters.vint_reductions[sew];
+                        else
+                            ++state->accum_counters.vfp_reductions[sew];
                     }
                 } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_ARITH_NARROWING)) {
                     ++state->accum_counters.vnarrowing_instr[sew];
@@ -600,19 +615,39 @@ void insn_exec(thread_state_t * state, instr_data * instr){
                             if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_COMP_FUSED)){
                                 ++state->accum_counters.vfused_instr[sew];
                             }
+                        } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_REDUCTION)){
+                            if(is_type_ext(instr->type_ext, TYPE_EXT_FP, TYPE_EXT_INT))
+                                ++state->accum_counters.vint_reductions_n[sew];
+                            else
+                                ++state->accum_counters.vfp_reductions_n[sew];
                         }
                     }
                 }
 
             }else if (is_subtype(instr->type, T_MEMORY)){ // We'll be using type for memory counters.
                 state->accum_counters.moved_bytes_v += vl*(1<<(sew));
-                state->accum_counters.velem_mem[sew] += vl; 
-                if (is_subsubtype(instr->type, T_UNIT)) ++state->accum_counters.vunit_instr[sew];
-                else if (is_subsubtype(instr->type, T_STRIDE)){
+                state->accum_counters.velem_mem[sew] += vl;
+                if (is_subsubtype(instr->type, T_UNIT)) {
+                    ++state->accum_counters.vunit_instr[sew];
+                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_MEMORY_SEGMENTED))
+                        ++state->accum_counters.vseg_instr_unit[sew];
+                } else if (is_subsubtype(instr->type, T_STRIDE)){
                     ++state->accum_counters.vstride_instr[sew];
                     state->accum_counters.agg_strides[sew] += stride;
+                    state->accum_counters.agg_strides_squared[sew] += (double)stride * stride;
+                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_MEMORY_SEGMENTED))
+                        ++state->accum_counters.vseg_instr_stride[sew];
                 }
-                else if (is_subsubtype(instr->type, T_INDEX)) ++state->accum_counters.vidx_instr[sew];
+                else if (is_subsubtype(instr->type, T_INDEX)){
+                    ++state->accum_counters.vidx_instr[sew];
+                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_MEMORY_ORDERED)){
+                        ++state->accum_counters.vidx_instr_ordered[sew];
+                    }else{
+                        ++state->accum_counters.vidx_instr_unordered[sew];
+                    }
+                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_MEMORY_SEGMENTED))
+                        ++state->accum_counters.vseg_instr_idx[sew];
+                } 
                 else if (is_subsubtype(instr->type, T_SPILL)) ++state->accum_counters.vspill_instr[sew];
             }
             // End of extended type counters.
@@ -644,6 +679,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
                 else if (is_subsubtype(instr->type, T_STRIDE)){
                     ++state->accum_counters.vstride_instr[sew];
                     state->accum_counters.agg_strides[sew] += stride;
+                    state->accum_counters.agg_strides_squared[sew] += (double)stride * stride;
                 }
                 else if (is_subsubtype(instr->type, T_INDEX)) ++state->accum_counters.vidx_instr[sew];
                 else if (is_subsubtype(instr->type, T_SPILL)) ++state->accum_counters.vspill_instr[sew];
