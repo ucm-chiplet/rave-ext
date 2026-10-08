@@ -57,7 +57,7 @@ void print_counters_human(FILE * fd, rave_counters * counters){
                 indent(fd,  level,0); fprintf(fd,"Scalar: "); P_NUMBER(fd, "%.0f", sdep); fprintf(fd,"\n");
                 ++level;
                 if(RAW_DIST){
-                    indent(fd,  level,0); fprintf(fd,"RAW: "); P_NUMBER(fd, "%.0f", counters->RAW_deps); fprintf(fd,"\n");
+                    indent(fd,  level,0); fprintf(fd,"RAW: "); P_NUMBER(fd, "%.0f", counters->RAW_deps);fprintf(fd,"\n");
                 }
                 if(WAW_DIST){
                     indent(fd,  level,0); fprintf(fd,"WAW: "); P_NUMBER(fd, "%.0f", counters->WAW_deps); fprintf(fd,"\n");
@@ -70,13 +70,13 @@ void print_counters_human(FILE * fd, rave_counters * counters){
             indent(fd,  level,1); fprintf(fd,"Vector: "); P_NUMBER(fd, "%.0f", vdep); fprintf(fd,"\n");
             ++level;
             if(RAW_DIST){
-                indent(fd,  level,0); fprintf(fd,"RAW: "); P_NUMBER(fd, "%.0f", counters->VRAW_deps); fprintf(fd,"\n");
+                indent(fd,  level,0); fprintf(fd,"RAW: "); P_NUMBER(fd, "%.0f", counters->VRAW_deps); fprintf(fd, " [avg dist.: "); P_NUMBER(fd, "%.2f", counters->VRAW_deps?counters->avg_VRAW_deps/counters->VRAW_deps:0); fprintf(fd, "]"); fprintf(fd,"\n");
             }
             if(WAW_DIST){
-                indent(fd,  level,0); fprintf(fd,"WAW: "); P_NUMBER(fd, "%.0f", counters->VWAW_deps); fprintf(fd,"\n");
+                indent(fd,  level,0); fprintf(fd,"WAW: "); P_NUMBER(fd, "%.0f", counters->VWAW_deps); fprintf(fd, " [avg dist.: "); P_NUMBER(fd, "%.2f", counters->VWAW_deps?counters->avg_VWAW_deps/counters->VWAW_deps:0); fprintf(fd, "]"); fprintf(fd,"\n");
             }
             if(WAR_DIST){
-                indent(fd,  level,1); fprintf(fd,"WAR: "); P_NUMBER(fd, "%.0f", counters->VWAR_deps); fprintf(fd,"\n");
+                indent(fd,  level,1); fprintf(fd,"WAR: "); P_NUMBER(fd, "%.0f", counters->VWAR_deps); fprintf(fd, " [avg dist.: "); P_NUMBER(fd, "%.2f", counters->VWAR_deps?counters->avg_VWAR_deps/counters->VWAR_deps:0); fprintf(fd, "]"); fprintf(fd,"\n");
             }
             --level;
         }
@@ -150,6 +150,7 @@ void print_counters_human(FILE * fd, rave_counters * counters){
                 double  totvmem		= counters->vunit_instr[s] + counters->vstride_instr[s] + counters->vidx_instr[s] + counters->vspill_instr[s];
                 double  totvarith	= counters->vfp_instr[s] + counters->vint_instr[s];
                 double  totvarithnormal = totvarith - counters->vwidening_instr[s] - counters->vnarrowing_instr[s];
+                double  totvpermutation = counters->vmove_instr[s] + counters->vslide_instr[s] + counters->vgath_instr[s] + counters->vcmprss_instr[s];
                 //double  totvred	= counters->vfp_reductions[s] + counters->vint_reductions[s];
                 //double  totvother	= counters->vector_instr[s] - totvmem - totvarith - toWtvred - counters->vmask_instr[s];
 
@@ -174,16 +175,23 @@ void print_counters_human(FILE * fd, rave_counters * counters){
                     }
                     indent(fd,  level,1); fprintf(fd,"Normal: "); P_NUMBER(fd,"%.0f", totvarithnormal); PERCENTAGE(fd,totvarithnormal, totvarith,'\n');
                     if(totvarithnormal){
-                        indent(fd,  ++level,0); fprintf(fd,"Moves: "); P_NUMBER(fd,"%.0f", counters->vmove_instr[s]); PERCENTAGE(fd,counters->vmove_instr[s], totvarithnormal,'\n');
-                        double totvmdepscal = counters->m_inst_s_v[s] + counters->m_inst_v_s[s];
-                        double totvmoves_other = counters->vmove_instr[s] - totvmdepscal;
-                        if (counters->vmove_instr[s] > 0) {
-                            indent(fd,++level,0); fprintf(fd,"Read from scalar: "); P_NUMBER(fd,"%.0f", counters->m_inst_s_v[s]); PERCENTAGE(fd,counters->m_inst_s_v[s],counters->vmove_instr[s],'\n');
-                            indent(fd,  level,0); fprintf(fd,"Write to scalar: "); P_NUMBER(fd,"%.0f", counters->m_inst_v_s[s]); PERCENTAGE(fd,counters->m_inst_v_s[s],counters->vmove_instr[s],'\n');
-                            indent(fd,  level,1); fprintf(fd,"Others: "); P_NUMBER(fd,"%.0f", totvmoves_other); PERCENTAGE(fd,totvmoves_other,counters->vmove_instr[s],'\n');
+                        indent(fd,++level,0); fprintf(fd,"Permutations: "); P_NUMBER(fd,"%.0f", totvpermutation); PERCENTAGE(fd,totvpermutation, totvarithnormal,'\n');                    
+                        if(totvpermutation){
+                            indent(fd,  ++level,0); fprintf(fd,"Moves: "); P_NUMBER(fd,"%.0f", counters->vmove_instr[s]); PERCENTAGE(fd,counters->vmove_instr[s], totvarithnormal,'\n');
+                            double totvmdepscal = counters->m_inst_s_v[s] + counters->m_inst_v_s[s] - counters->vmove_wh_instr[s];
+                            double totvmoves_other = counters->vmove_instr[s] - totvmdepscal;
+                            if (counters->vmove_instr[s] > 0) {
+                                indent(fd,++level,0); fprintf(fd,"Read from scalar: "); P_NUMBER(fd,"%.0f", counters->m_inst_s_v[s]); PERCENTAGE(fd,counters->m_inst_s_v[s],counters->vmove_instr[s],'\n');
+                                indent(fd,  level,0); fprintf(fd,"Write to scalar: "); P_NUMBER(fd,"%.0f", counters->m_inst_v_s[s]); PERCENTAGE(fd,counters->m_inst_v_s[s],counters->vmove_instr[s],'\n');
+                                indent(fd,  level,0); fprintf(fd,"Whole register: "); P_NUMBER(fd,"%.0f", counters->vmove_wh_instr[s]); PERCENTAGE(fd,counters->vmove_wh_instr[s],counters->vmove_instr[s],'\n');  
+                                indent(fd,  level,1); fprintf(fd,"Others: "); P_NUMBER(fd,"%.0f", totvmoves_other); PERCENTAGE(fd,totvmoves_other,counters->vmove_instr[s],'\n');
+                                --level;
+                            }
+                            indent(fd,  level,0); fprintf(fd,"Slides: "); P_NUMBER(fd,"%.0f", counters->vslide_instr[s]); PERCENTAGE(fd,counters->vslide_instr[s], totvarithnormal,'\n');
+                            indent(fd,  level,0); fprintf(fd,"Gather: "); P_NUMBER(fd,"%.0f", counters->vgath_instr[s]); PERCENTAGE(fd,counters->vgath_instr[s], totvarithnormal,'\n');
+                            indent(fd,  level,1); fprintf(fd,"Compress: "); P_NUMBER(fd,"%.0f", counters->vcmprss_instr[s]); PERCENTAGE(fd,counters->vcmprss_instr[s], totvarithnormal,'\n');
                             --level;
                         }
-                        indent(fd,  level,0); fprintf(fd,"Permutations: "); P_NUMBER(fd,"%.0f", counters->vperm_instr[s]); PERCENTAGE(fd,counters->vperm_instr[s], totvarithnormal,'\n');                    
                         indent(fd,  level,0); fprintf(fd,"Mask: "); P_NUMBER(fd,"%.0f", counters->vmask_instr[s]); PERCENTAGE(fd,counters->vmask_instr[s], totvarithnormal,'\n');      
                         double totvred = counters->vfp_reductions_n[s] + counters->vint_reductions_n[s];
                         indent(fd,  level,0); fprintf(fd,"Reductions: "); P_NUMBER(fd,"%.0f",totvred); PERCENTAGE(fd,totvred, counters->vwidening_instr[s],'\n');

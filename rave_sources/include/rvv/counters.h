@@ -47,7 +47,10 @@ struct rave_counters{
                 double vnarrowing_instr[SEWS];
                 double vwidening_instr[SEWS];
                 double vmove_instr[SEWS];
-                double vperm_instr[SEWS];
+                double vmove_wh_instr[SEWS];
+                double vslide_instr[SEWS];
+                double vgath_instr[SEWS];
+                double vcmprss_instr[SEWS];
                 double vcomputation_instr[SEWS];
                 double vwfused_instr[SEWS];
                 double vfused_instr[SEWS];
@@ -88,6 +91,9 @@ struct rave_counters{
                 double RAW_deps;
                 double WAR_deps;
                 double WAW_deps;
+                double avg_VRAW_deps;
+                double avg_VWAR_deps;
+                double avg_VWAW_deps;
 
                 // To track the number of (effective) times we've had ta vs tu
                 double ta_count;

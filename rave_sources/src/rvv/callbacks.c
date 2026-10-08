@@ -320,6 +320,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
             if(state->write_reg_deps[instr->dst_d].pos != 0
                 && (instr_c.pos-state->write_reg_deps[instr->dst_d].pos <= WAW_DIST)) {
                     state->accum_counters.VWAW_deps++;
+                    state->accum_counters.avg_VWAW_deps += instr_c.pos-state->write_reg_deps[instr->dst_d].pos;
                     if(DEBUG_INFO) fprintf(stdout, "WAW dependency detected on register %d: write at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
                         instr->dst_d, instr_c.pos, instr->asm_string, 
                         state->write_reg_deps[instr->dst_d].pos, state->write_reg_deps[instr->dst_d].asm_string);            
@@ -327,6 +328,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
             if(state->write_reg_deps[instr->dst_d].pos != 0
                 && (instr_c.pos-state->read_reg_deps[instr->dst_d].pos <= WAR_DIST)) {
                     state->accum_counters.VWAR_deps++;
+                state->accum_counters.avg_VWAR_deps += instr_c.pos-state->read_reg_deps[instr->dst_d].pos;
                     if(DEBUG_INFO) fprintf(stdout, "WAR dependency detected on register %d: write at pos %li, instruction: %s, previous read at pos %li, previous instruction: %s\n", 
                         instr->dst_d, instr_c.pos, instr->asm_string, 
                         state->read_reg_deps[instr->dst_d].pos, state->read_reg_deps[instr->dst_d].asm_string);
@@ -335,6 +337,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
         if(valid_reg_id(instr->src1_d) && (instr->src1_d > 0 && state->write_reg_deps[instr->src1_d].pos != 0)
             && (instr_c.pos-state->write_reg_deps[instr->src1_d].pos <= RAW_DIST)) {
                 state->accum_counters.VRAW_deps++;
+                state->accum_counters.avg_VRAW_deps += instr_c.pos-state->write_reg_deps[instr->src1_d].pos;
                 if(DEBUG_INFO) fprintf(stdout, "RAW dependency detected on register %d: read at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
                     instr->src1_d, instr_c.pos, instr->asm_string, 
                     state->write_reg_deps[instr->src1_d].pos, state->write_reg_deps[instr->src1_d].asm_string);
@@ -342,6 +345,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
         if(valid_reg_id(instr->src2_d) &&(instr->src2_d > 0 && state->write_reg_deps[instr->src2_d].pos != 0)
             && (instr_c.pos-state->write_reg_deps[instr->src2_d].pos <= RAW_DIST)){
                 state->accum_counters.VRAW_deps++;
+                state->accum_counters.avg_VRAW_deps += instr_c.pos-state->write_reg_deps[instr->src2_d].pos;
                 if(DEBUG_INFO) fprintf(stdout, "RAW dependency detected on register %d: read at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
                     instr->src2_d, instr_c.pos, instr->asm_string, 
                     state->write_reg_deps[instr->src2_d].pos, state->write_reg_deps[instr->src2_d].asm_string);
@@ -349,6 +353,7 @@ void insn_exec(thread_state_t * state, instr_data * instr){
         if(valid_reg_id(instr->src3_d) &&(instr->src3_d > 0 && state->write_reg_deps[instr->src3_d].pos != 0)
             && (instr_c.pos-state->write_reg_deps[instr->src3_d].pos <= RAW_DIST)){
                 state->accum_counters.VRAW_deps++;
+                state->accum_counters.avg_VRAW_deps += instr_c.pos-state->write_reg_deps[instr->src3_d].pos;
                 if(DEBUG_INFO) fprintf(stdout, "RAW dependency detected on register %d: read at pos %li, instruction: %s, previous write at pos %li, previous instruction: %s\n", 
                     instr->src3_d, instr_c.pos, instr->asm_string, 
                     state->write_reg_deps[instr->src3_d].pos, state->write_reg_deps[instr->src3_d].asm_string);
@@ -598,6 +603,8 @@ void insn_exec(thread_state_t * state, instr_data * instr){
                             ++state->accum_counters.m_inst_v_s[sew];
                         } else if(is_type_ext(instr->type_ext, MASK_EXT_OPERAND, TYPE_EXT_READ_SCALAR)){
                             ++state->accum_counters.m_inst_s_v[sew];
+                        } else if(is_type_ext(instr->type_ext, MASK_EXT_OPERAND, TYPE_EXT_WHOLE_REGISTER)){
+                            ++state->accum_counters.vmove_wh_instr[sew];
                         }
                     } else {
                         if(is_type_ext(instr->type_ext, MASK_EXT_OPERAND, TYPE_EXT_WRITE_SCALAR)){
@@ -607,8 +614,12 @@ void insn_exec(thread_state_t * state, instr_data * instr){
                         }
                         if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_MASK)){
                             ++state->accum_counters.vmask_instr[sew];
-                        } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_PERMUTATION)){
-                            ++state->accum_counters.vperm_instr[sew];
+                        } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_COMPRESS)){
+                            ++state->accum_counters.vcmprss_instr[sew];
+                        } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_GATHER)){
+                            ++state->accum_counters.vgath_instr[sew];
+                        } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_SLIDE)){
+                            ++state->accum_counters.vslide_instr[sew];
                         } else if(is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_COMPUTATION) || 
                                   is_type_ext(instr->type_ext, MASK_EXT_SUBSUBTYPE, TYPE_EXT_ARITH_COMP_FUSED)){
                             ++state->accum_counters.vcomputation_instr[sew];
@@ -629,14 +640,16 @@ void insn_exec(thread_state_t * state, instr_data * instr){
                 state->accum_counters.velem_mem[sew] += vl;
                 if (is_subsubtype(instr->type, T_UNIT)) {
                     ++state->accum_counters.vunit_instr[sew];
-                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_MEMORY_SEGMENTED))
+                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_MEMORY_SEGMENTED)){
                         ++state->accum_counters.vseg_instr_unit[sew];
+                    }
                 } else if (is_subsubtype(instr->type, T_STRIDE)){
                     ++state->accum_counters.vstride_instr[sew];
                     state->accum_counters.agg_strides[sew] += stride;
                     state->accum_counters.agg_strides_squared[sew] += (double)stride * stride;
-                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_MEMORY_SEGMENTED))
+                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_MEMORY_SEGMENTED)){
                         ++state->accum_counters.vseg_instr_stride[sew];
+                    }
                 }
                 else if (is_subsubtype(instr->type, T_INDEX)){
                     ++state->accum_counters.vidx_instr[sew];
@@ -645,8 +658,9 @@ void insn_exec(thread_state_t * state, instr_data * instr){
                     }else{
                         ++state->accum_counters.vidx_instr_unordered[sew];
                     }
-                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_MEMORY_SEGMENTED))
+                    if(is_type_ext(instr->type_ext, MASK_EXT_SUBTYPE, TYPE_EXT_MEMORY_SEGMENTED)){
                         ++state->accum_counters.vseg_instr_idx[sew];
+                    }
                 } 
                 else if (is_subsubtype(instr->type, T_SPILL)) ++state->accum_counters.vspill_instr[sew];
             }

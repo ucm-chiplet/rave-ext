@@ -10,6 +10,7 @@
 #include "utils.h" //For contains_string(char*)
 #include "rave2prv.h"
 #include "instr2prv.h"
+#include "state.h"
 
 int64_t get_loop_offset(uint32_t insn_opcode){
 	int64_t offset;
@@ -230,26 +231,31 @@ uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm, uint16
             /** MOVE INSTRUCTIONS */
             if(funct6 == 0x10){
                 if ((funct3 == 2 || funct3 == 1) && vs1 == 0) {                         // vmv.x.s, vfmv.f.s
+                    type_ext     &= ~MASK_EXT_SUBSUBTYPE;
                     type_ext |= TYPE_EXT_ARITH_MOVE; 
                     type_ext |= TYPE_EXT_WRITE_SCALAR;
                     type_ext |= (funct3==1)?TYPE_EXT_FP:TYPE_EXT_INT;
 
                 } else if ((funct3 == 2 || funct3 == 1) && (vs1 == 16 || vs1 == 17)) {  // vcpop.m y vfirst.m
+                    type_ext     &= ~MASK_EXT_SUBSUBTYPE;   
                     type_ext |= TYPE_EXT_ARITH_MASK;
                     type_ext |= TYPE_EXT_WRITE_SCALAR;
                     type_ext |= TYPE_EXT_INT;
 
                 }
                 else if(funct3 == 6 || funct3 == 5){                                    // vmv.s.x, vfmv.s.f
+                    type_ext     &= ~MASK_EXT_SUBSUBTYPE;
                     type_ext |= TYPE_EXT_ARITH_MOVE; 
                     type_ext |= (funct3==5)?TYPE_EXT_FP:TYPE_EXT_INT;
-
                 }
 
-            } else if(funct6 == 0x27 && funct3 == 3){                 // vmv1r.v, vmv2r.v...
+            } else if(funct6 == 0x27 && funct3 == 3){                 // vmv1r.v, vmv2r.v... Whole register...
+                type_ext     &= ~MASK_EXT_SUBSUBTYPE;
                 type_ext     |= TYPE_EXT_ARITH_MOVE;
+                type_ext     |= TYPE_EXT_WHOLE_REGISTER;
                 type_ext     |= TYPE_EXT_INT;
             } else if(funct6 == 0x17 && vm == 1) {                    // vmv.v.v, vmv.v.x, vfmv.v.f
+                type_ext     &= ~MASK_EXT_SUBSUBTYPE;
                 type_ext     |= TYPE_EXT_ARITH_MOVE;
                 if (funct3 == 1 || funct3 == 5) {
                     type_ext |= TYPE_EXT_FP;                          // vfmv.v.f
@@ -259,7 +265,7 @@ uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm, uint16
             }
 
             /** REDUCTION INSTRUCTIONS */
-            if (funct3 == 2 && ((funct6 >= 0 && funct6 <= 7) || funct6 == 0x30 || funct6 == 0x31)) {   
+            else if (funct3 == 2 && ((funct6 >= 0 && funct6 <= 7) || funct6 == 0x30 || funct6 == 0x31)) {   
                 /**OPMVV: 010 
                  * f6 == 0x30 y 0x31: vwredsumu y vwredsum
                  * others: vredsum, vredand, vredor, vredxor, vredminu, vredmin, vredmaxu, vredmax
@@ -276,12 +282,46 @@ uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm, uint16
                 type_ext |= TYPE_EXT_ARITH_REDUCTION;
             } 
 
+            /** SLIDE INSTRUCTIONS */
+            else if (funct6 == 14 || funct6 == 15) {   
+                if(funct3 == 0b100 || funct3 == 0b011){ // vslideup, vslidedown
+                    type_ext &= ~MASK_EXT_SUBSUBTYPE;
+                    type_ext |= TYPE_EXT_ARITH_SLIDE;
+                    type_ext |= TYPE_EXT_INT;
+                }else if(funct3 == 0b110){              // vslide1up, vslide1down
+                    type_ext &= ~MASK_EXT_SUBSUBTYPE;
+                    type_ext |= TYPE_EXT_ARITH_SLIDE;
+                    type_ext |= TYPE_EXT_INT;
+                }else if(funct3 == 0b101){              // vfslide1up, vfslide1down
+                    type_ext &= ~MASK_EXT_SUBSUBTYPE;
+                    type_ext |= TYPE_EXT_ARITH_SLIDE;
+                    type_ext |= TYPE_EXT_FP;
+                }
+            }
+
+            /** COMPRESS INSTRUCTIONS */
+            if (funct6 == 0b010111 && funct3 == 0b010) {
+                type_ext &= ~MASK_EXT_SUBSUBTYPE;
+                type_ext |= TYPE_EXT_ARITH_COMPRESS;
+                type_ext |= TYPE_EXT_INT;
+            }
+
+            /** GATHER INSTRUCTIONS */
+            else if(funct6 == 0b001100 && (funct3 == 0b000 || funct3 == 0b011 || funct3 == 0b100)){  // vrgather
+                type_ext &= ~MASK_EXT_SUBSUBTYPE;
+                type_ext |= TYPE_EXT_ARITH_GATHER;
+                type_ext |= TYPE_EXT_INT;
+            } else if(funct6 == 0b001110 && funct3 == 0b000){                                    // vrgatherei16
+                type_ext &= ~MASK_EXT_SUBSUBTYPE;
+                type_ext |= TYPE_EXT_ARITH_GATHER;
+                type_ext |= TYPE_EXT_INT;
+            }
             break;
 
         case MAJOR_LOAD:
             type_ext |= TYPE_EXT_LOAD;
 			nf = (insn_opcode >> 29) & 0x7;
-            if(nf) {
+            if(nf > 0) {
                 type_ext |= TYPE_EXT_MEMORY_SEGMENTED;
             }
             if(is_subsubtype(cur_type, T_INDEX)){
@@ -295,7 +335,7 @@ uint16_t instr_set_vector_type_ext(uint32_t insn_opcode, char* instr_asm, uint16
         case MAJOR_STORE:
             type_ext |= TYPE_EXT_STORE;	
 			nf = (insn_opcode >> 29) & 0x7;
-            if(nf) {
+            if(nf > 0) {
                 type_ext |= TYPE_EXT_MEMORY_SEGMENTED;
             }	
             if(is_subsubtype(cur_type, T_INDEX)){

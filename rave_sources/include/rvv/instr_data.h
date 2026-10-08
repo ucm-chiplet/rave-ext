@@ -63,15 +63,18 @@
 #define TYPE_EXT_ARITH_WIDENING      0x0004     // 01 (0x0004)
 #define TYPE_EXT_ARITH_NARROWING     0x0008     // 10 (0x0008)
 #define TYPE_EXT_MEMORY_NORMAL       0x0004     // 00
-#define TYPE_EXT_MEMORY_SEGMENTED    0x0000     // 01
+#define TYPE_EXT_MEMORY_SEGMENTED    0x0004     // 01
 
 // Arith Operation (bits 6:4) && Ordered/Unordered for memory ops( -TODO podemos ponerlo como un único bit) 
 #define TYPE_EXT_ARITH_COMPUTATION   0x0000     // 000 (Default ALU)
     #define TYPE_EXT_ARITH_COMP_FUSED  0x0050     // 101 (0x0050)
-#define TYPE_EXT_ARITH_MOVE          0x0010     // 001 (0x0010)
 #define TYPE_EXT_ARITH_REDUCTION     0x0020     // 010 (0x0020)
-#define TYPE_EXT_ARITH_PERMUTATION   0x0030     // 011 (0x0030)
 #define TYPE_EXT_ARITH_MASK          0x0040     // 100 (0x0040)
+    // Permutation insts
+#define TYPE_EXT_ARITH_MOVE          0x0010     // 001 (0x0010)
+#define TYPE_EXT_ARITH_SLIDE         0x0030     // 011 (0x0030)
+#define TYPE_EXT_ARITH_COMPRESS      0x0060     // 110 (0x0060)
+#define TYPE_EXT_ARITH_GATHER        0x0070     // 111 (0x0070)
 
 #define TYPE_EXT_MEMORY_UNORDERED    0x0000     // 000
 #define TYPE_EXT_MEMORY_ORDERED      0x0010     // 001
@@ -80,6 +83,7 @@
 #define TYPE_EXT_VECTOR_VECTOR       0x0000     // 00
 #define TYPE_EXT_WRITE_SCALAR        0x0080     // 01 (0x0080)
 #define TYPE_EXT_READ_SCALAR         0x0100     // 10 (0x0100)
+#define TYPE_EXT_WHOLE_REGISTER      0x0180     // 11 (0x0180)
 
 // Flags independientes (bits 9 y 10)
 #define TYPE_EXT_MASKED              0x0200     // bit 9:  1 (0x0200)
